@@ -400,6 +400,7 @@ static int dapm_new_mixer(struct snd_soc_dapm_widget *w)
 				path->long_name = NULL;
 				return ret;
 			}
+			w->kcontrols[i] = path->kcontrol;
 		}
 	}
 	return ret;
@@ -441,6 +442,8 @@ static int dapm_new_mux(struct snd_soc_dapm_widget *w)
 
 	if (ret < 0)
 		goto err;
+
+	w->kcontrols[0] = kcontrol;
 
 	list_for_each_entry(path, &w->sources, list_sink)
 		path->kcontrol = kcontrol;
@@ -1479,6 +1482,7 @@ static void dapm_free_widgets(struct snd_soc_dapm_context *dapm)
 			kfree(p->long_name);
 			kfree(p);
 		}
+		kfree(w->kcontrols);
 		kfree(w->name);
 		kfree(w);
 	}
@@ -1728,6 +1732,14 @@ int snd_soc_dapm_new_widgets(struct snd_soc_dapm_context *dapm)
 	{
 		if (w->new)
 			continue;
+
+		if (w->num_kcontrols) {
+			w->kcontrols = kzalloc(w->num_kcontrols *
+						sizeof(struct snd_kcontrol *),
+						GFP_KERNEL);
+			if (!w->kcontrols)
+				return -ENOMEM;
+		}
 
 		switch(w->id) {
 		case snd_soc_dapm_switch:
