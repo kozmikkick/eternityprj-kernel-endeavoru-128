@@ -4306,10 +4306,8 @@ int netdev_set_master(struct net_device *slave, struct net_device *master)
 
 	slave->master = master;
 
-	if (old) {
-		synchronize_net();
+	if (old)
 		dev_put(old);
-	}
 	return 0;
 }
 EXPORT_SYMBOL(netdev_set_master);
