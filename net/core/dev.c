@@ -3127,7 +3127,7 @@ static int __netif_receive_skb(struct sk_buff *skb)
 
 	skb_reset_network_header(skb);
 	skb_reset_transport_header(skb);
-	skb->mac_len = skb->network_header - skb->mac_header;
+	skb_reset_mac_len(skb);
 
 	pt_prev = NULL;
 
