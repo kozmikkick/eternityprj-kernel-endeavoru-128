@@ -46,7 +46,7 @@ static int lowmem_adj[6] = {
 	12,
 };
 static int lowmem_adj_size = 4;
-static size_t lowmem_minfree[6] = {
+static int lowmem_minfree[6] = {
 	3 * 512,	/* 6MB */
 	2 * 1024,	/* 8MB */
 	4 * 1024,	/* 16MB */
@@ -296,7 +296,7 @@ static int lowmem_shrink(struct shrinker *s, int nr_to_scan, gfp_t gfp_mask)
 			show_meminfo();
 			dump_tasks();
 		}
-		force_sig(SIGKILL, selected, 0);
+		force_sig(SIGKILL, selected);
 		rem -= selected_tasksize;
 	}
 	lowmem_print(4, "lowmem_shrink %d, %x, return %d\n",
