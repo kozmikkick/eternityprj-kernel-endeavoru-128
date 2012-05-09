@@ -329,7 +329,7 @@ EXPORT_SYMBOL(idr_get_new_above);
  *
  * If the idr is full idr_get_new_above() will return %-ENOSPC.
  *
- * @id returns a value in the range %0 ... %0x7fffffff
+ * @p_id returns a value in the range %0 ... %0x7fffffff
  */
 int idr_get_new(struct idr *idp, void *ptr, int *id)
 {
