@@ -23,6 +23,7 @@
 #include <linux/uaccess.h>
 
 #include <asm/unaligned.h>
+#include <asm/cp15.h>
 
 #include "fault.h"
 
