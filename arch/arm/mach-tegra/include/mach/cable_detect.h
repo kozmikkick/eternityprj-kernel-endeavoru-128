@@ -15,6 +15,8 @@
 #define ADC_RETRY 3
 #define ADC_DELAY HZ/8
 
+#include <linux/list.h>
+
 #define TPS80032ADC_12BIT(x) ((x * 1250) >> 12) /* vref=1.2v, 12-bits resolution */
 
 #define CABLE_ERR(fmt, args...) \

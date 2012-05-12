@@ -330,13 +330,6 @@ struct tegra_pcie_info {
 	struct tegra_pci_platform_data *plat_data;
 };
 
-#define pmc_writel(value, reg) \
-	__raw_writel(value, (u32)reg_pmc_base + (reg))
-#define pmc_readl(reg) \
-	__raw_readl((u32)reg_pmc_base + (reg))
-
-static void __iomem *reg_pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
-
 static struct tegra_pcie_info tegra_pcie = {
 	.res_mmio = {
 		.name = "PCI IO",
@@ -832,18 +825,6 @@ static void tegra_pcie_enable_controller(void)
 	return;
 }
 
-static void tegra_pcie_xclk_clamp(bool clamp)
-{
-	u32 reg;
-
-	reg = pmc_readl(PMC_SCRATCH42) & ~PMC_SCRATCH42_PCX_CLAMP;
-
-	if (clamp)
-		reg |= PMC_SCRATCH42_PCX_CLAMP;
-
-	pmc_writel(reg, PMC_SCRATCH42);
-}
-
 static int tegra_pci_enable_regulators(void)
 {
 	if (tegra_pcie.power_rails_enabled)
@@ -1206,7 +1187,7 @@ static int __init tegra_pcie_init(void)
 	return err;
 }
 
-static int tegra_pci_probe(struct platform_device *pdev)
+static int __init tegra_pci_probe(struct platform_device *pdev)
 {
 	tegra_pcie.plat_data = pdev->dev.platform_data;
 	dev_dbg(&pdev->dev, "PCIE.C: %s : _port_status[0] %d\n",
@@ -1235,7 +1216,6 @@ static int tegra_pci_remove(struct platform_device *pdev)
 }
 
 static struct platform_driver tegra_pci_driver = {
-	.probe   = tegra_pci_probe,
 	.remove  = tegra_pci_remove,
 #ifdef CONFIG_PM
 	.suspend = tegra_pci_suspend,
@@ -1249,7 +1229,7 @@ static struct platform_driver tegra_pci_driver = {
 
 static int __init tegra_pci_init_driver(void)
 {
-	return platform_driver_register(&tegra_pci_driver);
+	return platform_driver_probe(&tegra_pci_driver, tegra_pci_probe);
 }
 
 static void __exit tegra_pci_exit_driver(void)

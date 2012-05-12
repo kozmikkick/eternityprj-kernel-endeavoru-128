@@ -784,7 +784,6 @@ static struct spi_board_info enterprise_spi_board_info_rawchip[] = {
                .controller_data = &dev_cdata_rawchip,
        },
 };
-EXPORT_SYMBOL_GPL(enterprise_spi_board_info_rawchip);
 
 static struct tegra_camera_rawchip_info tegra_rawchip_board_info = {
 	.rawchip_intr0  = TEGRA_GPIO_PR0,

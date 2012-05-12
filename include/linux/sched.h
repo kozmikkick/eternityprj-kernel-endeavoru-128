@@ -869,6 +869,8 @@ static inline int sd_power_saving_flags(void)
 struct sched_group {
 	struct sched_group *next;	/* Must be a circular list */
 
+	int balance_cpu;
+
 	/*
 	 * CPU power of this group, SCHED_LOAD_SCALE being max power for a
 	 * single CPU.

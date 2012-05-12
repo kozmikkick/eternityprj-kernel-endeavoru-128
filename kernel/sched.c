@@ -6354,7 +6354,7 @@ static int __cpuinit sched_cpu_active(struct notifier_block *nfb,
 				      unsigned long action, void *hcpu)
 {
 	switch (action & ~CPU_TASKS_FROZEN) {
-	case CPU_ONLINE:
+	case CPU_STARTING:
 	case CPU_DOWN_FAILED:
 		set_cpu_active((long)hcpu, true);
 		return NOTIFY_OK;
@@ -6757,6 +6757,7 @@ init_sched_build_groups(const struct cpumask *span,
 
 		cpumask_clear(sched_group_cpus(sg));
 		sg->cpu_power = 0;
+		sg->balance_cpu = -1;
 
 		for_each_cpu(j, span) {
 			if (group_fn(j, cpu_map, NULL, tmpmask) != group)
