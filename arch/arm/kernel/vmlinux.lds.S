@@ -13,12 +13,6 @@
 	*(.proc.info.init)						\
 	VMLINUX_SYMBOL(__proc_info_end) = .;
 
-#define IDMAP_TEXT							\
-	ALIGN_FUNCTION();						\
-	VMLINUX_SYMBOL(__idmap_text_start) = .;				\
-	*(.idmap.text)							\
-	VMLINUX_SYMBOL(__idmap_text_end) = .;
-
 #ifdef CONFIG_HOTPLUG_CPU
 #define ARM_CPU_DISCARD(x)
 #define ARM_CPU_KEEP(x)		x
@@ -124,7 +118,6 @@ SECTIONS
 			SCHED_TEXT
 			LOCK_TEXT
 			KPROBES_TEXT
-			IDMAP_TEXT
 #ifdef CONFIG_MMU
 			*(.fixup)
 #endif
