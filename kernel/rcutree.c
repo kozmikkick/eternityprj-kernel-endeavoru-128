@@ -47,6 +47,9 @@
 #include <linux/mutex.h>
 #include <linux/time.h>
 #include <linux/kernel_stat.h>
+#include <linux/wait.h>
+#include <linux/kthread.h>
+#include <linux/prefetch.h>
 
 #include "rcutree.h"
 
