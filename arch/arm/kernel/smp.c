@@ -122,7 +122,7 @@ retry_online_failed:
 		 * CPU was successfully started, wait for it
 		 * to come online or time out.
 		 */
-		timeout = jiffies + HZ;
+		timeout = jiffies + 10*HZ;
 		while (time_before(jiffies, timeout)) {
 			if (cpu_online(cpu))
 				break;
