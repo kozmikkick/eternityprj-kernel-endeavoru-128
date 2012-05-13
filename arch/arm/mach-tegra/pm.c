@@ -50,6 +50,7 @@
 #include <asm/pgalloc.h>
 #include <asm/pgtable.h>
 #include <asm/tlbflush.h>
+#include <asm/idmap.h>
 
 #include <mach/clk.h>
 #include <mach/iomap.h>
@@ -248,13 +249,20 @@ unsigned long tegra_cpu_lp2_min_residency(void)
 static __init int create_suspend_pgtable(void)
 {
 	tegra_pgd = pgd_alloc(&init_mm);
+
+	unsigned long prot = PMD_TYPE_SECT | PMD_SECT_AP_WRITE;
+
 	if (!tegra_pgd)
 		return -ENOMEM;
 
-	identity_mapping_add(tegra_pgd, PLAT_PHYS_OFFSET,
-			     PLAT_PHYS_OFFSET + memblock_phys_mem_size());
-	identity_mapping_add(tegra_pgd, IO_IRAM_PHYS,
+	idmap_add_pud(tegra_pgd, PLAT_PHYS_OFFSET,
+		      PLAT_PHYS_OFFSET + memblock_phys_mem_size()), prot);
+	idmap_add_pud(tegra_pgd, IO_IRAM_PHYS,
 		IO_IRAM_PHYS + SECTION_SIZE);
+//	identity_mapping_add(tegra_pgd, PLAT_PHYS_OFFSET,
+//			     PLAT_PHYS_OFFSET + memblock_phys_mem_size());
+//	identity_mapping_add(tegra_pgd, IO_IRAM_PHYS,
+//		IO_IRAM_PHYS + SECTION_SIZE);
 
 	/* inner/outer write-back/write-allocate, sharable */
 	tegra_pgd_phys = (virt_to_phys(tegra_pgd) & PAGE_MASK) | 0x4A;
