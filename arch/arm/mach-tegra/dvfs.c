@@ -760,13 +760,15 @@ static ssize_t v_mmc_rx_2v85_stats_write(struct file *file,
 	int result = 0;
 	char volts_string[12] = { '\0' };
 	struct regulator *v_mmc_rx_2v85 = regulator_get(NULL, "v_mmc_rx_2v85");
-	int new_volts = simple_strtol(volts_string, NULL, 0);
+	int new_volts;
 
 	if (copy_from_user(volts_string, buffer, count)) {
 		result = -EFAULT;
 		goto end;
 	}
+
 	volts_string[count] = '\0';
+	new_volts = simple_strtol(volts_string, NULL, 0);
 
 	if(v_mmc_rx_2v85)
 	{
@@ -818,7 +820,7 @@ static ssize_t vio_1v8_stats_write(struct file *file,
 	int result = 0;
 	char volts_string[12] = { '\0' };
 	struct regulator *vio_1v8 = regulator_get(NULL, "vio_1v8");
-	int new_volts = simple_strtol(volts_string, NULL, 0);
+	int new_volts;
 
 	if (copy_from_user(volts_string, buffer, count)) {
 		result = -EFAULT;
@@ -826,6 +828,8 @@ static ssize_t vio_1v8_stats_write(struct file *file,
 	}
 
 	volts_string[count] = '\0';
+	new_volts = simple_strtol(volts_string, NULL, 0);
+
 	if(vio_1v8)
 	{	if(new_volts==0)
 			result = regulator_force_disable(vio_1v8);	
@@ -872,14 +876,16 @@ static ssize_t vddio_ddr_stats_write(struct file *file,
 	int result = 0;
 	char volts_string[12] = { '\0' };
 	struct regulator *vddio_ddr = regulator_get(NULL, "vddio_ddr");
-	int new_volts = simple_strtol(volts_string, NULL, 0);
+	int new_volts;
 
 	if (copy_from_user(volts_string, buffer, count)) {
 		result = -EFAULT;
 		goto end;
 	}
-
+	
 	volts_string[count] = '\0';
+	new_volts = simple_strtol(volts_string, NULL, 0);
+
 	if(vddio_ddr)
 	{
 		if(new_volts==0)
@@ -925,13 +931,15 @@ static ssize_t vdd_core_stats_write(struct file *file,
 	int result = 0;
 	char volts_string[12] = { '\0' };
 	struct regulator *vdd_core = regulator_get(NULL, "vdd_core");
-	int new_volts = simple_strtol(volts_string, NULL, 0);
+	int new_volts;
 
 	if (copy_from_user(volts_string, buffer, count)) {
 		result = -EFAULT;
 		goto end;
 	}
+
 	volts_string[count] = '\0';
+	new_volts = simple_strtol(volts_string, NULL, 0);
 
 	if(vdd_core)
 	{
@@ -979,13 +987,15 @@ static ssize_t vdd_cpu_stats_write(struct file *file,
 	int result = 0;
 	char volts_string[12] = { '\0' };
 	struct regulator *vdd_cpu= regulator_get(NULL, "vdd_cpu");
-	int new_volts = simple_strtol(volts_string, NULL, 0);
+	int new_volts;
 
 	if (copy_from_user(volts_string, buffer, count)) {
 		result = -EFAULT;
 		goto end;
 	}
+
 	volts_string[count] = '\0';
+	new_volts = simple_strtol(volts_string, NULL, 0);
 
 	if(vdd_cpu)
 	{
