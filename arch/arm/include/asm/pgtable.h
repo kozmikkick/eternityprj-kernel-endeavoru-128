@@ -329,6 +329,9 @@ extern pgd_t swapper_pg_dir[PTRS_PER_PGD];
 		clean_pmd_entry(pmdp);	\
 	} while (0)
 
+extern spinlock_t pgd_lock;
+extern struct list_head pgd_list;
+
 pte_t *lookup_address(unsigned long address, unsigned int *level);
 enum {
 	PG_LEVEL_NONE,

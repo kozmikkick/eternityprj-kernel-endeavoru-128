@@ -383,8 +383,7 @@ ENDPROC(__enable_mmu)
  * other registers depend on the function called upon completion
  */
 	.align	5
-	.pushsection	.idmap.text, "ax"
-ENTRY(__turn_mmu_on)
+__turn_mmu_on:
 	mov	r0, r0
 	mcr	p15, 0, r0, c1, c0, 0		@ write control reg
 	mrc	p15, 0, r3, c0, c0, 0		@ read id reg
@@ -395,7 +394,6 @@ ENTRY(__turn_mmu_on)
 	mov	pc, r3
 __enable_mmu_end:
 ENDPROC(__turn_mmu_on)
-	.popsection
 
 
 #ifdef CONFIG_SMP_ON_UP
