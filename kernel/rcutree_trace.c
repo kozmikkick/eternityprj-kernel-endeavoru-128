@@ -46,6 +46,16 @@
 #define RCU_TREE_NONCORE
 #include "rcutree.h"
 
+DECLARE_PER_CPU(unsigned int, rcu_cpu_kthread_status);
+DECLARE_PER_CPU(char, rcu_cpu_has_work);
+
+static char convert_kthread_status(unsigned int kthread_status)
+{
+	if (kthread_status > RCU_KTHREAD_MAX)
+		return '?';
+	return "SRWY"[kthread_status];
+}
+
 static void print_one_rcu_data(struct seq_file *m, struct rcu_data *rdp)
 {
 	if (!rdp->beenonline)
