@@ -48,6 +48,7 @@
 
 DECLARE_PER_CPU(unsigned int, rcu_cpu_kthread_status);
 DECLARE_PER_CPU(unsigned int, rcu_cpu_kthread_cpu);
+DECLARE_PER_CPU(unsigned int, rcu_cpu_kthread_loops);
 DECLARE_PER_CPU(char, rcu_cpu_has_work);
 
 static char convert_kthread_status(unsigned int kthread_status)
@@ -75,7 +76,21 @@ static void print_one_rcu_data(struct seq_file *m, struct rcu_data *rdp)
 		   rdp->dynticks_fqs);
 #endif /* #ifdef CONFIG_NO_HZ */
 	seq_printf(m, " of=%lu ri=%lu", rdp->offline_fqs, rdp->resched_ipi);
-	seq_printf(m, " ql=%ld b=%ld", rdp->qlen, rdp->blimit);
+	seq_printf(m, " ql=%ld qs=%c%c%c%c kt=%d/%c/%d ktl=%x b=%ld",
+		   rdp->qlen,
+		   ".N"[rdp->nxttail[RCU_NEXT_READY_TAIL] !=
+			rdp->nxttail[RCU_NEXT_TAIL]],
+		   ".R"[rdp->nxttail[RCU_WAIT_TAIL] !=
+			rdp->nxttail[RCU_NEXT_READY_TAIL]],
+		   ".W"[rdp->nxttail[RCU_DONE_TAIL] !=
+			rdp->nxttail[RCU_WAIT_TAIL]],
+		   ".D"[&rdp->nxtlist != rdp->nxttail[RCU_DONE_TAIL]],
+		   per_cpu(rcu_cpu_has_work, rdp->cpu),
+		   convert_kthread_status(per_cpu(rcu_cpu_kthread_status,
+					  rdp->cpu)),
+		   per_cpu(rcu_cpu_kthread_cpu, rdp->cpu),
+		   per_cpu(rcu_cpu_kthread_loops, rdp->cpu) & 0xffff,
+		   rdp->blimit);
 	seq_printf(m, " ci=%lu co=%lu ca=%lu\n",
 		   rdp->n_cbs_invoked, rdp->n_cbs_orphaned, rdp->n_cbs_adopted);
 }
@@ -132,7 +147,18 @@ static void print_one_rcu_data_csv(struct seq_file *m, struct rcu_data *rdp)
 		   rdp->dynticks_fqs);
 #endif /* #ifdef CONFIG_NO_HZ */
 	seq_printf(m, ",%lu,%lu", rdp->offline_fqs, rdp->resched_ipi);
-	seq_printf(m, ",%ld,%ld", rdp->qlen, rdp->blimit);
+	seq_printf(m, ",%ld,\"%c%c%c%c\",%d,\"%c\",%ld", rdp->qlen,
+		   ".N"[rdp->nxttail[RCU_NEXT_READY_TAIL] !=
+			rdp->nxttail[RCU_NEXT_TAIL]],
+		   ".R"[rdp->nxttail[RCU_WAIT_TAIL] !=
+			rdp->nxttail[RCU_NEXT_READY_TAIL]],
+		   ".W"[rdp->nxttail[RCU_DONE_TAIL] !=
+			rdp->nxttail[RCU_WAIT_TAIL]],
+		   ".D"[&rdp->nxtlist != rdp->nxttail[RCU_DONE_TAIL]],
+		   per_cpu(rcu_cpu_has_work, rdp->cpu),
+		   convert_kthread_status(per_cpu(rcu_cpu_kthread_status,
+					  rdp->cpu)),
+		   rdp->blimit);
 	seq_printf(m, ",%lu,%lu,%lu\n",
 		   rdp->n_cbs_invoked, rdp->n_cbs_orphaned, rdp->n_cbs_adopted);
 }
@@ -167,6 +193,72 @@ static const struct file_operations rcudata_csv_fops = {
 	.llseek = seq_lseek,
 	.release = single_release,
 };
+
+#ifdef CONFIG_RCU_BOOST
+
+static void print_one_rcu_node_boost(struct seq_file *m, struct rcu_node *rnp)
+{
+	seq_printf(m,  "%d:%d tasks=%c%c%c%c kt=%c ntb=%lu neb=%lu nnb=%lu "
+		   "j=%04x bt=%04x\n",
+		   rnp->grplo, rnp->grphi,
+		   "T."[list_empty(&rnp->blkd_tasks)],
+		   "N."[!rnp->gp_tasks],
+		   "E."[!rnp->exp_tasks],
+		   "B."[!rnp->boost_tasks],
+		   convert_kthread_status(rnp->boost_kthread_status),
+		   rnp->n_tasks_boosted, rnp->n_exp_boosts,
+		   rnp->n_normal_boosts,
+		   (int)(jiffies & 0xffff),
+		   (int)(rnp->boost_time & 0xffff));
+	seq_printf(m, "%s: nt=%lu egt=%lu bt=%lu nb=%lu ny=%lu nos=%lu\n",
+		   "     balk",
+		   rnp->n_balk_blkd_tasks,
+		   rnp->n_balk_exp_gp_tasks,
+		   rnp->n_balk_boost_tasks,
+		   rnp->n_balk_notblocked,
+		   rnp->n_balk_notyet,
+		   rnp->n_balk_nos);
+}
+
+static int show_rcu_node_boost(struct seq_file *m, void *unused)
+{
+	struct rcu_node *rnp;
+
+	rcu_for_each_leaf_node(&rcu_preempt_state, rnp)
+		print_one_rcu_node_boost(m, rnp);
+	return 0;
+}
+
+static int rcu_node_boost_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, show_rcu_node_boost, NULL);
+}
+
+static const struct file_operations rcu_node_boost_fops = {
+	.owner = THIS_MODULE,
+	.open = rcu_node_boost_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
+/*
+ * Create the rcuboost debugfs entry.  Standard error return.
+ */
+static int rcu_boost_trace_create_file(struct dentry *rcudir)
+{
+	return !debugfs_create_file("rcuboost", 0444, rcudir, NULL,
+				    &rcu_node_boost_fops);
+}
+
+#else /* #ifdef CONFIG_RCU_BOOST */
+
+static int rcu_boost_trace_create_file(struct dentry *rcudir)
+{
+	return 0;  /* There cannot be an error if we didn't create it! */
+}
+
+#endif /* #else #ifdef CONFIG_RCU_BOOST */
 
 static void print_one_rcu_state(struct seq_file *m, struct rcu_state *rsp)
 {
@@ -366,6 +458,9 @@ static int __init rcutree_trace_init(void)
 	retval = debugfs_create_file("rcudata.csv", 0444, rcudir,
 						NULL, &rcudata_csv_fops);
 	if (!retval)
+		goto free_out;
+
+	if (rcu_boost_trace_create_file(rcudir))
 		goto free_out;
 
 	retval = debugfs_create_file("rcugp", 0444, rcudir, NULL, &rcugp_fops);

@@ -117,6 +117,10 @@ o	"ql" is the number of RCU callbacks currently residing on
 	of what state they are in (new, waiting for grace period to
 	start, waiting for grace period to end, ready to invoke).
 
+o	"ktl" is the low-order 16 bits (in hexadecimal) of the count of
+	the number of times that this CPU's per-CPU kthread has gone
+	through its loop servicing invoke_rcu_cpu_kthread() requests.
+
 o	"b" is the batch limit for this CPU.  If more than this number
 	of RCU callbacks is ready to invoke, then the remainder will
 	be deferred.
