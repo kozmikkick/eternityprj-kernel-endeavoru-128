@@ -104,10 +104,6 @@ o	"of" is the number of times that some other CPU has forced a
 	CPU is offline when it is really alive and kicking) is a fatal
 	error, so it makes sense to err conservatively.
 
-o	"ri" is the number of times that RCU has seen fit to send a
-	reschedule IPI to this CPU in order to get it to report a
-	quiescent state.
-
 o	"ql" is the number of RCU callbacks currently residing on
 	this CPU.  This is the total number of callbacks, regardless
 	of what state they are in (new, waiting for grace period to
