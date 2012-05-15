@@ -393,7 +393,7 @@ static void rcu_read_unlock_special(struct task_struct *t)
 		 * then we need to report up the rcu_node hierarchy.
 		 */
 		if (!empty_exp && !rcu_preempted_readers_exp(rnp))
-			rcu_report_exp_rnp(&rcu_preempt_state, rnp);
+			rcu_report_exp_rnp(&rcu_preempt_state, rnp, true);
 	} else {
 		local_irq_restore(flags);
 	}
@@ -705,9 +705,13 @@ static int sync_rcu_preempt_exp_done(struct rcu_node *rnp)
  * recursively up the tree.  (Calm down, calm down, we do the recursion
  * iteratively!)
  *
+ * Most callers will set the "wake" flag, but the task initiating the
+ * expedited grace period need not wake itself.
+ *
  * Caller must hold sync_rcu_preempt_exp_mutex.
  */
-static void rcu_report_exp_rnp(struct rcu_state *rsp, struct rcu_node *rnp)
+static void rcu_report_exp_rnp(struct rcu_state *rsp, struct rcu_node *rnp,
+			       bool wake)
 {
 	unsigned long flags;
 	unsigned long mask;
@@ -715,9 +719,12 @@ static void rcu_report_exp_rnp(struct rcu_state *rsp, struct rcu_node *rnp)
 	raw_spin_lock_irqsave(&rnp->lock, flags);
 	for (;;) {
 		if (!sync_rcu_preempt_exp_done(rnp))
+			raw_spin_unlock_irqrestore(&rnp->lock, flags);
 			break;
 		if (rnp->parent == NULL) {
-			wake_up(&sync_rcu_preempt_exp_wq);
+			raw_spin_unlock_irqrestore(&rnp->lock, flags);
+			if (wake)
+				wake_up(&sync_rcu_preempt_exp_wq);
 			break;
 		}
 		mask = rnp->grpmask;
@@ -726,7 +733,6 @@ static void rcu_report_exp_rnp(struct rcu_state *rsp, struct rcu_node *rnp)
 		raw_spin_lock(&rnp->lock); /* irqs already disabled */
 		rnp->expmask &= ~mask;
 	}
-	raw_spin_unlock_irqrestore(&rnp->lock, flags);
 }
 
 /*
@@ -751,7 +757,7 @@ sync_rcu_preempt_exp_init(struct rcu_state *rsp, struct rcu_node *rnp)
 		must_wait = 1;
 	}
 	if (!must_wait)
-		rcu_report_exp_rnp(rsp, rnp);
+		rcu_report_exp_rnp(rsp, rnp, false); /* Don't wake self. */
 }
 
 /*
@@ -1043,7 +1049,8 @@ EXPORT_SYMBOL_GPL(synchronize_rcu_expedited);
  * report on tasks preempted in RCU read-side critical sections during
  * expedited RCU grace periods.
  */
-static void rcu_report_exp_rnp(struct rcu_state *rsp, struct rcu_node *rnp)
+static void rcu_report_exp_rnp(struct rcu_state *rsp, struct rcu_node *rnp,
+			       bool wake)
 {
 	return;
 }
