@@ -891,6 +891,19 @@ static void rcu_preempt_process_callbacks(void)
 #ifdef CONFIG_DEBUG_LOCK_ALLOC
 #include <linux/kernel_stat.h>
 
+#ifdef CONFIG_RCU_TRACE
+
+/*
+ * Is the current CPU running the RCU-callbacks kthread?
+ * Caller must have preemption disabled.
+ */
+static bool rcu_is_callbacks_kthread(void)
+{
+	return rcu_kthread_task == current;
+}
+
+#endif /* #ifdef CONFIG_RCU_TRACE */
+
 /*
  * During boot, we forgive RCU lockdep issues.  After this function is
  * invoked, we start taking RCU lockdep issues seriously.
