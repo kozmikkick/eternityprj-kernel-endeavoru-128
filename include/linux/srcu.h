@@ -93,9 +93,13 @@ long srcu_batches_completed(struct srcu_struct *sp);
  */
 static inline int srcu_read_lock_held(struct srcu_struct *sp)
 {
-	if (debug_locks)
-		return lock_is_held(&sp->dep_map);
-	return 1;
+	if (!debug_lockdep_rcu_enabled())
+		return 1;
+	if (rcu_is_cpu_idle())
+		return 0;
+	if (!rcu_lockdep_current_cpu_online())
+		return 0;
+	return lock_is_held(&sp->dep_map);
 }
 
 #else /* #ifdef CONFIG_DEBUG_LOCK_ALLOC */
