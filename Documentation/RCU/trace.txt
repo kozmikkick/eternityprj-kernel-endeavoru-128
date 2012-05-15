@@ -71,7 +71,7 @@ o	"pq" indicates that this CPU has passed through a quiescent state
 	CPU has not yet reported that fact, (2) some other CPU has not
 	yet reported for this grace period, or (3) both.
 
-o	"pqc" indicates which grace period the last-observed quiescent
+o	"pgp" indicates which grace period the last-observed quiescent
 	state for this CPU corresponds to.  This is important for handling
 	the race between CPU 0 reporting an extended dynticks-idle
 	quiescent state for CPU 1 and CPU 1 suddenly waking up and
