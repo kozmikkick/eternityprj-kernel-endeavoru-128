@@ -35,6 +35,7 @@ modules.builtin
 *.rej
 *.save
 *.save.1
+/endeavorconfig
 
 #
 # Top-level generic files
