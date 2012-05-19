@@ -47,17 +47,17 @@ static inline bool should_send_signal(struct task_struct *p)
 /* Takes and releases task alloc lock using task_lock() */
 extern int thaw_process(struct task_struct *p);
 
-extern void refrigerator(void);
+extern bool __refrigerator(bool check_kthr_stop);
 extern int freeze_processes(void);
+extern int freeze_kernel_threads(void);
 extern void thaw_processes(void);
 
-static inline int try_to_freeze(void)
+static inline bool try_to_freeze(void)
 {
-	if (freezing(current)) {
-		refrigerator();
-		return 1;
-	} else
-		return 0;
+	might_sleep();
+	if (likely(!freezing(current)))
+		return false;
+	return __refrigerator(false);
 }
 
 extern bool freeze_task(struct task_struct *p, bool sig_only);
@@ -134,9 +134,19 @@ static inline void set_freezable_with_signal(void)
 }
 
 /*
- * Freezer-friendly wrappers around wait_event_interruptible() and
- * wait_event_interruptible_timeout(), originally defined in <linux/wait.h>
+ * Freezer-friendly wrappers around wait_event_interruptible(),
+ * wait_event_killable() and wait_event_interruptible_timeout(), originally
+ * defined in <linux/wait.h>
  */
+
+#define wait_event_freezekillable(wq, condition)			\
+({									\
+	int __retval;							\
+	freezer_do_not_count();						\
+	__retval = wait_event_killable(wq, (condition));		\
+	freezer_count();						\
+	__retval;							\
+})
 
 #define wait_event_freezable(wq, condition)				\
 ({									\
@@ -170,11 +180,12 @@ static inline void set_freeze_flag(struct task_struct *p) {}
 static inline void clear_freeze_flag(struct task_struct *p) {}
 static inline int thaw_process(struct task_struct *p) { return 1; }
 
-static inline void refrigerator(void) {}
-static inline int freeze_processes(void) { BUG(); return 0; }
+static inline bool __refrigerator(bool check_kthr_stop) { return false; }
+static inline int freeze_processes(void) { return -ENOSYS; }
+static inline int freeze_kernel_threads(void) { return -ENOSYS; }
 static inline void thaw_processes(void) {}
 
-static inline int try_to_freeze(void) { return 0; }
+static inline bool try_to_freeze(void) { return false; }
 
 static inline void freezer_do_not_count(void) {}
 static inline void freezer_count(void) {}
@@ -187,6 +198,9 @@ static inline void set_freezable_with_signal(void) {}
 
 #define wait_event_freezable_timeout(wq, condition, timeout)		\
 		wait_event_interruptible_timeout(wq, condition, timeout)
+
+#define wait_event_freezekillable(wq, condition)		\
+		wait_event_killable(wq, condition)
 
 #endif /* !CONFIG_FREEZER */
 

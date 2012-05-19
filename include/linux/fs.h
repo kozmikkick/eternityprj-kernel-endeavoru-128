@@ -31,9 +31,7 @@
 #define SEEK_SET	0	/* seek relative to beginning of file */
 #define SEEK_CUR	1	/* seek relative to current file position */
 #define SEEK_END	2	/* seek relative to end of file */
-#define SEEK_DATA       3	/* seek to the next data */
-#define SEEK_HOLE       4	/* seek to the next hole */
-#define SEEK_MAX	SEEK_HOLE
+#define SEEK_MAX	SEEK_END
 
 struct fstrim_range {
 	__u64 start;
@@ -89,11 +87,6 @@ struct inodes_stat_t {
 /* File is opened using open(.., 3, ..) and is writeable only for ioctls
    (specialy hack for floppy.c) */
 #define FMODE_WRITE_IOCTL	((__force fmode_t)0x100)
-/* 32bit hashes as llseek() offset (for directories) */
-#define FMODE_32BITHASH         ((__force fmode_t)0x200)
-/* 64bit hashes as llseek() offset (for directories) */
-#define FMODE_64BITHASH         ((__force fmode_t)0x400)
-
 
 /*
  * Don't update ctime and mtime.
@@ -1578,7 +1571,6 @@ struct inode_operations {
 	void * (*follow_link) (struct dentry *, struct nameidata *);
 	int (*permission) (struct inode *, int, unsigned int);
 	int (*check_acl)(struct inode *, int, unsigned int);
-	struct posix_acl * (*get_acl)(struct inode *, int);
 
 	int (*readlink) (struct dentry *, char __user *,int);
 	void (*put_link) (struct dentry *, struct nameidata *, void *);
@@ -1609,8 +1601,7 @@ struct seq_file;
 ssize_t rw_copy_check_uvector(int type, const struct iovec __user * uvector,
 				unsigned long nr_segs, unsigned long fast_segs,
 				struct iovec *fast_pointer,
-				struct iovec **ret_pointer,
-				int check_access);
+				struct iovec **ret_pointer);
 
 extern ssize_t vfs_read(struct file *, char __user *, size_t, loff_t *);
 extern ssize_t vfs_write(struct file *, const char __user *, size_t, loff_t *);
@@ -2336,8 +2327,6 @@ file_ra_state_init(struct file_ra_state *ra, struct address_space *mapping);
 extern loff_t noop_llseek(struct file *file, loff_t offset, int origin);
 extern loff_t no_llseek(struct file *file, loff_t offset, int origin);
 extern loff_t generic_file_llseek(struct file *file, loff_t offset, int origin);
-extern loff_t generic_file_llseek_size(struct file *file, loff_t offset, int origin,
-			      loff_t maxsize);
 extern loff_t generic_file_llseek_unlocked(struct file *file, loff_t offset,
 			int origin);
 extern int generic_file_open(struct inode * inode, struct file * filp);
