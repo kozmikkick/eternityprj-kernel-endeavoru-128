@@ -92,7 +92,7 @@ const struct nvhost_channeldesc nvhost_t30_channelmap[] = {
 					TEGRA_POWERGATE_3D1},
 			NVHOST_DEFAULT_CLOCKGATE_DELAY,
 			.can_powergate = false,
-			.powergate_delay = 100,
+			.powergate_delay = 250,
 	},
 },
 {
