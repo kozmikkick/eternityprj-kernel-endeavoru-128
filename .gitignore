@@ -80,6 +80,8 @@ GSYMS
 GTAGS
 
 patch1
+patch2
+patch3
 *.diff
 *.orig
 *~
