@@ -3516,7 +3516,7 @@ retry:
 			loff_t end = offset + iov_length(iov, nr_segs);
 
 			if (end > isize)
-				vmtruncate(inode, isize);
+				ext4_truncate_failed_write(inode);
 		}
 	}
 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
@@ -4412,8 +4412,6 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
 
 int ext4_can_truncate(struct inode *inode)
 {
-	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
-		return 0;
 	if (S_ISREG(inode->i_mode))
 		return 1;
 	if (S_ISDIR(inode->i_mode))
