@@ -35,6 +35,8 @@ extern int jump_label_text_reserved(void *start, void *end);
 
 #else
 
+#include <linux/atomic.h>
+
 #define JUMP_LABEL(key, label)			\
 do {						\
 	if (unlikely(*key))			\

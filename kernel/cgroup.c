@@ -59,7 +59,7 @@
 #include <linux/poll.h>
 #include <linux/capability.h>
 
-#include <asm/atomic.h>
+#include <linux/atomic.h>
 
 static DEFINE_MUTEX(cgroup_mutex);
 
