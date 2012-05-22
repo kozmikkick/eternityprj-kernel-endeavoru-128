@@ -2055,6 +2055,7 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
 static int ext4_ext_check_cache(struct inode *inode, ext4_lblk_t block,
 	struct ext4_ext_cache *ex){
 	struct ext4_ext_cache *cex;
+	struct ext4_sb_info *sbi;
 	int ret = 0;
 
 	/*
@@ -2062,6 +2063,7 @@ static int ext4_ext_check_cache(struct inode *inode, ext4_lblk_t block,
 	 */
 	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
 	cex = &EXT4_I(inode)->i_cached_extent;
+	sbi = EXT4_SB(inode->i_sb);
 
 	/* has cache valid data? */
 	if (cex->ec_len == 0)
@@ -2075,6 +2077,10 @@ static int ext4_ext_check_cache(struct inode *inode, ext4_lblk_t block,
 		ret = 1;
 	}
 errout:
+	if (!ret)
+		sbi->extent_cache_misses++;
+	else
+		sbi->extent_cache_hits++;
 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
 	return ret;
 }
@@ -4127,4 +4133,3 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
 
 	return error;
 }
-
