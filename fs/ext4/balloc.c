@@ -450,11 +450,11 @@ static int ext4_has_free_blocks(struct ext4_sb_info *sbi,
 	return 0;
 }
 
-int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
-			   s64 nblocks, unsigned int flags)
+int ext4_claim_free_clusters(struct ext4_sb_info *sbi,
+			     s64 nclusters, unsigned int flags)
 {
-	if (ext4_has_free_blocks(sbi, nblocks, flags)) {
-		percpu_counter_add(&sbi->s_dirtyclusters_counter, nblocks);
+	if (ext4_has_free_blocks(sbi, nclusters, flags)) {
+		percpu_counter_add(&sbi->s_dirtyclusters_counter, nclusters);
 		return 0;
 	} else
 		return -ENOSPC;
@@ -554,12 +554,12 @@ unsigned ext4_num_base_meta_clusters(struct super_block *sb,
 	return EXT4_NUM_B2C(sbi, num);
 }
 /**
- * ext4_count_free_blocks() -- count filesystem free blocks
+ * ext4_count_free_clusters() -- count filesystem free clusters
  * @sb:		superblock
  *
- * Adds up the number of free blocks from each block group.
+ * Adds up the number of free clusters from each block group.
  */
-ext4_fsblk_t ext4_count_free_blocks(struct super_block *sb)
+ext4_fsblk_t ext4_count_free_clusters(struct super_block *sb)
 {
 	ext4_fsblk_t desc_count;
 	struct ext4_group_desc *gdp;
@@ -592,8 +592,9 @@ ext4_fsblk_t ext4_count_free_blocks(struct super_block *sb)
 		bitmap_count += x;
 	}
 	brelse(bitmap_bh);
-	printk(KERN_DEBUG "ext4_count_free_blocks: stored = %llu"
-		", computed = %llu, %llu\n", ext4_free_blocks_count(es),
+	printk(KERN_DEBUG "ext4_count_free_clusters: stored = %llu"
+	       ", computed = %llu, %llu\n",
+	       EXT4_B2C(sbi, ext4_free_blocks_count(es)),
 	       desc_count, bitmap_count);
 	return bitmap_count;
 #else
