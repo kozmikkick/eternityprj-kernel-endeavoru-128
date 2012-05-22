@@ -122,4 +122,8 @@ static inline void atomic_or(int i, atomic_t *v)
 }
 #endif /* #ifndef CONFIG_ARCH_HAS_ATOMIC_OR */
 
+#include <asm-generic/atomic-long.h>
+#ifdef CONFIG_GENERIC_ATOMIC64
+#include <asm-generic/atomic64.h>
+#endif
 #endif /* _LINUX_ATOMIC_H */
