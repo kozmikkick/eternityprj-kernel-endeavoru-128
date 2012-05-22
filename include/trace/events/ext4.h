@@ -1569,6 +1569,28 @@ DEFINE_EVENT(ext4__trim, ext4_trim_all_free,
 	TP_ARGS(sb, group, start, len)
 );
 
+TRACE_EVENT(ext4_journal_start,
+	TP_PROTO(struct super_block *sb, int nblocks, unsigned long IP),
+
+	TP_ARGS(sb, nblocks, IP),
+
+	TP_STRUCT__entry(
+		__field(	dev_t,	dev			)
+		__field(	  int, 	nblocks			)
+		__field(unsigned long,	ip			)
+	),
+
+	TP_fast_assign(
+		__entry->dev	 = sb->s_dev;
+		__entry->nblocks = nblocks;
+		__entry->ip	 = IP;
+	),
+
+	TP_printk("dev %d,%d nblocks %d caller %pF",
+		  MAJOR(__entry->dev), MINOR(__entry->dev),
+		  __entry->nblocks, (void *)__entry->ip)
+);
+
 #endif /* _TRACE_EXT4_H */
 
 /* This part must be outside protection */
