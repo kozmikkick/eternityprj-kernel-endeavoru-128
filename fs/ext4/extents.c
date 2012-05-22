@@ -1392,7 +1392,8 @@ ext4_ext_next_allocated_block(struct ext4_ext_path *path)
 	while (depth >= 0) {
 		if (depth == path->p_depth) {
 			/* leaf */
-			if (path[depth].p_ext !=
+			if (path[depth].p_ext &&
+				path[depth].p_ext !=
 					EXT_LAST_EXTENT(path[depth].p_hdr))
 			  return le32_to_cpu(path[depth].p_ext[1].ee_block);
 		} else {
@@ -2928,7 +2929,8 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
 	struct ext4_extent zero_ex;
 	struct ext4_extent *ex;
 	ext4_lblk_t ee_block, eof_block;
-	unsigned int allocated, ee_len, depth;
+	unsigned int ee_len, depth;
+	int allocated;
 	int err = 0;
 	int split_flag = 0;
 
@@ -3388,9 +3390,11 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
 		 * that this IO needs to conversion to written when IO is
 		 * completed
 		 */
-		if (io && !(io->flag & EXT4_IO_END_UNWRITTEN)) {
-			io->flag = EXT4_IO_END_UNWRITTEN;
-			atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+		if (io) {
+			if (!(io->flag & EXT4_IO_END_UNWRITTEN)) {
+				io->flag = EXT4_IO_END_UNWRITTEN;
+				atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+			}
 		} else
 			ext4_set_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
 		if (ext4_should_dioread_nolock(inode))
@@ -3944,9 +3948,11 @@ got_allocated_blocks:
 		 * that we need to perform conversion when IO is done.
 		 */
 		if ((flags & EXT4_GET_BLOCKS_PRE_IO)) {
-			if (io && !(io->flag & EXT4_IO_END_UNWRITTEN)) {
-				io->flag = EXT4_IO_END_UNWRITTEN;
-				atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+			if (io) {
+				if (!(io->flag & EXT4_IO_END_UNWRITTEN)) {
+					io->flag = EXT4_IO_END_UNWRITTEN;
+					atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+				}
 			} else
 				ext4_set_inode_state(inode,
 						     EXT4_STATE_DIO_UNWRITTEN);
