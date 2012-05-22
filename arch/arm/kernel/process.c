@@ -200,42 +200,20 @@ EXPORT_SYMBOL(pm_debug_dvfs);
 #include <linux/time.h>
 #include <linux/rtc.h>
 #include <mach/board_htc.h>
-extern void htc_print_active_wake_locks(void);
 /*
  * The idle thread, has rather strange semantics for calling pm_idle,
  * but this is what x86 does and we need to do the same, so that
  * things like cpuidle get called in the same way.  The only difference
  * is that we always respect 'hlt_counter' to prevent low power idle.
  */
-void cpu_idle(void) {
-	static bool bPrint_wake_lock = true;
-	struct timespec ts;
-	struct rtc_time tm;
-	u64 cur_time, last_time;
-
+void cpu_idle(void)
+{
 	local_fiq_enable();
-	last_time = cpu_clock(UINT_MAX);
+
 	/* endless idle loop with no priority at all */
 	while (1) {
-		cur_time = cpu_clock(UINT_MAX);
-		if (((cur_time - last_time) >= 5000000000) && (smp_processor_id()==0))
-		{
-			pm_debug_idle();
-			pm_debug_cpu_hotplug();
-			//pm_debug_dvfs();
-			last_time = cpu_clock(UINT_MAX);
-			if (get_kernel_flag() & KERNEL_FLAG_PM_MONITOR && bPrint_wake_lock)
-			{
-				getnstimeofday(&ts);
-				rtc_time_to_tm(ts.tv_sec - (sys_tz.tz_minuteswest * 60), &tm);
-				printk(KERN_INFO "[PM] hTC PM Statistic  %02d-%02d %02d:%02d:%02d \n",
-					tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-				htc_print_active_wake_locks();
-			}
-			bPrint_wake_lock = !bPrint_wake_lock;
-		}
+		idle_notifier_call_chain(IDLE_START);
 		tick_nohz_stop_sched_tick(1);
-		leds_event(led_idle_start);
 		while (!need_resched()) {
 #ifdef CONFIG_HOTPLUG_CPU
 			if (cpu_is_offline(smp_processor_id()))
@@ -259,8 +237,8 @@ void cpu_idle(void) {
 				local_irq_enable();
 			}
 		}
-		leds_event(led_idle_end);
 		tick_nohz_restart_sched_tick();
+		idle_notifier_call_chain(IDLE_END);
 		preempt_enable_no_resched();
 		schedule();
 		preempt_disable();
