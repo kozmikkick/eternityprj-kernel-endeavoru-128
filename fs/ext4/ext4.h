@@ -1799,6 +1799,8 @@ extern unsigned ext4_num_base_meta_clusters(struct super_block *sb,
 extern unsigned ext4_num_overhead_clusters(struct super_block *sb,
 					  ext4_group_t block_group,
 					  struct ext4_group_desc *gdp);
+ext4_fsblk_t ext4_inode_to_goal_block(struct inode *);
+
 /* dir.c */
 extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
 				  struct file *,
