@@ -565,7 +565,12 @@ static int gfs2_fsync(struct file *file, int datasync)
 {
 	struct inode *inode = file->f_mapping->host;
 	int sync_state = inode->i_state & (I_DIRTY_SYNC|I_DIRTY_DATASYNC);
-	int ret = 0;
+	int ret;
+
+	ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
+	if (ret)
+		return ret;
+	mutex_lock(&inode->i_mutex);
 
 	if (gfs2_is_jdata(GFS2_I(inode))) {
 		gfs2_log_flush(GFS2_SB(inode), GFS2_I(inode)->i_gl);
@@ -580,6 +585,7 @@ static int gfs2_fsync(struct file *file, int datasync)
 			gfs2_log_flush(GFS2_SB(inode), GFS2_I(inode)->i_gl);
 	}
 
+	mutex_unlock(&inode->i_mutex);
 	return ret;
 }
 
