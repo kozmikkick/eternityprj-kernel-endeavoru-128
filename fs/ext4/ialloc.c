@@ -492,9 +492,10 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
 
 	freei = percpu_counter_read_positive(&sbi->s_freeinodes_counter);
 	avefreei = freei / ngroups;
-	freeb = percpu_counter_read_positive(&sbi->s_freeblocks_counter);
-	avefreeb = freeb;
-	do_div(avefreeb, ngroups);
+	freeb = EXT4_C2B(sbi,
+		percpu_counter_read_positive(&sbi->s_freeclusters_counter));
+	avefreec = freeb;
+	do_div(avefreec, ngroups);
 	ndirs = percpu_counter_read_positive(&sbi->s_dirs_counter);
 
 	if (S_ISDIR(mode) &&
@@ -1283,7 +1284,7 @@ extern int ext4_init_inode_table(struct super_block *sb, ext4_group_t group,
 			   group, used_blks,
 			   ext4_itable_unused_count(sb, gdp));
 		ret = 1;
-		goto out;
+		goto err_out;
 	}
 
 	blk = ext4_inode_table(sb, gdp) + used_blks;
