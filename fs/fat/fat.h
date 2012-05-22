@@ -328,9 +328,8 @@ extern int fat_fill_super(struct super_block *sb, void *data, int silent,
 extern int fat_flush_inodes(struct super_block *sb, struct inode *i1,
 		            struct inode *i2);
 /* fat/misc.c */
-extern void
-__fat_fs_error(struct super_block *s, int report, const char *fmt, ...)
-	__attribute__ ((format (printf, 3, 4))) __cold;
+extern __printf(3, 4) __cold
+void __fat_fs_error(struct super_block *sb, int report, const char *fmt, ...);
 #define fat_fs_error(s, fmt, args...)		\
 	__fat_fs_error(s, 1, fmt , ## args)
 #define fat_fs_error_ratelimit(s, fmt, args...) \

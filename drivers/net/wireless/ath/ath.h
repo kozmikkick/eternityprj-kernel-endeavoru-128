@@ -183,8 +183,7 @@ bool ath_hw_keyreset(struct ath_common *common, u16 entry);
 void ath_hw_cycle_counters_update(struct ath_common *common);
 int32_t ath_hw_get_listen_time(struct ath_common *common);
 
-extern __attribute__ ((format (printf, 3, 4))) int
-ath_printk(const char *level, struct ath_common *common, const char *fmt, ...);
+extern __printf(2, 3) void ath_printk(const char *level, const char *fmt, ...);
 
 #define ath_emerg(common, fmt, ...)				\
 	ath_printk(KERN_EMERG, common, fmt, ##__VA_ARGS__)
