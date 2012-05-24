@@ -2764,53 +2764,44 @@ SYSCALL_DEFINE1(sigpending, old_sigset_t __user *, set)
  * others support only sys_rt_sigprocmask.
  */
 
-SYSCALL_DEFINE3(sigprocmask, int, how, old_sigset_t __user *, set,
+SYSCALL_DEFINE3(sigprocmask, int, how, old_sigset_t __user *, nset,
 		old_sigset_t __user *, oset)
 {
-	int error;
 	old_sigset_t old_set, new_set;
+	sigset_t new_blocked;
 
-	if (set) {
-		error = -EFAULT;
+	old_set = current->blocked.sig[0];
+
+	if (nset) {
 		if (copy_from_user(&new_set, set, sizeof(*set)))
 			goto out;
 		new_set &= ~(sigmask(SIGKILL) | sigmask(SIGSTOP));
 
-		spin_lock_irq(&current->sighand->siglock);
-		old_set = current->blocked.sig[0];
+		new_blocked = current->blocked;
 
-		error = 0;
 		switch (how) {
-		default:
-			error = -EINVAL;
-			break;
 		case SIG_BLOCK:
-			sigaddsetmask(&current->blocked, new_set);
+			sigaddsetmask(&new_blocked, new_set);
 			break;
 		case SIG_UNBLOCK:
-			sigdelsetmask(&current->blocked, new_set);
+			sigdelsetmask(&new_blocked, new_set);
 			break;
 		case SIG_SETMASK:
-			current->blocked.sig[0] = new_set;
+			new_blocked.sig[0] = new_set;
 			break;
+		default:
+			return -EINVAL;
 		}
 
-		recalc_sigpending();
-		spin_unlock_irq(&current->sighand->siglock);
-		if (error)
-			goto out;
-		if (oset)
-			goto set_old;
-	} else if (oset) {
-		old_set = current->blocked.sig[0];
-	set_old:
-		error = -EFAULT;
-		if (copy_to_user(oset, &old_set, sizeof(*oset)))
-			goto out;
+		set_current_blocked(&new_blocked);
 	}
+
+	if (oset) {
+		if (copy_to_user(oset, &old_set, sizeof(*oset)))
+			return -EFAULT;
+	}
+
 	error = 0;
-out:
-	return error;
 }
 #endif /* __ARCH_WANT_SYS_SIGPROCMASK */
 
