@@ -35,7 +35,7 @@ static const int cpu_millivolts[MAX_DVFS_FREQS] = {
 	800, 825, 850, 875, 900, 912, 975, 1000, 1025, 1050, 1075, 1100, 1125, 1150, 1175, 1200, 1212, 1237};
 
 static const int core_millivolts[MAX_DVFS_FREQS] = {
-	950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350};
+	900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300};
 
 #define KHZ 1000
 #define MHZ 1000000
@@ -45,7 +45,7 @@ static const int core_millivolts[MAX_DVFS_FREQS] = {
 #define VDD_CPU_BELOW_VDD_CORE		300
 static int cpu_below_core = VDD_CPU_BELOW_VDD_CORE;
 
-#define VDD_SAFE_STEP			100
+#define VDD_SAFE_STEP			50
 
 static struct dvfs_rail tegra3_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
@@ -57,8 +57,8 @@ static struct dvfs_rail tegra3_dvfs_rail_vdd_cpu = {
 
 static struct dvfs_rail tegra3_dvfs_rail_vdd_core = {
 	.reg_id = "vdd_core",
-	.max_millivolts = 1350,
-	.min_millivolts = 950,
+	.max_millivolts = 1300,
+	.min_millivolts = 900,
 	.step = VDD_SAFE_STEP,
 };
 
