@@ -226,6 +226,83 @@ static inline void print_dropped_signal(int sig)
 				current->comm, current->pid, sig);
 }
 
+/**
+ * task_clear_group_stop_trapping - clear group stop trapping bit
+ * @task: target task
+ *
+ * If GROUP_STOP_TRAPPING is set, a ptracer is waiting for us.  Clear it
+ * and wake up the ptracer.  Note that we don't need any further locking.
+ * @task->siglock guarantees that @task->parent points to the ptracer.
+ *
+ * CONTEXT:
+ * Must be called with @task->sighand->siglock held.
+ */
+static void task_clear_group_stop_trapping(struct task_struct *task)
+{
+	if (unlikely(task->group_stop & GROUP_STOP_TRAPPING)) {
+		task->group_stop &= ~GROUP_STOP_TRAPPING;
+		__wake_up_sync_key(&task->parent->signal->wait_chldexit,
+				   TASK_UNINTERRUPTIBLE, 1, task);
+	}
+}
+
+/**
+ * task_clear_group_stop_pending - clear pending group stop
+ * @task: target task
+ *
+ * Clear group stop states for @task.
+ *
+ * CONTEXT:
+ * Must be called with @task->sighand->siglock held.
+ */
+void task_clear_group_stop_pending(struct task_struct *task)
+{
+	task->group_stop &= ~(GROUP_STOP_PENDING | GROUP_STOP_CONSUME |
+			      GROUP_STOP_DEQUEUED);
+}
+
+/**
+ * task_participate_group_stop - participate in a group stop
+ * @task: task participating in a group stop
+ *
+ * @task has GROUP_STOP_PENDING set and is participating in a group stop.
+ * Group stop states are cleared and the group stop count is consumed if
+ * %GROUP_STOP_CONSUME was set.  If the consumption completes the group
+ * stop, the appropriate %SIGNAL_* flags are set.
+ *
+ * CONTEXT:
+ * Must be called with @task->sighand->siglock held.
+ *
+ * RETURNS:
+ * %true if group stop completion should be notified to the parent, %false
+ * otherwise.
+ */
+static bool task_participate_group_stop(struct task_struct *task)
+{
+	struct signal_struct *sig = task->signal;
+	bool consume = task->group_stop & GROUP_STOP_CONSUME;
+
+	WARN_ON_ONCE(!(task->group_stop & GROUP_STOP_PENDING));
+
+	task_clear_group_stop_pending(task);
+
+	if (!consume)
+		return false;
+
+	if (!WARN_ON_ONCE(sig->group_stop_count == 0))
+		sig->group_stop_count--;
+
+	/*
+	 * Tell the caller to notify completion iff we are entering into a
+	 * fresh group stop.  Read comment in do_signal_stop() for details.
+	 */
+	if (!sig->group_stop_count && !(sig->flags & SIGNAL_STOP_STOPPED)) {
+		sig->flags = SIGNAL_STOP_STOPPED;
+		return true;
+	}
+	return false;
+}
+
 /*
  * allocate a new signal queue record
  * - this may be called without locks if and only if t == current, otherwise an
@@ -2223,7 +2300,7 @@ int sigprocmask(int how, sigset_t *set, sigset_t *oldset)
 		newset = *set;
 		break;
 	default:
-		error = -EINVAL;
+		return -EINVAL;
 	}
 
 	set_current_blocked(&newset);
@@ -2773,8 +2850,8 @@ SYSCALL_DEFINE3(sigprocmask, int, how, old_sigset_t __user *, nset,
 	old_set = current->blocked.sig[0];
 
 	if (nset) {
-		if (copy_from_user(&new_set, set, sizeof(*set)))
-			goto out;
+		if (copy_from_user(&new_set, nset, sizeof(*nset)))
+			return -EFAULT;
 		new_set &= ~(sigmask(SIGKILL) | sigmask(SIGSTOP));
 
 		new_blocked = current->blocked;
@@ -2801,7 +2878,7 @@ SYSCALL_DEFINE3(sigprocmask, int, how, old_sigset_t __user *, nset,
 			return -EFAULT;
 	}
 
-	error = 0;
+	return 0;
 }
 #endif /* __ARCH_WANT_SYS_SIGPROCMASK */
 
