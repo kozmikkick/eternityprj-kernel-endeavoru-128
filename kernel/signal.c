@@ -595,7 +595,7 @@ static int rm_from_queue_full(sigset_t *mask, struct sigpending *s)
 	if (sigisemptyset(&m))
 		return 0;
 
-	signandsets(&s->signal, &s->signal, mask);
+	sigandnsets(&s->signal, &s->signal, mask);
 	list_for_each_entry_safe(q, n, &s->list, list) {
 		if (sigismember(mask, q->info.si_signo)) {
 			list_del_init(&q->list);
@@ -2172,7 +2172,7 @@ static void __set_task_blocked(struct task_struct *tsk, const sigset_t *newset)
 	if (signal_pending(tsk) && !thread_group_empty(tsk)) {
 		sigset_t newblocked;
 		/* A set of now blocked but previously unblocked signals. */
-		signandsets(&newblocked, newset, &current->blocked);
+		sigandnsets(&newblocked, newset, &current->blocked);
 		retarget_shared_pending(tsk, &newblocked);
 	}
 	tsk->blocked = *newset;
@@ -2217,7 +2217,7 @@ int sigprocmask(int how, sigset_t *set, sigset_t *oldset)
 		sigorsets(&newset, &tsk->blocked, set);
 		break;
 	case SIG_UNBLOCK:
-		signandsets(&newset, &tsk->blocked, set);
+		sigandnsets(&newset, &tsk->blocked, set);
 		break;
 	case SIG_SETMASK:
 		newset = *set;
