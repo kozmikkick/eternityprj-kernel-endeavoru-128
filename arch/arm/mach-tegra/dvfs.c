@@ -357,7 +357,7 @@ __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
 			return -EINVAL;
 		}
 //		d->cur_millivolts = d->millivolts[i];
-		if (strcmp(d->clk_name, "cpu") == 0)
+		if (strcmp(d->clk_name, "cpu_g") == 0)
 	{
       		while (j < FREQCOUNT && (rate / 1000) < cpufrequency[j]) // TODO: Make more robust
         	j++;
