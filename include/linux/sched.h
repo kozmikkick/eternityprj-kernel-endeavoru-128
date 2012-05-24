@@ -1266,6 +1266,7 @@ struct task_struct {
 	int exit_state;
 	int exit_code, exit_signal;
 	int pdeath_signal;  /*  The signal sent when the parent dies  */
+	unsigned int jobctl;	/* JOBCTL_*, siglock protected */
 	/* ??? */
 	unsigned int personality;
 	unsigned did_exec:1;
@@ -1798,6 +1799,22 @@ extern int task_fork_unregister(struct notifier_block *n);
 /* NOTE: this will return 0 or PF_USED_MATH, it will never return 1 */
 #define tsk_used_math(p) ((p)->flags & PF_USED_MATH)
 #define used_math() tsk_used_math(current)
+
+/*
+ * task->jobctl flags
+ */
+#define JOBCTL_STOP_SIGMASK	 0xffff	/* signr of the last group stop */
+#define JOBCTL_STOP_DEQUEUED_BIT 16
+#define JOBCTL_STOP_PENDING_BIT		17	/* task should stop for group stop */
+#define JOBCTL_STOP_CONSUME_BIT		18	/* consume group stop count */
+#define JOBCTL_TRAPPING_BIT	21	/* switching to TRACED */
+
+#define JOBCTL_STOP_DEQUEUED	(1 << JOBCTL_STOP_DEQUEUED_BIT)
+#define JOBCTL_STOP_PENDING	(1 << JOBCTL_STOP_PENDING_BIT)
+#define JOBCTL_STOP_CONSUME	(1 << JOBCTL_STOP_CONSUME_BIT)
+#define JOBCTL_TRAPPING			(1 << JOBCTL_TRAPPING_BIT)
+
+extern void task_clear_jobctl_stop_pending(struct task_struct *task);
 
 #ifdef CONFIG_PREEMPT_RCU
 
