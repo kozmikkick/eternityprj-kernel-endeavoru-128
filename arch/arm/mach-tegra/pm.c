@@ -41,6 +41,7 @@
 #include <linux/vmalloc.h>
 #include <linux/memblock.h>
 #include <linux/console.h>
+#include <linux/pm_qos_params.h>
 
 #include <asm/cacheflush.h>
 #include <asm/cpu_pm.h>
@@ -172,6 +173,9 @@ struct suspend_context tegra_sctx;
 #define MC_SECURITY_START	0x6c
 #define MC_SECURITY_SIZE	0x70
 #define MC_SECURITY_CFG2	0x7c
+
+#define AWAKE_CPU_FREQ_MIN	100000
+static struct pm_qos_request_list awake_cpu_freq_req;
 
 struct dvfs_rail *tegra_cpu_rail;
 static struct dvfs_rail *tegra_core_rail;
@@ -1065,6 +1069,9 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 
 	tegra_cpu_rail = tegra_dvfs_get_rail_by_name("vdd_cpu");
 	tegra_core_rail = tegra_dvfs_get_rail_by_name("vdd_core");
+	pm_qos_add_request(&awake_cpu_freq_req, PM_QOS_CPU_FREQ_MIN,
+			   AWAKE_CPU_FREQ_MIN);
+
 	tegra_pclk = clk_get_sys(NULL, "pclk");
 	BUG_ON(IS_ERR(tegra_pclk));
 	pdata = plat;
@@ -1304,3 +1311,35 @@ static int tegra_debug_uart_syscore_init(void)
 	return 0;
 }
 arch_initcall(tegra_debug_uart_syscore_init);
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static struct clk *clk_wake;
+
+static void pm_early_suspend(struct early_suspend *h)
+{
+	if (clk_wake)
+		clk_disable(clk_wake);
+	pm_qos_update_request(&awake_cpu_freq_req, PM_QOS_DEFAULT_VALUE);
+}
+
+static void pm_late_resume(struct early_suspend *h)
+{
+	if (clk_wake)
+		clk_enable(clk_wake);
+	pm_qos_update_request(&awake_cpu_freq_req, (s32)AWAKE_CPU_FREQ_MIN);
+}
+
+static struct early_suspend pm_early_suspender = {
+		.suspend = pm_early_suspend,
+		.resume = pm_late_resume,
+};
+
+static int pm_init_wake_behavior(void)
+{
+	clk_wake = tegra_get_clock_by_name("wake.sclk");
+	register_early_suspend(&pm_early_suspender);
+	return 0;
+}
+
+late_initcall(pm_init_wake_behavior);
+#endif
