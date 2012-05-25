@@ -60,6 +60,8 @@
 #include <mach/dma.h>
 #include <mach/clk.h>
 
+#define TEGRA_UART_TYPE "TEGRA_UART"
+
 #define TX_EMPTY_STATUS (UART_LSR_TEMT | UART_LSR_THRE)
 
 #define BYTES_TO_ALIGN(x) ((unsigned long)(ALIGN((x), sizeof(u32))) - \
@@ -1818,7 +1820,7 @@ static void tegra_pm(struct uart_port *u, unsigned int state,
 
 static const char *tegra_type(struct uart_port *u)
 {
-	return 0;
+	return TEGRA_UART_TYPE;
 }
 
 #ifdef MUX_UART_DEBUG
@@ -2149,7 +2151,7 @@ static int tegra_uart_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, u);
 	u->line = pdev->id;
 	u->ops = &tegra_uart_ops;
-	u->type = ~PORT_UNKNOWN;
+	u->type = PORT_TEGRA;
 	u->fifosize = 32;
 
 #ifdef CONFIG_SHARK_TD_WORKSHOP
@@ -2207,6 +2209,7 @@ static int tegra_uart_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto fail;
 	}
+	u->iotype = UPIO_MEM32;
 
 	u->irq = platform_get_irq(pdev, 0);
 	if (unlikely(u->irq < 0)) {
