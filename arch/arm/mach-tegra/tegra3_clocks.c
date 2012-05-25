@@ -355,7 +355,6 @@ static struct cpufreq_frequency_table *selected_cpufreq_table;
 #define SCLK_MIN_FREQ			40000000
 #endif
 
-static bool tegra3_clk_is_parent_allowed(struct clk *c, struct clk *p);
 
 static int tegra3_clk_shared_bus_update(struct clk *bus);
 
@@ -2120,9 +2119,6 @@ static int tegra3_periph_clk_set_parent(struct clk *c, struct clk *p)
 
 	if (!(c->flags & MUX))
 		return (p == c->parent) ? 0 : (-EINVAL);
-
-	if (!tegra3_clk_is_parent_allowed(c, p))
-		return -EINVAL;
 
 	for (sel = c->inputs; sel->input != NULL; sel++) {
 		if (sel->input == p) {
@@ -4345,7 +4341,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_cbus,
 };
 
-static bool tegra3_clk_is_parent_allowed(struct clk *c, struct clk *p)
+bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 {
 	if (c->flags & PERIPH_ON_CBUS)
 		return p != &tegra_pll_m;
