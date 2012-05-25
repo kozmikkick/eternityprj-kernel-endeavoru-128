@@ -51,21 +51,6 @@
 #include <linux/security.h>
 struct linux_binprm;
 
-/**
- * tracehook_expect_breakpoints - guess if task memory might be touched
- * @task:		current task, making a new mapping
- *
- * Return nonzero if @task is expected to want breakpoint insertion in
- * its memory at some point.  A zero return is no guarantee it won't
- * be done, but this is a hint that it's known to be likely.
- *
- * May be called with @task->mm->mmap_sem held for writing.
- */
-static inline int tracehook_expect_breakpoints(struct task_struct *task)
-{
-	return (task->ptrace & PT_PTRACED) != 0;
-}
-
 /*
  * ptrace report for syscall entry and exit looks identical.
  */
@@ -181,44 +166,6 @@ static inline struct task_struct *tracehook_tracer_task(struct task_struct *tsk)
 	if (tsk->ptrace & PT_PTRACED)
 		return rcu_dereference(tsk->parent);
 	return NULL;
-}
-
-/**
- * tracehook_report_exec - a successful exec was completed
- * @fmt:		&struct linux_binfmt that performed the exec
- * @bprm:		&struct linux_binprm containing exec details
- * @regs:		user-mode register state
- *
- * An exec just completed, we are shortly going to return to user mode.
- * The freshly initialized register state can be seen and changed in @regs.
- * The name, file and other pointers in @bprm are still on hand to be
- * inspected, but will be freed as soon as this returns.
- *
- * Called with no locks, but with some kernel resources held live
- * and a reference on @fmt->module.
- */
-static inline void tracehook_report_exec(struct linux_binfmt *fmt,
-					 struct linux_binprm *bprm,
-					 struct pt_regs *regs)
-{
-	if (!ptrace_event(PT_TRACE_EXEC, PTRACE_EVENT_EXEC, 0) &&
-	    unlikely(current->ptrace & PT_PTRACED))
-		send_sig(SIGTRAP, current, 0);
-}
-
-/**
- * tracehook_report_exit - task has begun to exit
- * @exit_code:		pointer to value destined for @current->exit_code
- *
- * @exit_code points to the value passed to do_exit(), which tracing
- * might change here.  This is almost the first thing in do_exit(),
- * before freeing any resources or setting the %PF_EXITING flag.
- *
- * Called with no locks held.
- */
-static inline void tracehook_report_exit(long *exit_code)
-{
-	ptrace_event(PT_TRACE_EXIT, PTRACE_EVENT_EXIT, *exit_code);
 }
 
 /**
@@ -536,30 +483,6 @@ static inline int tracehook_notify_death(struct task_struct *task,
 		return task->exit_signal;
 
 	return task->ptrace ? SIGCHLD : DEATH_DELAYED_GROUP_LEADER;
-}
-
-/**
- * tracehook_report_death - task is dead and ready to be reaped
- * @task:		@current task now exiting
- * @signal:		return value from tracheook_notify_death()
- * @death_cookie:	value passed back from tracehook_notify_death()
- * @group_dead:		nonzero if this was the last thread in the group to die
- *
- * Thread has just become a zombie or is about to self-reap.  If positive,
- * @signal is the signal number just sent to the parent (usually %SIGCHLD).
- * If @signal is %DEATH_REAP, this thread will self-reap.  If @signal is
- * %DEATH_DELAYED_GROUP_LEADER, this is a delayed_group_leader() zombie.
- * The @death_cookie was passed back by tracehook_notify_death().
- *
- * If normal reaping is not inhibited, @task->exit_state might be changing
- * in parallel.
- *
- * Called without locks.
- */
-static inline void tracehook_report_death(struct task_struct *task,
-					  int signal, void *death_cookie,
-					  int group_dead)
-{
 }
 
 #ifdef TIF_NOTIFY_RESUME
