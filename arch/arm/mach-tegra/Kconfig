@@ -324,6 +324,9 @@ config TEGRA_IOVMM_SMMU_SYSFS
 config TEGRA_IOVMM
 	bool
 
+config TEGRA_ARB_SEMAPHORE
+	bool
+
 config TEGRA_AVP_KERNEL_ON_MMU
 	bool "Use AVP MMU to relocate AVP kernel"
 	depends on ARCH_TEGRA_2x_SOC
