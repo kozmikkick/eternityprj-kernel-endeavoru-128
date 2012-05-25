@@ -265,7 +265,7 @@ static inline void tracehook_report_clone_complete(int trace,
 						   struct task_struct *child)
 {
 	if (unlikely(trace))
-		ptrace_event(0, trace, pid);
+		ptrace_event(trace, pid);
 }
 
 /**
@@ -283,7 +283,7 @@ static inline void tracehook_report_clone_complete(int trace,
 static inline void tracehook_report_vfork_done(struct task_struct *child,
 					       pid_t pid)
 {
-	ptrace_event(PT_TRACE_VFORK_DONE, PTRACE_EVENT_VFORK_DONE, pid);
+	ptrace_event(PTRACE_EVENT_VFORK_DONE, pid);
 }
 
 /**

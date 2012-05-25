@@ -595,11 +595,13 @@ static void baseband_ipc_close(struct baseband_ipc *ipc)
 	if (!ipc)
 		return;
 
-	/* cancel work queue */
+	/* destroy work queue */
 	if (ipc->workqueue) {
-		chrlog4("cancel workqueue {\n");
+		pr_debug("destroy workqueue {\n");
 		cancel_work_sync(&ipc->work);
-		chrlog4("cancel workqueue }\n");
+		destroy_workqueue(ipc->workqueue);
+		ipc->workqueue = (struct workqueue_struct *) 0;
+		pr_debug("destroy workqueue }\n");
 	}
 	memset(&ipc->work, 0, sizeof(ipc->work));
 

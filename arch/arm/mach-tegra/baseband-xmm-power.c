@@ -81,7 +81,7 @@ unsigned long modem_ver = XMM_MODEM_VER_1121;
  *	v10 - bert_lin - 20111226
  *		log reduce
  */
-
+#ifdef CONFIG_HTC_XMM_RADIO
 /* HTC: macro, variables */
 #include <mach/htc_hostdbg.h>
 #define MODULE_NAME "[XMM_v10]"
@@ -130,6 +130,7 @@ static ssize_t host_dbg_store(struct device *dev,
 
     return size;
 }
+#endif
 /*============================================================*/
 struct pm_qos_request_list modem_boost_cpu_freq_req;
 EXPORT_SYMBOL_GPL(modem_boost_cpu_freq_req);
@@ -200,8 +201,8 @@ static struct gpio tegra_baseband_gpios[] = {
 	{ AP2BB_RST_PWRDWNn, GPIOF_OUT_INIT_LOW, "AP2BB_RST_PWRDWNn" },
 #endif BB_XMM_OEM1
 };
-/*HTC*/
-//for power consumation , power off modem
+#ifdef CONFIG_HTC_XMM_RADIO
+// For power consumption , power off modem
 static struct gpio tegra_baseband_gpios_power_off_modem[] = {
 	{ -1, GPIOF_OUT_INIT_LOW,  "BB_RSTn" },
 	{ -1, GPIOF_OUT_INIT_LOW,  "BB_ON"   },
@@ -214,7 +215,7 @@ static struct gpio tegra_baseband_gpios_power_off_modem[] = {
 	{ AP2BB_RST_PWRDWNn, GPIOF_OUT_INIT_LOW, "AP2BB_RST_PWRDWNn" },
 #endif BB_XMM_OEM1
 };
-
+#endif
 
 static enum {
 	IPC_AP_WAKE_UNINIT,
@@ -251,7 +252,7 @@ static struct regulator *enterprise_dsi_reg = NULL;//for avdd_csi_dsi
 static spinlock_t xmm_lock;
 static bool system_suspending;
 
-static int reenable_autosuspend; //ICS only
+#ifdef CONFIG_HTC_XMM_RADIO
 static int htcpcbid=0;
 
 static struct workqueue_struct *workqueue_susp;
@@ -444,6 +445,8 @@ void modem_on_for_uart_config()
 	tegra_gpio_disable(TEGRA_GPIO_PB1);
 	uart_pin_pull_state=1;//set back to UART
 	}
+	if (baseband_xmm_powerstate != BBXMM_PS_UNINIT)
+		return -EINVAL;
 
 
 }
@@ -542,7 +545,7 @@ int config_gpio_for_power_on()
 	return err;
 }
 /*HTC--*/
-
+#endif
 extern void platfrom_set_flight_mode_onoff(bool mode_on);
 
 
@@ -615,7 +618,7 @@ static int baseband_xmm_power_on(struct platform_device *device)
 	struct baseband_power_platform_data *data
 		= (struct baseband_power_platform_data *)
 			device->dev.platform_data;
-	int ret; /* HTC: ENR#U wakeup src fix */
+	int ret;
 	int value;
 
 	pr_debug(MODULE_NAME "%s{\n", __func__);
@@ -631,12 +634,11 @@ static int baseband_xmm_power_on(struct platform_device *device)
 			__func__);
 		return -EINVAL;
 	}
-#if 1 /*HTC*/	
+#ifdef CONFIG_HTC_XMM_RADIO	
 	pr_debug(MODULE_NAME " htc_get_pcbid_info= %d\n",htcpcbid );
 	if(htcpcbid < PROJECT_PHASE_XE) {
 		enable_avdd_dsi_csi_power();
 	}
-#endif
 
 	///*HTC*/
 	/*set Radio fatal Pin to Iput*/
@@ -651,12 +653,12 @@ static int baseband_xmm_power_on(struct platform_device *device)
 
 	/*config back the uart pin*/
 	config_gpio_for_power_on();
-
+#endif
 	/* reset the state machine */
 	baseband_xmm_powerstate = BBXMM_PS_INIT;
 	first_time = true;
 	modem_sleep_flag = false;
-
+#ifdef CONFIG_HTC_XMM_RADIO
 	/* HTC use IPC_AP_WAKE_INIT2 */
 	if (modem_ver < XMM_MODEM_VER_1130)
 		ipc_ap_wake_state = IPC_AP_WAKE_INIT1;
@@ -664,7 +666,7 @@ static int baseband_xmm_power_on(struct platform_device *device)
 		ipc_ap_wake_state = IPC_AP_WAKE_INIT2;
 
 	/* pr_info("%s - %d\n", __func__, __LINE__); */
-
+#endif
 	/* register usb host controller */
 	if (!modem_flash) {
 		/* pr_info("%s - %d\n", __func__, __LINE__); */
@@ -690,18 +692,12 @@ static int baseband_xmm_power_on(struct platform_device *device)
 		}
 	}
 
-	/* HTC: ENR#U wakeup src fix */
 	pr_info("%s: before enable irq wake \n", __func__);
 	ret = enable_irq_wake(gpio_to_irq(data->modem.xmm.ipc_ap_wake));
 	if (ret < 0)
 		pr_err("%s: enable_irq_wake error\n", __func__);
-	/* HTC: remove platfrom_set_flight_mode_onoff(false); for ENR */
-#if 1
-	/*For SIM det*/
-	//pr_info("%s: before enable irq wake SIM det \n", __func__);
-	//ret = enable_irq_wake(gpio_to_irq(TEGRA_GPIO_PI5));
-	//if (ret < 0)
-	//	pr_err("%s: enable_irq_wake error\n", __func__);
+
+#ifdef CONFIG_HTC_XMM_RADIO
 	/*For Radio fatal*/
 	pr_info("%s: before enable irq wake Radio fatal \n", __func__);
 	ret = enable_irq_wake(gpio_to_irq(TEGRA_GPIO_PN2));
@@ -716,17 +712,13 @@ static int baseband_xmm_power_on(struct platform_device *device)
 static int baseband_xmm_power_off(struct platform_device *device)
 {
 	struct baseband_power_platform_data *data;
-	int ret; /* HTC: ENR#U wakeup src fix */
+	int ret;
 	unsigned long flags;
 
 	pr_debug("%s {\n", __func__);
 
-	if (baseband_xmm_powerstate == BBXMM_PS_UNINIT) {
-		pr_err("%s: baseband_xmm_powerstate != BBXMM_PS_UNINIT\n",
-			__func__);
+	if (baseband_xmm_powerstate == BBXMM_PS_UNINIT)
 		return -EINVAL;
-	}
-
 	/* check for device / platform data */
 	if (!device) {
 		pr_err("%s: !device\n", __func__);
@@ -744,18 +736,10 @@ static int baseband_xmm_power_off(struct platform_device *device)
 	register_hsic_device = true;
 
 
-	/* HTC: ENR#U wakeup src fix */
-	pr_info("%s: Disable SIM DET ,before disable irq wake \n", __func__);
 	ret = disable_irq_wake(gpio_to_irq(data->modem.xmm.ipc_ap_wake));
 	if (ret < 0)
 		pr_err("%s: disable_irq_wake error\n", __func__);
-#if 1
-	/*HTC for SIM DET*/
-	//pr_info("%s: before disable irq wake SIM DET\n", __func__);
-	//ret = disable_irq_wake(gpio_to_irq(TEGRA_GPIO_PI5));
-	//if (ret < 0)
-	//	pr_err("%s: disable_irq_wake error\n", __func__);
-
+#ifdef CONFIG_HTC_XMM_RADIO
 	/*HTC for RADIO FATAL*/
 	pr_info("%s: before disable irq wake RADIO FATAL\n", __func__);
 	ret = disable_irq_wake(gpio_to_irq(TEGRA_GPIO_PN2));
@@ -790,20 +774,12 @@ static int baseband_xmm_power_off(struct platform_device *device)
 	msleep(1);
 #endif /* !BB_XMM_OEM1 */
 
-#if 1/*HTC*/
-
-	//for power consumation
+#ifdef CONFIG_HTC_XMM_RADIO
+	// For power consumption
 	int err=0;
 	pr_debug("%s config_gpio_for_power_off\n", __func__);
 	config_gpio_for_power_off();
-	//err=config_gpio_for_power_off();
-	//if (err < 0) {
-	//	pr_err("%s - config_gpio_for_power_off gpio(s)\n", __func__);
-	//	return -ENODEV;
-	//}
 #endif
-	/* HTC: remove platfrom_set_flight_mode_onoff for ENR */
-	/* platfrom_set_flight_mode_onoff(true); */
 	baseband_xmm_powerstate = BBXMM_PS_UNINIT;
 	modem_sleep_flag = false;
 	CP_initiated_L2toL0 = false;
@@ -811,12 +787,12 @@ static int baseband_xmm_power_off(struct platform_device *device)
 	wakeup_pending = false;
 	system_suspending = false;
 	spin_unlock_irqrestore(&xmm_lock, flags);
-#if 1 /*HTC*/
+#ifdef CONFIG_HTC_XMM_RADIO
 	pr_debug(MODULE_NAME " htc_get_pcbid_info= %d\n", htcpcbid);
 	if(htcpcbid< PROJECT_PHASE_XE) {
 		disable_avdd_dsi_csi_power();
 	}
-#endif
+
 	/*set Radio fatal Pin to OutPut Low*/
 	ret=gpio_direction_output(TEGRA_GPIO_PN2,0);
 	if (ret < 0)
@@ -826,7 +802,7 @@ static int baseband_xmm_power_off(struct platform_device *device)
 	ret=gpio_direction_output(TEGRA_GPIO_PV0,0);
 	if (ret < 0)
 			pr_err("%s: set BB2AP_SUSPEND_REQ Pin to Output error\n", __func__);	
-
+#endif
 	pr_debug("%s }\n", __func__);
 
 	return 0;
@@ -899,7 +875,7 @@ void baseband_xmm_set_power_status(unsigned int status)
 		}
 		pr_info("L0\n");
 		baseband_xmm_powerstate = status;
-
+#ifdef CONFIG_HTC_XMM_RADIO
 		/* HTC: don't hold the wakelock multiple times */
 		if (!wake_lock_active(&wakelock)) {
 			pr_info("%s: wake_lock [%s] in L0\n",
@@ -907,7 +883,7 @@ void baseband_xmm_set_power_status(unsigned int status)
 			wake_lock(&wakelock);
 			//wake_lock_timeout(&wakelock, HZ * 5);
 		}
-
+#endif
 		value = gpio_get_value(data->modem.xmm.ipc_hsic_active);
 		pr_info("L0 Get current gpio_get_value(ipc_hsic_active)=%d\n", value);
 		if (!value) {
@@ -922,26 +898,6 @@ void baseband_xmm_set_power_status(unsigned int status)
 		/* hack to restart autosuspend after exiting LP0
 		* (aka re-entering L0 from L3)
 		*/
-#if 0
-//remove on 0305
-		if (usbdev) {
-				struct usb_interface *intf;
-				intf = usb_ifnum_to_if(usbdev, 0);
-				//pr_info("%s - autopm_get - usbdev = %d - %d {\n", __func__, usbdev, __LINE__);
-				//pr_info("%s: cnt %d intf=%p &intf->dev=%p kobje=%s\n",
-					//__func__, atomic_read(&intf->dev.power.usage_count),intf,&intf->dev,kobject_name(&intf->dev.kobj));
-				if (usb_autopm_get_interface_async(intf) >= 0) {
-					pr_info("get_interface_async succeeded"
-							" - call put_interface\n");
-					//pr_info("%s - usb_put - usbdev = %d - %d {\n", __func__, usbdev, __LINE__);
-					usb_autopm_put_interface_async(intf);
-					//pr_info("%s - usb_put - usbdev = %d - %d {\n", __func__, usbdev, __LINE__);
-				} else {
-					pr_info("get_interface_async failed"
-							" - do not call put_interface\n");
-				}
-		}
-#endif
 		break;
 	case BBXMM_PS_L2:
 		pr_info("L2 wake_unlock[%s]\n", wakelock.name);
@@ -960,14 +916,6 @@ void baseband_xmm_set_power_status(unsigned int status)
 				queue_work(workqueue_susp, &work_defaultsusp);
 				short_autosuspend = false;
 		}
-#if 0
-		if (usbdev) {
-			struct usb_interface *intf;
-			intf = usb_ifnum_to_if(usbdev, 0);
-			pr_info("%s: cnt %d intf=%p &intf->dev=%p kobje=%s\n",
-					__func__, atomic_read(&intf->dev.power.usage_count),intf,&intf->dev,kobject_name(&intf->dev.kobj));
-			}
-#endif
 		break;
 	case BBXMM_PS_L3:
 		if (baseband_xmm_powerstate == BBXMM_PS_L2TOL0) {
@@ -1019,9 +967,9 @@ irqreturn_t baseband_xmm_power_ipc_ap_wake_irq(int irq, void *dev_id)
 	int value;
 	struct baseband_power_platform_data *data = baseband_power_driver_data;
 
-	/* pr_debug("%s\n", __func__); */
-
 	value = gpio_get_value(data->modem.xmm.ipc_ap_wake);
+
+pr_debug("%s g(%d), wake_st(%d)\n", __func__, value, ipc_ap_wake_state);
 
 	if (ipc_ap_wake_state < IPC_AP_WAKE_IRQ_READY) {
 		pr_err("%s - spurious irq\n", __func__);
@@ -1207,7 +1155,7 @@ static void baseband_xmm_power_L2_resume(void)
 {
 	struct baseband_power_platform_data *data = baseband_power_driver_data;
 	int value;
-	int delay = 10000; /* maxmum delay in msec */
+	int delay = 1000; /* maxmum delay in msec */
 	unsigned long flags;
 
 
@@ -1434,11 +1382,10 @@ static void baseband_xmm_device_add_handler(struct usb_device *udev)
 		pr_info("Add device %d <%s %s>\n", udev->devnum,
 			udev->manufacturer, udev->product);
 		usbdev = udev;
-
+#ifdef CONFIG_HTC_XMM_RADIO
 		/* HTC: autosuspend_delay is not exist in k39 */
-		//usbdev->autosuspend_delay = msecs_to_jiffies(autosuspend_delay);
 		pm_runtime_set_autosuspend_delay(&udev->dev, DEFAULT_AUTOSUSPEND_DELAY);//for ICS 39kernel
-
+#endif
 		usb_enable_autosuspend(udev);
 		pr_info("enable autosuspend\n");
 	}
@@ -1539,9 +1486,10 @@ static int baseband_xmm_power_driver_probe(struct platform_device *device)
 
 	 pr_info(MODULE_NAME"%s 0316 hr_sleep and jiffe - CPU Freq. \n", __func__);
 	 pr_info(MODULE_NAME"enum_delay_ms=%d\n", enum_delay_ms);
+#ifdef CONFIG_HTC_XMM_RADIO
 	 htcpcbid=htc_get_pcbid_info();
 	 pr_info(MODULE_NAME"htcpcbid=%d\n", htcpcbid);
-
+#endif
 	/* check for platform data */
 	if (!data)
 		return -ENODEV;
@@ -1567,11 +1515,11 @@ static int baseband_xmm_power_driver_probe(struct platform_device *device)
 		pr_err("%s - device_create_file failed\n", __func__);
 		return -ENODEV;
 	}
-
+#ifdef CONFIG_HTC_XMM_RADIO
 	/* HTC: create device file for host debugging */
 	if (device_create_file(dev,&dev_attr_host_dbg))
 		pr_info(MODULE_NAME"Warning: host attribute can't be created\n");
-
+#endif
 	/* init wake lock */
 	wake_lock_init(&wakelock, WAKE_LOCK_SUSPEND, "baseband_xmm_power");
 
@@ -1590,14 +1538,13 @@ static int baseband_xmm_power_driver_probe(struct platform_device *device)
 		->modem.xmm.ipc_hsic_active;
 	tegra_baseband_gpios[5].gpio = baseband_power_driver_data
 		->modem.xmm.ipc_hsic_sus_req;
-	/*HTC request these gpio on probe only, config them when running power_on/off function*/
 	err = gpio_request_only_array(tegra_baseband_gpios,
 		ARRAY_SIZE(tegra_baseband_gpios));
 	if (err < 0) {
 		pr_err("%s - request gpio(s) failed\n", __func__);
 		return -ENODEV;
 	}
-#if 1/*HTC*/
+#ifdef CONFIG_HTC_XMM_RADIO
 	//assing for usb
 	tegra_baseband_gpios_power_off_modem[0].gpio = baseband_power_driver_data
 		->modem.xmm.bb_rst;
@@ -1699,7 +1646,7 @@ static int baseband_xmm_power_driver_probe(struct platform_device *device)
 	register_pm_notifier(&baseband_xmm_power_pm_notifier);
 
 
-
+#ifdef CONFIG_HTC_XMM_RADIO
 	/*HTC*/
 	/*set Radio fatal Pin PN2 to OutPut Low*/
 	ret=gpio_direction_output(TEGRA_GPIO_PN2,0);
@@ -1716,7 +1663,7 @@ static int baseband_xmm_power_driver_probe(struct platform_device *device)
 	ret = enable_irq_wake(gpio_to_irq(TEGRA_GPIO_PI5));
 	if (ret < 0)
 		pr_err("%s: enable_irq_wake error\n", __func__);
-
+#endif
 	pr_debug("%s }\n", __func__);
 	return 0;
 }
@@ -1757,13 +1704,15 @@ static int baseband_xmm_power_driver_remove(struct platform_device *device)
 	/* delete device file */
 	device_remove_file(dev, &dev_attr_xmm_onoff);
 	device_remove_file(dev, &dev_attr_debug_gpio_dump);
-
+#ifdef CONFIG_HTC_XMM_RADIO
 	/* HTC: delete device file */
 	device_remove_file(dev, &dev_attr_host_dbg);
-
+#endif
 	 /* destroy wake lock */
 	  destroy_workqueue(workqueue_susp);
 	  destroy_workqueue(workqueue);
+
+	ipc_ap_wake_state = IPC_AP_WAKE_UNINIT;
 
 	/* unregister usb host controller */
 	if (data->hsic_unregister)
@@ -1780,10 +1729,8 @@ static int baseband_xmm_power_driver_handle_resume(
 	int value;
 	unsigned long flags;
 	unsigned long timeout;
-	int delay = 10000; /* maxmum delay in msec */
+	int delay = 1000; /* maxmum delay in msec */
 
-
-	//pr_debug("%s\n", __func__);
 
 	/* check for platform data */
 	if (!data)
@@ -1810,7 +1757,7 @@ static int baseband_xmm_power_driver_handle_resume(
 		timeout = jiffies + msecs_to_jiffies(delay);
 		/* wake bb */
 		gpio_set_value(data->modem.xmm.ipc_bb_wake, 1);
-		pr_debug("Set bb_wake high ->\n");
+		pr_debug("waiting for host wakeup...\n");
 		do {
 			udelay(100);
 			value = gpio_get_value(data->modem.xmm.ipc_ap_wake);
@@ -1897,6 +1844,7 @@ static struct platform_driver baseband_power_driver = {
 
 static int __init baseband_xmm_power_init(void)
 {
+#ifdef CONFIG_HTC_XMM_RADIO
 	/* HTC */
 	host_dbg_flag = 0;
 	pr_info("%s - host_dbg_flag=0x%x\n",
@@ -1911,7 +1859,7 @@ static int __init baseband_xmm_power_init(void)
 
 	printk("%s:VP adding pm qos request \n", __func__);
 	pm_qos_add_request(&modem_boost_cpu_freq_req, PM_QOS_CPU_FREQ_MIN, (s32)PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
-
+#endif
 	return platform_driver_register(&baseband_power_driver);
 }
 

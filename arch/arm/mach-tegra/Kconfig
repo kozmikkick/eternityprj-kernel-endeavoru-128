@@ -488,6 +488,14 @@ config TEGRA_BB_XMM_POWER2
 	  insert this LKM to initiate 2nd USB enumeration power sequence
 	  - after modem software has been downloaded to flashless device.
 
+config HTC_XMM_RADIO
+	bool "Compile XMM driver for an HTC One X"
+	default n
+	help
+	  Enables hTC's code on the XMM Modem power driver. This is
+	  currently used only on HTC Endeavor board (One X).
+	  EternityProject - 25/05/2012
+
 config TEGRA_THERMAL_SYSFS
 	bool "Enable Thermal driver to use Thermal Sysfs infrastructure"
 	depends on THERMAL
