@@ -306,15 +306,16 @@ no_l2_sync:
 	mcr	p15, 0, r1, c8, c7, 0	@ invalidate local TLBs
 	dsb
 	isb
-
-	mov	pc, r9
 #else
 	/* Use the standard cpu_suspend. */
-	mov	r8, lr
-	bl	cpu_suspend
-	exit_smp r0, r2
-	mov	pc, r8
+	adr	r3, BSYM(tegra_finish_suspend)
+	b	__cpu_suspend
+
+tegra_finish_suspend:
+	/* Turn off SMP coherency */
+	exit_smp r1, r6
 #endif
+	mov	pc, r9
 ENDPROC(tegra_cpu_suspend)
 
 /*
@@ -323,20 +324,17 @@ ENDPROC(tegra_cpu_suspend)
  * Input:
  *	r0 = v:p offset
  *	r12 = return to the caller of this function
- *	lr = resume address
  * Output:
  *	r0 = v:p offset
  *	r7 = SP after saving the registers but before cpu_suspend, suitable
  *	     for restoring an aborted suspend
  *	sp = SP after tegra_cpu_suspend (the 'real' SP)
  * Saves r4-r11 on the stack
- * Corrupts r1, r3-r10
+ * Corrupts r1, r3-r11
  */
 
 ENTRY(tegra_cpu_save)
 	push_ctx_regs r1		@ save context registers
-
-	adr	r3, tegra_cpu_resume
 
 	mov	r7, sp			@ SP after reg save, before suspend
 
@@ -353,12 +351,12 @@ ENTRY(tegra_cpu_save)
 #endif
 
 	mov	r4, r12
-	mov	r5, r0
-	mov	r6, r2
+	mov	r8, r0
+	mov	r11, r2
 	mov	r1, r0
 	bl	tegra_cpu_suspend
-	mov	r0, r5
-	mov	r2, r6
+	mov	r0, r8
+	mov	r2, r11
 	mov	pc, r4
 ENDPROC(tegra_cpu_save)
 
