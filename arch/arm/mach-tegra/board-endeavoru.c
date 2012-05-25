@@ -2277,6 +2277,7 @@ static void __init tegra_enterprise_init(void)
 	tegra_thermal_init(&thermal_data);
 	BOOT_DEBUG_LOG_ENTER("<machine>.init_machine");
 	board_id = htc_get_pcbid_info();
+	tegra_init_board_info();
 	tegra_clk_init_from_table(enterprise_clk_init_table);
 	endeavoru_pinmux_init();
 	enterprise_i2c_init();
