@@ -98,6 +98,11 @@ enum audio_codec_type {
 	audio_codec_wm8903,
 };
 
+enum image_type {
+	system_image = 0,
+	rck_image,
+};
+
 void tegra_get_board_info(struct board_info *);
 void tegra_get_pmu_board_info(struct board_info *bi);
 void tegra_get_display_board_info(struct board_info *bi);
@@ -141,8 +146,5 @@ int tegra_get_modem_id(void);
 enum power_supply_type get_power_supply_type(void);
 enum audio_codec_type get_audio_codec_type(void);
 int get_maximum_cpu_current_supported(void);
- 
-extern int dying_processors_read_proc(char *page, char **start, off_t off,
-			   int count, int *eof, void *data);
-
+enum image_type get_tegra_image_type(void);
 #endif

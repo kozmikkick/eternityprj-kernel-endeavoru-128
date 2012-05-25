@@ -178,7 +178,7 @@ static bool short_autosuspend;
 
 #ifdef BB_XMM_OEM1
 
-#define pr_debug pr_info
+// #define pr_debug pr_info // What the fuck?! EternityProject 25/05/12
 
 
 #endif /* BB_XMM_OEM1 */
@@ -240,6 +240,7 @@ static bool CP_initiated_L2toL0;
 static bool modem_power_on;
 static bool first_time = true;
 static int power_onoff;
+static int reenable_autosuspend;
 static void baseband_xmm_power_L2_resume(void);
 static DEFINE_MUTEX(baseband_xmm_onoff_lock);
 static int baseband_xmm_power_driver_handle_resume(
