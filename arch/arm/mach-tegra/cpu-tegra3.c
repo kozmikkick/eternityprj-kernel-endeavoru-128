@@ -47,7 +47,7 @@
 #endif
 #define PWR_DEVICE_TAG "CPUHP"
 
-#define ONDEMAND_FINE_TUNE
+// #define ONDEMAND_FINE_TUNE // No, I don't want that, thanks.
 
 #define INITIAL_STATE		TEGRA_HP_DISABLED
 #define UP2G0_DELAY_MS		70

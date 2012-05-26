@@ -52,12 +52,23 @@ extern int freeze_processes(void);
 extern int freeze_kernel_threads(void);
 extern void thaw_processes(void);
 
+/* This is causing errors and stacktraces.
+ * Comment this out until we fix the whole damn ARM PM
 static inline bool try_to_freeze(void)
 {
 	might_sleep();
 	if (likely(!freezing(current)))
 		return false;
 	return __refrigerator(false);
+}
+*/
+
+static inline bool try_to_freeze(void)
+{
+	if(freezing(current)) {
+		return __refrigerator(false);
+	} else
+		return false;
 }
 
 extern bool freeze_task(struct task_struct *p, bool sig_only);

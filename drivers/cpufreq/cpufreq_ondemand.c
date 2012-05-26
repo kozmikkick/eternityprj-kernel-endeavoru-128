@@ -603,7 +603,7 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 		/* No longer fully busy, reset rate_mult */
 		this_dbs_info->rate_mult = 1;
 
-		if (freq_next < policy->min)
+		if (freq_next <= policy->min)
 			freq_next = policy->min;
 
 		if (!dbs_tuners_ins.powersave_bias) {

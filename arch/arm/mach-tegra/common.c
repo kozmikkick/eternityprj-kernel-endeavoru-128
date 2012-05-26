@@ -1223,6 +1223,10 @@ static char saved_up_threshold[32];
 static char saved_down_threshold[32];
 static char saved_freq_step[32];
 
+static char od_saved_up_threshold[32];
+static char od_saved_sampling_rate[32];
+static char od_saved_sampling_rate_min[32];
+static char od_saved_sampling_down_factor[32];
 
 void cpufreq_set_governor(char *governor)
 {
@@ -1405,8 +1409,24 @@ void cpufreq_save_governor(void)
 					saved_down_threshold);
 		cpufreq_read_governor_param(CONSERVATIVE_GOVERNOR, FREQ_STEP,
 					saved_freq_step);	
+//
+// EternityProject, 26/05/2012: nVidia, even if I've fixed it for ondemand,
+// the code in there is HORRIBLE!!!!
+//
+	} else if (strncmp(cpufreq_gov_default, ONDEMAND_GOVERNOR,
+				strlen(ONDEMAND_GOVERNOR)) == 0) {
+		cpufreq_read_governor_param(ONDEMAND_GOVERNOR, UP_THRESHOLD,
+					od_saved_up_threshold);
+		cpufreq_read_governor_param(ONDEMAND_GOVERNOR, SAMPRATE,
+					od_saved_sampling_rate);
+		cpufreq_read_governor_param(ONDEMAND_GOVERNOR, SAMPRATE_MIN,
+					od_saved_sampling_rate_min);
+		cpufreq_read_governor_param(ONDEMAND_GOVERNOR, SAMPDN_FACTOR,
+					od_saved_sampling_down_factor);
 	} else {
+	    printk("Tegra PM: Cannot save your governor parameters!!");
 	}
+	
 	set_fs(old_fs);
 }
 
@@ -1415,13 +1435,13 @@ void cpufreq_restore_governor(void)
 	cpufreq_set_governor(cpufreq_gov_default);
 
 
-	if (strncmp(cpufreq_gov_default, "ondemand",
+/*	if (strncmp(cpufreq_gov_default, "ondemand",
 				strlen("ondemand")) == 0) {
 
 		set_sysfs_param("/sys/devices/system/cpu/cpu0/cpufreq/",
 				"scaling_max_freq", "1500000");
 
-	} else if (strncmp(cpufreq_gov_default,INTERACTIVE_GOVERNOR,
+	} else*/ if (strncmp(cpufreq_gov_default,INTERACTIVE_GOVERNOR,
 				strlen(INTERACTIVE_GOVERNOR)) == 0) {
 		set_governor_param(INTERACTIVE_GOVERNOR, BOOST_FACTOR,
 					saved_boost_factor);
@@ -1439,6 +1459,22 @@ void cpufreq_restore_governor(void)
 					saved_down_threshold);
 		set_governor_param(CONSERVATIVE_GOVERNOR, FREQ_STEP,
 					saved_freq_step);	
+//
+// EternityProject, 26/05/2012: nVidia, even if I've fixed it for ondemand,
+// the code in there is HORRIBLE!!!!
+//
+	} else if (strncmp(cpufreq_gov_default, ONDEMAND_GOVERNOR,
+				strlen(ONDEMAND_GOVERNOR)) == 0) {
+		set_sysfs_param("/sys/devices/system/cpu/cpu0/cpufreq/",
+				"scaling_max_freq", "1500000");
+		set_governor_param(ONDEMAND_GOVERNOR, UP_THRESHOLD,
+					od_saved_up_threshold);
+		set_governor_param(ONDEMAND_GOVERNOR, SAMPRATE,
+					od_saved_sampling_rate);
+		set_governor_param(ONDEMAND_GOVERNOR, SAMPDN_FACTOR,
+					od_saved_sampling_down_factor);
+	} else {
+	    printk("Tegra PM: Cannot restore your governor parameters!!");
 	}
 }
 #endif /* TEGRA_CONSERVATIVE_GOV_ON_EARLY_SUSPEND ||

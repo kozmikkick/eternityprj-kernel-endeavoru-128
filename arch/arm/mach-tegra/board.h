@@ -117,7 +117,7 @@ void tegra_get_camera_board_info(struct board_info *bi);
 #if defined CONFIG_TEGRA_CONSERVATIVE_GOV_ON_EARLY_SUSPEND \
 	|| defined CONFIG_TEGRA_INTERACTIVE_GOV_ON_EARLY_SUSPEND
 #define CONSERVATIVE_GOVERNOR	"conservative"
-#define UP_THRESHOLD		"up_threshold"
+#define UP_THRESHOLD		"up_threshold"		// Same for ondemand
 #define DOWN_THRESHOLD		"down_threshold"
 #define FREQ_STEP		"FREQ_STEP"
 #define UP_THRESHOLD_VALUE	95
@@ -135,6 +135,11 @@ void tegra_get_camera_board_info(struct board_info *bi);
 #define MAX_BOOST_VALUE		180000
 #define MIN_SAMPLE_TIME_VALUE	20000
 #define SUSTAIN_LOAD_VALUE 	95
+
+#define ONDEMAND_GOVERNOR	"ondemand"
+#define SAMPRATE		"sampling_rate"
+#define SAMPRATE_MIN		"sampling_rate_min"
+#define SAMPDN_FACTOR		"sampling_down_factor"
 
 #define CPUFREQ_SYSFS_PLACE_HOLDER \
 		"/sys/devices/system/cpu/cpu%i/cpufreq/scaling_governor"
