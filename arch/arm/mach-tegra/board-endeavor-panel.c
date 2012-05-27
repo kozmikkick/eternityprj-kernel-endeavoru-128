@@ -2849,10 +2849,10 @@ int __init enterprise_panel_init(void)
 	register_onchg_suspend(&enterprise_panel_onchg_suspender);
 #endif
 #endif
-
+DISP_INFO_LN("EPRJ: Early suspender registered\n")
 	err = platform_add_devices(enterprise_gfx_devices,
 				ARRAY_SIZE(enterprise_gfx_devices));
-
+DISP_INFO_LN("EPRJ: Added gfx devices\n");
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
 	res = nvhost_get_resource_byname(&enterprise_disp1_device,
 					 IORESOURCE_MEM, "fbmem");
@@ -2863,12 +2863,12 @@ int __init enterprise_panel_init(void)
 	/* Copy the bootloader fb to the fb. */
 	tegra_move_framebuffer(tegra_fb_start, tegra_bootloader_fb_start,
 		min(tegra_fb_size, tegra_bootloader_fb_size));
-
+DISP_INFO_LN("EPRJ: Copy the bootloader fb to the fb.\n");
 	if ((g_panel_id & BL_MASK) == BL_CPU) {
 		enterprise_disp1_backlight_data.backlight_mode = CPU_BACKLIGHT;
 		DISP_INFO_LN("Found XA board and setup CPU_BACKLIGHT mode\n");
 	}
-
+DISP_INFO_LN("EPRJ: Backlight passed\n");
         /*switch PWM_setting by panel_id*/
         switch (g_panel_id) {
                 case PANEL_ID_ENR_SHARP_HX_XA:
@@ -2982,13 +2982,13 @@ int __init enterprise_panel_init(void)
 		default:
 			enterprise_dsi.n_init_cmd = ARRAY_SIZE(dsi_init_sharp_nt_c2_9a_cmd);
 			enterprise_dsi.dsi_init_cmd = dsi_init_sharp_nt_c2_9a_cmd;
-
+DISP_INFO_LN("EPRJ: Prior oscillator commands\n");
 			enterprise_dsi.n_osc_off_cmd = ARRAY_SIZE(osc_off_cmd);
 			enterprise_dsi.osc_off_cmd = osc_off_cmd;
 			enterprise_dsi.n_osc_on_cmd = ARRAY_SIZE(osc_on_cmd);
 			enterprise_dsi.osc_on_cmd = osc_on_cmd;
 	}
-
+DISP_INFO_LN("EPRJ: Oscillator commands done\n");
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
 	if (!err)
 		err = nvhost_device_register(&enterprise_disp1_device);
@@ -3007,10 +3007,11 @@ int __init enterprise_panel_init(void)
 #endif
 	if ( (board_mfg_mode() == 5) && (board_zchg_mode() & 0x1))
 		enterprise_disp1_backlight_data.draw_battery = 1;
-
+DISP_INFO_LN("EPRJ: Adding BL devices...\n");
 	if (!err)
 		err = platform_add_devices(enterprise_bl_devices,
 				ARRAY_SIZE(enterprise_bl_devices));
+DISP_INFO_LN("EPRJ: Done\n");
 	INIT_WORK(&bkl_work, bkl_do_work);
 	bkl_wq = create_workqueue("bkl_wq");
 	setup_timer(&bkl_timer, bkl_update, 0);

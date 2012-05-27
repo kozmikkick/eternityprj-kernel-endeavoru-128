@@ -1487,6 +1487,7 @@ static struct resource tegra_grhost_resources[] = {
 	},
 };
 
+
 struct platform_device tegra_grhost_device = {
 	.name = "tegra_grhost",
 	.id = -1,

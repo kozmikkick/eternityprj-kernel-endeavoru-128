@@ -3,21 +3,19 @@
  *
  * Tegra Graphics Host Syncpoints
  *
- * Copyright (c) 2010-2011, NVIDIA Corporation.
+ * Copyright (c) 2010-2012, NVIDIA Corporation.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
+ * This program is distributed in the hope it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef __NVHOST_SYNCPT_H
@@ -43,6 +41,8 @@ struct nvhost_syncpt {
 	u32 nb_pts;
 	u32 nb_bases;
 	u32 client_managed;
+	atomic_t *lock_counts;
+	u32 nb_mlocks;
 };
 
 int nvhost_syncpt_init(struct nvhost_syncpt *);
@@ -95,18 +95,6 @@ static inline bool nvhost_syncpt_check_max(struct nvhost_syncpt *sp,
 }
 
 /**
- * Returns true if syncpoint has reached threshold
- */
-static inline bool nvhost_syncpt_min_cmp(struct nvhost_syncpt *sp,
-					u32 id, u32 thresh)
-{
-	u32 cur;
-	smp_rmb();
-	cur = (u32)atomic_read(&sp->min_val[id]);
-	return ((s32)(cur - thresh) >= 0);
-}
-
-/**
  * Returns true if syncpoint min == max
  */
 static inline bool nvhost_syncpt_min_eq_max(struct nvhost_syncpt *sp, u32 id)
@@ -121,6 +109,7 @@ static inline bool nvhost_syncpt_min_eq_max(struct nvhost_syncpt *sp, u32 id)
 void nvhost_syncpt_cpu_incr(struct nvhost_syncpt *sp, u32 id);
 
 u32 nvhost_syncpt_update_min(struct nvhost_syncpt *sp, u32 id);
+bool nvhost_syncpt_is_expired(struct nvhost_syncpt *sp, u32 id, u32 thresh);
 
 void nvhost_syncpt_save(struct nvhost_syncpt *sp);
 
@@ -158,5 +147,9 @@ int nvhost_syncpt_wait_check(struct nvhost_syncpt *sp,
 			int num_waitchk);
 
 void nvhost_syncpt_debug(struct nvhost_syncpt *sp);
+
+int nvhost_mutex_try_lock(struct nvhost_syncpt *sp, int idx);
+
+void nvhost_mutex_unlock(struct nvhost_syncpt *sp, int idx);
 
 #endif

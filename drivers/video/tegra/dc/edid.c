@@ -23,12 +23,15 @@
 #include <linux/i2c.h>
 #include <linux/seq_file.h>
 #include <linux/vmalloc.h>
-#include <linux/disp_debug.h>
 
 #include "edid.h"
+
+#ifdef CONFIG_TEGRA_HDMI_MHL_SUPERDEMO
+#include <linux/disp_debug.h>
 #include "external_common.h"
 
 bool g_bDemoTvFound = false;
+#endif
 
 struct tegra_edid_pvt {
 	struct kref			refcnt;
@@ -198,7 +201,6 @@ int tegra_edid_parse_ext_block(const u8 *raw, int idx,
 	int len;
 	int i;
 	bool basic_audio = false;
-	int ret = 0;
 
 	ptr = &raw[0];
 
@@ -225,12 +227,6 @@ int tegra_edid_parse_ext_block(const u8 *raw, int idx,
 	ptr = &raw[4];
 
 	while (ptr < &raw[idx]) {
-
-		if (!edid) {
-			ret = -EINVAL;
-			break;
-		}
-
 		tmp = *ptr;
 		len = tmp & 0x1f;
 
@@ -319,7 +315,7 @@ int tegra_edid_parse_ext_block(const u8 *raw, int idx,
 		}
 	}
 
-	return ret;
+	return 0;
 }
 
 int tegra_edid_mode_support_stereo(struct fb_videomode *mode)
@@ -399,7 +395,11 @@ int tegra_edid_get_monspecs_test(struct tegra_edid *edid,
 					if (tegra_edid_mode_support_stereo(
 						&specs->modedb[j]))
 						specs->modedb[j].vmode |=
+#ifndef CONFIG_TEGRA_HDMI_74MHZ_LIMIT
 						FB_VMODE_STEREO_FRAME_PACK;
+#else
+						FB_VMODE_STEREO_LEFT_RIGHT;
+#endif
 				}
 			}
 		}
@@ -428,104 +428,102 @@ static struct st_demotv_patterns demotv_list[] = {
 };
 
 static struct st_demotv_data_v0 demotv_data;
-/*static struct st_demotv_data_v1 demotv_data_sample =
-	{0x01, 0xFE, 0xABCD, 0x0010, 0x001F, 0x0002, 0x0000, 0xA8};*/
 
 static void hdmi_edid_monitor_desc(const uint8 *data_buf)
 {
-	int i;
-	uint8 data_type;
-	const uint8_t *desc_data;
-	uint8 monitor_name[14];
-	uint8 monitor_name_length;
-	uint8 checksum = 0;
+		int i;
+		uint8 data_type;
+		const uint8_t *desc_data;
+		uint8 monitor_name[14];
+		uint8 monitor_name_length;
+		uint8 checksum = 0;
 
-	data_type = data_buf[DEMOTV_DESC_CSTM];
-	desc_data = data_buf+DEMOTV_DESC_DATA;
+		data_type = data_buf[DEMOTV_DESC_CSTM];
+		desc_data = data_buf+DEMOTV_DESC_DATA;
 
-	switch (data_type) {
-		case 0xFC:/* monitor name */
-		case 0xFF:/* monitor S/N */
-			memset(monitor_name, 0, sizeof(monitor_name));
-			for (i = 12; i >= 0; i--)
-				if (desc_data[i] != 0x20 && desc_data[i] != 0x0A) {
-					monitor_name_length = i+1;
-					memcpy(monitor_name, desc_data, monitor_name_length);
-					DISP_INFO_LN("%s \"%s\"\n", data_type==0xFC?"monitor name":"monitor S/N", monitor_name);
-					/* DEV_INFO("%s: %s \"%s\"\n", __func__, */
-					/* 		data_type==0xFC?"monitor name":"monitor S/N", monitor_name); */
-					break;
-				}
-			if (i < 0) {
-				DISP_INFO_LN("monitor name descriptor is empty\n");
-				/* DEV_ERR("%s: monitor name descriptor is empty\n", __func__); */
-				monitor_name_length = 0;
-			}
-			break;
-		case 0x0C:/* hTC's own embedded data */
-			memcpy(&demotv_data, desc_data, sizeof(struct st_demotv_data_v0));
-			if (demotv_data.magic !=
-					0xFF - demotv_data.version) {
-				DISP_INFO_LN("wrong magic number!!\n");
-				/* DEV_ERR("%s: wrong magic number!!\n", __func__); */
-				break;
-			}
+		switch (data_type) {
+				case 0xFC:/* monitor name */
+				case 0xFF:/* monitor S/N */
+						memset(monitor_name, 0, sizeof(monitor_name));
+						for (i = 12; i >= 0; i--)
+								if (desc_data[i] != 0x20 && desc_data[i] != 0x0A) {
+										monitor_name_length = i+1;
+										memcpy(monitor_name, desc_data, monitor_name_length);
+										DISP_INFO_LN("%s \"%s\"\n", data_type==0xFC?"monitor name":"monitor S/N", monitor_name);
+										/* DEV_INFO("%s: %s \"%s\"\n", __func__, */
+										/*			  data_type==0xFC?"monitor name":"monitor S/N", monitor_name); */
+										break;
+								}
+						if (i < 0) {
+								DISP_INFO_LN("monitor name descriptor is empty\n");
+								/* DEV_ERR("%s: monitor name descriptor is empty\n", __func__); */
+								monitor_name_length = 0;
+						}
+						break;
+				case 0x0C:/* hTC's own embedded data */
+						memcpy(&demotv_data, desc_data, sizeof(struct st_demotv_data_v0));
+						if (demotv_data.magic !=
+										0xFF - demotv_data.version) {
+								DISP_INFO_LN("wrong magic number!!\n");
+								/* DEV_ERR("%s: wrong magic number!!\n", __func__); */
+								break;
+						}
 
-			/* currently only version 1 */
-			if (demotv_data.version == 0x01) {
-				struct st_demotv_data_v1 data_v1;
-				memcpy(&data_v1, &demotv_data, sizeof(demotv_data));
+						/* currently only version 1 */
+						if (demotv_data.version == 0x01) {
+								struct st_demotv_data_v1 data_v1;
+								memcpy(&data_v1, &demotv_data, sizeof(demotv_data));
 
-				//external_common_state->demotv_desc_found = true;
-				g_bDemoTvFound = true;
+								//external_common_state->demotv_desc_found = true;
+								g_bDemoTvFound = true;
 
-				for (i=0; i<13; i++)
-					checksum += desc_data[i];
+								for (i=0; i<13; i++)
+										checksum += desc_data[i];
 
-				if (checksum != 0) {
-					DISP_INFO_LN("wrong checksum!! %02X != %02X\n", data_v1.checksum, checksum);
-					/* DEV_ERR("%s: wrong checksum!! %02X != %02X\n", */
-					/* 		__func__, data_v1.checksum, checksum); */
-					break;
-				}
+								if (checksum != 0) {
+										DISP_INFO_LN("wrong checksum!! %02X != %02X\n", data_v1.checksum, checksum);
+										/* DEV_ERR("%s: wrong checksum!! %02X != %02X\n", */
+									   /*			  __func__, data_v1.checksum, checksum); */
+										break;
+								}
 
-				DISP_INFO_LN("  DEMO TV EDID data:\n");
-				DISP_INFO_LN("	version: %d\n", data_v1.version);
-				DISP_INFO_LN("	ID: %04X\n", data_v1.tv_id);
-				DISP_INFO_LN("	1st preferred timing: %d\n", data_v1.timing_1st);
-				DISP_INFO_LN("	2nd preferred timing: %d\n", data_v1.timing_2nd);
-				if (data_v1.features & DEMOTV_BIT_OPTICAL)
-					DISP_INFO_LN("    support OPTICAL SENSOR\n");
-				if (data_v1.features & DEMOTV_BIT_PROXIMITY)
-					DISP_INFO_LN("    support PROXIMITY SENSOR\n");
-				if (data_v1.features & DEMOTV_BIT_SONAR)
-					DISP_INFO_LN("    support SONAR SENSOR \n");
-				if (data_v1.features & DEMOTV_BIT_RCP)
-					DISP_INFO_LN("    support RCP\n");
-			}
+								DISP_INFO_LN("  DEMO TV EDID data:\n");
+								DISP_INFO_LN("  version: %d\n", data_v1.version);
+								DISP_INFO_LN("  ID: %04X\n", data_v1.tv_id);
+								DISP_INFO_LN("  1st preferred timing: %d\n", data_v1.timing_1st);
+								DISP_INFO_LN("  2nd preferred timing: %d\n", data_v1.timing_2nd);
+								if (data_v1.features & DEMOTV_BIT_OPTICAL)
+										DISP_INFO_LN("	support OPTICAL SENSOR\n");
+								if (data_v1.features & DEMOTV_BIT_PROXIMITY)
+										DISP_INFO_LN("	support PROXIMITY SENSOR\n");
+								if (data_v1.features & DEMOTV_BIT_SONAR)
+										DISP_INFO_LN("	support SONAR SENSOR \n");
+								if (data_v1.features & DEMOTV_BIT_RCP)
+										DISP_INFO_LN("	support RCP\n");
+						}
 
-			break;
-		default:
-			DISP_INFO_LN("data type %02X of detailed timing descriptor not supported.\n", data_type);
-			break;
-	}
+						break;
+				default:
+						DISP_INFO_LN("data type %02X of detailed timing descriptor not supported.\n", data_type);
+						break;
+		}
 
 }
 
 static void hdmi_edid_detail_desc(const uint8 *data_buf)
 {
 #if 0 /* for debug */
-	const uint8 dd[] = {0x00, 0x00, 0x00, 0x0C, 0x00, 0x01, 0xFE, 0x44, 0x53,
-		0x10, 0x00, 0x1F, 0x00, 0x03, 0x00, 0x00, 0x00, 0x38};
+		const uint8 dd[] = {0x00, 0x00, 0x00, 0x0C, 0x00, 0x01, 0xFE, 0x44, 0x53,
+				0x10, 0x00, 0x1F, 0x00, 0x03, 0x00, 0x00, 0x00, 0x38};
 #endif
 
-	/* hTC: detailed timing descriptor could be other kinds of descriptors */
-	if (data_buf[DEMOTV_DESC_FLAG0] == 0 && data_buf[DEMOTV_DESC_FLAG0+1] == 0)
-		if (data_buf[DEMOTV_DESC_FLAG1] == 0)
-			hdmi_edid_monitor_desc(data_buf);
+		/* hTC: detailed timing descriptor could be other kinds of descriptors */
+		if (data_buf[DEMOTV_DESC_FLAG0] == 0 && data_buf[DEMOTV_DESC_FLAG0+1] == 0)
+				if (data_buf[DEMOTV_DESC_FLAG1] == 0)
+						hdmi_edid_monitor_desc(data_buf);
 
 #if 0 /* for debug */
-	hdmi_edid_monitor_desc(dd, disp_mode);
+		hdmi_edid_monitor_desc(dd, disp_mode);
 #endif
 }
 
@@ -612,7 +610,11 @@ int tegra_edid_get_monspecs(struct tegra_edid *edid, struct fb_monspecs *specs)
 					if (tegra_edid_mode_support_stereo(
 						&specs->modedb[j]))
 						specs->modedb[j].vmode |=
+#ifndef CONFIG_TEGRA_HDMI_74MHZ_LIMIT
 						FB_VMODE_STEREO_FRAME_PACK;
+#else
+						FB_VMODE_STEREO_LEFT_RIGHT;
+#endif
 				}
 			}
 		}

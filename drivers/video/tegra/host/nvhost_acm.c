@@ -3,21 +3,19 @@
  *
  * Tegra Graphics Host Automatic Clock Management
  *
- * Copyright (c) 2010-2011, NVIDIA Corporation.
+ * Copyright (c) 2010-2012, NVIDIA Corporation.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
+ * This program is distributed in the hope it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "nvhost_acm.h"
@@ -28,6 +26,7 @@
 #include <linux/err.h>
 #include <linux/device.h>
 #include <linux/delay.h>
+#include <linux/platform_device.h>
 #include <mach/powergate.h>
 #include <mach/clk.h>
 #include <mach/hardware.h>
@@ -279,17 +278,22 @@ int nvhost_module_set_rate(struct nvhost_device *dev, void *priv,
 		unsigned long rate, int index)
 {
 	struct nvhost_module_client *m;
-	int ret;
+	int i, ret = 0;
 
 	mutex_lock(&client_list_lock);
 	list_for_each_entry(m, &dev->client_list, node) {
 		if (m->priv == priv) {
-			rate = clk_round_rate(dev->clk[index], rate);
-			m->rate[index] = rate;
+			for (i = 0; i < dev->num_clks; i++)
+				m->rate[i] = clk_round_rate(dev->clk[i], rate);
 			break;
 		}
 	}
-	ret = nvhost_module_update_rate(dev, index);
+
+	for (i = 0; i < dev->num_clks; i++) {
+		ret = nvhost_module_update_rate(dev, i);
+		if (ret < 0)
+			break;
+	}
 	mutex_unlock(&client_list_lock);
 	return ret;
 
@@ -339,11 +343,12 @@ void nvhost_module_remove_client(struct nvhost_device *dev, void *priv)
 	mutex_unlock(&client_list_lock);
 }
 
-void nvhost_module_preinit(struct nvhost_device *dev)
+int nvhost_module_init(struct nvhost_device *dev)
 {
 	int i = 0;
 
 	/* initialize clocks to known state */
+	INIT_LIST_HEAD(&dev->client_list);
 	while (dev->clocks[i].name && i < NVHOST_MODULE_MAX_CLOCKS) {
 		char devname[MAX_DEVID_LENGTH];
 		long rate = dev->clocks[i].default_rate;
@@ -357,31 +362,7 @@ void nvhost_module_preinit(struct nvhost_device *dev)
 		clk_enable(c);
 		clk_set_rate(c, rate);
 		clk_disable(c);
-		i++;
-	}
-
-	if (dev->can_powergate) {
-		do_powergate_locked(dev->powergate_ids[0]);
-		do_powergate_locked(dev->powergate_ids[1]);
-	} else {
-		do_unpowergate_locked(dev->powergate_ids[0]);
-		do_unpowergate_locked(dev->powergate_ids[1]);
-	}
-}
-
-int nvhost_module_init(struct nvhost_device *dev)
-{
-	int i = 0;
-
-	nvhost_module_preinit(dev);
-
-	INIT_LIST_HEAD(&dev->client_list);
-	while (dev->clocks[i].name && i < NVHOST_MODULE_MAX_CLOCKS) {
-		char devname[MAX_DEVID_LENGTH];
-
-		snprintf(devname, MAX_DEVID_LENGTH, "tegra_%s", dev->name);
-		dev->clk[i] = clk_get_sys(devname, dev->clocks[i].name);
-		BUG_ON(IS_ERR_OR_NULL(dev->clk[i]));
+		dev->clk[i] = c;
 		i++;
 	}
 	dev->num_clks = i;
@@ -390,13 +371,16 @@ int nvhost_module_init(struct nvhost_device *dev)
 	init_waitqueue_head(&dev->idle_wq);
 	INIT_DELAYED_WORK(&dev->powerstate_down, powerstate_down_handler);
 
-	if (dev->can_powergate)
+	/* power gate units that we can power gate */
+	if (dev->can_powergate) {
+		do_powergate_locked(dev->powergate_ids[0]);
+		do_powergate_locked(dev->powergate_ids[1]);
 		dev->powerstate = NVHOST_POWER_STATE_POWERGATED;
-	else
+	} else {
+		do_unpowergate_locked(dev->powergate_ids[0]);
+		do_unpowergate_locked(dev->powergate_ids[1]);
 		dev->powerstate = NVHOST_POWER_STATE_CLOCKGATED;
-
-	if (dev->init)
-		dev->init(dev);
+	}
 
 	return 0;
 }
@@ -419,37 +403,32 @@ static void debug_not_idle(struct nvhost_master *host)
 		struct nvhost_device *dev = host->channels[i].dev;
 		mutex_lock(&dev->lock);
 		if (dev->name)
-			dev_warn(&host->pdev->dev,
-					"tegra_grhost: %s: refcnt %d\n",
-					dev->name, dev->refcount);
+			dev_warn(&host->dev->dev,
+				"tegra_grhost: %s: refcnt %d\n", dev->name,
+				dev->refcount);
 		mutex_unlock(&dev->lock);
 	}
 
-	for (i = 0; i < host->nb_mlocks; i++) {
-		int c = atomic_read(&host->cpuaccess.lock_counts[i]);
+	for (i = 0; i < host->syncpt.nb_mlocks; i++) {
+		int c = atomic_read(&host->syncpt.lock_counts[i]);
 		if (c) {
-			dev_warn(&host->pdev->dev,
+			dev_warn(&host->dev->dev,
 				"tegra_grhost: lock id %d: refcnt %d\n",
 				i, c);
 			lock_released = false;
 		}
 	}
 	if (lock_released)
-		dev_dbg(&host->pdev->dev, "tegra_grhost: all locks released\n");
+		dev_dbg(&host->dev->dev, "tegra_grhost: all locks released\n");
 }
 
 int nvhost_module_suspend(struct nvhost_device *dev, bool system_suspend)
 {
 	int ret;
-	struct nvhost_master *host;
+	struct nvhost_master *host = nvhost_get_host(dev);
 
-	if (system_suspend) {
-		host = dev->host;
-		if (!is_module_idle(dev))
-			debug_not_idle(host);
-	} else {
-		host = dev->host;
-	}
+	if (system_suspend && !is_module_idle(dev))
+		debug_not_idle(host);
 
 	ret = wait_event_timeout(dev->idle_wq, is_module_idle(dev),
 			ACM_SUSPEND_WAIT_FOR_IDLE_TIMEOUT);

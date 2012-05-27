@@ -3,7 +3,7 @@
  *
  * User-space interface to nvmap
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -689,7 +689,6 @@ static void destroy_client(struct nvmap_client *client)
 		while (dupes--)
 			nvmap_handle_put(ref->handle);
 
-		NVMAP_MAGIC_FREE(ref);
 		kfree(ref);
 	}
 
@@ -895,7 +894,7 @@ static void nvmap_vma_close(struct vm_area_struct *vma)
 	if (priv) {
 		if (priv->handle) {
 			nvmap_usecount_dec(priv->handle);
-			/* BUG_ON(priv->handle->usecount < 0); */
+			BUG_ON(priv->handle->usecount < 0);
 		}
 		if (!atomic_dec_return(&priv->count)) {
 			if (priv->handle)
@@ -1183,6 +1182,9 @@ static int nvmap_probe(struct platform_device *pdev)
 
 	init_waitqueue_head(&dev->iovmm_master.pin_wait);
 	mutex_init(&dev->iovmm_master.pin_lock);
+	for (i = 0; i < NVMAP_NUM_POOLS; i++)
+		nvmap_page_pool_init(&dev->iovmm_master.pools[i], i);
+
 	dev->iovmm_master.iovmm =
 		tegra_iovmm_alloc_client(dev_name(&pdev->dev), NULL,
 			&(dev->dev_user));
@@ -1309,6 +1311,16 @@ static int nvmap_probe(struct platform_device *pdev)
 				dev, &debug_iovmm_clients_fops);
 			debugfs_create_file("allocations", 0664, iovmm_root,
 				dev, &debug_iovmm_allocations_fops);
+			for (i = 0; i < NVMAP_NUM_POOLS; i++) {
+				char name[40];
+				char *memtype_string[] = {"uc", "wc",
+							  "iwb", "wb"};
+				sprintf(name, "%s_page_pool_available_pages",
+					memtype_string[i]);
+				debugfs_create_u32(name, S_IRUGO|S_IWUSR,
+					iovmm_root,
+					&dev->iovmm_master.pools[i].npages);
+			}
 		}
 	}
 
