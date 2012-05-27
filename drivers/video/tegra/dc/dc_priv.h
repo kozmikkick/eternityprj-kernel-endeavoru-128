@@ -146,12 +146,12 @@ struct tegra_dc {
 
 static inline void tegra_dc_io_start(struct tegra_dc *dc)
 {
-	nvhost_module_busy(&dc->ndev->host->mod);
+	nvhost_module_busy(dc->ndev->host->dev);
 }
 
 static inline void tegra_dc_io_end(struct tegra_dc *dc)
 {
-	nvhost_module_idle(&dc->ndev->host->mod);
+	nvhost_module_idle(dc->ndev->host->dev);
 }
 
 static inline unsigned long tegra_dc_readl(struct tegra_dc *dc,
@@ -159,7 +159,7 @@ static inline unsigned long tegra_dc_readl(struct tegra_dc *dc,
 {
 	//Don't bug on instead of print kernel stack and only allow to read/write dc when dc is power on
 	//BUG_ON(!nvhost_module_powered(&dc->ndev->host->mod));
-	if (nvhost_module_powered(&dc->ndev->host->mod))
+	if (nvhost_module_powered(dc->ndev->host->dev))
 		return readl(dc->base + reg * 4);
 	else
 		dump_stack();
@@ -170,7 +170,7 @@ static inline void tegra_dc_writel(struct tegra_dc *dc, unsigned long val,
 {
 	//Don't bug on instead of print kernel stack and only allow to read/write dc when dc is power on
 	//BUG_ON(!nvhost_module_powered(&dc->ndev->host->mod));
-	if (nvhost_module_powered(&dc->ndev->host->mod))
+	if (nvhost_module_powered(dc->ndev->host->dev))
 		writel(val, dc->base + reg * 4);
 	else
 		dump_stack();
