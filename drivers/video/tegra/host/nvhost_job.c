@@ -3,19 +3,21 @@
  *
  * Tegra Graphics Host Job
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2011, NVIDIA Corporation.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
- * This program is distributed in the hope it will be useful, but WITHOUT
+ * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
 #include <linux/slab.h>
@@ -71,7 +73,7 @@ static int alloc_gathers(struct nvhost_job *job,
 		/* Allocate memory */
 		job->gather_mem = nvmap_alloc(job->nvmap,
 				gather_size(num_cmdbufs),
-				32, NVMAP_HANDLE_CACHEABLE, 0);
+				32, NVMAP_HANDLE_CACHEABLE);
 		if (IS_ERR_OR_NULL(job->gather_mem)) {
 			err = PTR_ERR(job->gather_mem);
 			job->gather_mem = NULL;
@@ -181,8 +183,6 @@ struct nvhost_job *nvhost_job_alloc(struct nvhost_channel *ch,
 	kref_init(&job->ref);
 	job->ch = ch;
 	job->hwctx = hwctx;
-	if (hwctx)
-		hwctx->h->get(hwctx);
 	job->nvmap = nvmap ? nvmap_client_get(nvmap) : NULL;
 
 	err = alloc_gathers(job, num_cmdbufs);
@@ -201,7 +201,6 @@ error:
 
 struct nvhost_job *nvhost_job_realloc(
 		struct nvhost_job *oldjob,
-		struct nvhost_hwctx *hwctx,
 		struct nvhost_submit_hdr_ext *hdr,
 		struct nvmap_client *nvmap,
 		int priority, int clientid)
@@ -215,9 +214,7 @@ struct nvhost_job *nvhost_job_realloc(
 		goto error;
 	kref_init(&newjob->ref);
 	newjob->ch = oldjob->ch;
-	newjob->hwctx = hwctx;
-	if (hwctx)
-		newjob->hwctx->h->get(newjob->hwctx);
+	newjob->hwctx = oldjob->hwctx;
 	newjob->timeout = oldjob->timeout;
 	newjob->nvmap = nvmap ? nvmap_client_get(nvmap) : NULL;
 
@@ -248,10 +245,6 @@ static void job_free(struct kref *ref)
 {
 	struct nvhost_job *job = container_of(ref, struct nvhost_job, ref);
 
-	if (job->hwctxref)
-		job->hwctxref->h->put(job->hwctxref);
-	if (job->hwctx)
-		job->hwctx->h->put(job->hwctx);
 	if (job->gathers)
 		nvmap_munmap(job->gather_mem, job->gathers);
 	if (job->gather_mem)
@@ -259,16 +252,6 @@ static void job_free(struct kref *ref)
 	if (job->nvmap)
 		nvmap_client_put(job->nvmap);
 	vfree(job);
-}
-
-/* Acquire reference to a hardware context. Used for keeping saved contexts in
- * memory. */
-void nvhost_job_get_hwctx(struct nvhost_job *job, struct nvhost_hwctx *hwctx)
-{
-	BUG_ON(job->hwctxref);
-
-	job->hwctxref = hwctx;
-	hwctx->h->get(hwctx);
 }
 
 void nvhost_job_put(struct nvhost_job *job)

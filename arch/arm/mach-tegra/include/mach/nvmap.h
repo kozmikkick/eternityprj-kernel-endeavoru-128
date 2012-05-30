@@ -119,8 +119,7 @@ struct nvmap_client *nvmap_create_client(struct nvmap_device *dev,
 					 const char *name);
 
 struct nvmap_handle_ref *nvmap_alloc(struct nvmap_client *client, size_t size,
-				     size_t align, unsigned int flags,
-				     unsigned int heap_mask);
+				     size_t align, unsigned int flags);
 
 void nvmap_free(struct nvmap_client *client, struct nvmap_handle_ref *r);
 

@@ -3,19 +3,21 @@
  *
  * Tegra Graphics Host Chip Support
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation.
+ * Copyright (c) 2011, NVIDIA Corporation.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
- * This program is distributed in the hope it will be useful, but WITHOUT
+ * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 #ifndef _NVHOST_CHIP_SUPPORT_H_
 #define _NVHOST_CHIP_SUPPORT_H_
@@ -33,6 +35,7 @@ struct nvhost_cdma;
 struct nvhost_intr;
 struct push_buffer;
 struct nvhost_syncpt;
+struct nvhost_cpuaccess;
 struct nvhost_master;
 struct dentry;
 struct nvhost_job;
@@ -88,11 +91,9 @@ struct nvhost_chip_support {
 	struct {
 		void (*debug_init)(struct dentry *de);
 		void (*show_channel_cdma)(struct nvhost_master *,
-					  struct nvhost_channel *,
 					  struct output *,
 					  int chid);
 		void (*show_channel_fifo)(struct nvhost_master *,
-					  struct nvhost_channel *,
 					  struct output *,
 					  int chid);
 		void (*show_mlocks)(struct nvhost_master *m,
@@ -113,10 +114,6 @@ struct nvhost_chip_support {
 				  int num_waitchk);
 		void (*debug)(struct nvhost_syncpt *);
 		const char * (*name)(struct nvhost_syncpt *, u32 id);
-		int (*mutex_try_lock)(struct nvhost_syncpt *,
-				      unsigned int idx);
-		void (*mutex_unlock)(struct nvhost_syncpt *,
-				     unsigned int idx);
 	} syncpt;
 
 	struct {
@@ -133,9 +130,16 @@ struct nvhost_chip_support {
 	} intr;
 
 	struct {
-		struct nvhost_device *(*get_nvhost_device)(struct nvhost_master *host,
-			char *name);
-	} nvhost_dev;
+		int (*mutex_try_lock)(struct nvhost_cpuaccess *,
+				      unsigned int idx);
+		void (*mutex_unlock)(struct nvhost_cpuaccess *,
+				     unsigned int idx);
+	} cpuaccess;
+
 };
+
+
+int nvhost_init_t20_support(struct nvhost_master *host);
+int nvhost_init_t30_support(struct nvhost_master *host);
 
 #endif /* _NVHOST_CHIP_SUPPORT_H_ */

@@ -3,19 +3,21 @@
  *
  * Tegra Graphics Host Interrupt Management
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation.
+ * Copyright (c) 2010, NVIDIA Corporation.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
- * This program is distributed in the hope it will be useful, but WITHOUT
+ * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
 #ifndef __NVHOST_JOB_H
@@ -35,9 +37,6 @@ struct nvmap_handle;
 struct nvhost_job {
 	/* When refcount goes to zero, job can be freed */
 	struct kref ref;
-
-	/* List entry */
-	struct list_head list;
 
 	/* Channel where job is submitted to */
 	struct nvhost_channel *ch;
@@ -83,9 +82,6 @@ struct nvhost_job {
 	/* Index and number of slots used in the push buffer */
 	int first_get;
 	int num_slots;
-
-	/* Context to be freed */
-	struct nvhost_hwctx *hwctxref;
 };
 
 /*
@@ -104,7 +100,6 @@ struct nvhost_job *nvhost_job_alloc(struct nvhost_channel *ch,
  * oldjob will be reused, and nvhost_job_put() will be called to it.
  */
 struct nvhost_job *nvhost_job_realloc(struct nvhost_job *oldjob,
-		struct nvhost_hwctx *hwctx,
 		struct nvhost_submit_hdr_ext *hdr,
 		struct nvmap_client *nvmap,
 		int priority, int clientid);
@@ -119,11 +114,6 @@ void nvhost_job_add_gather(struct nvhost_job *job,
  * Increment reference going to nvhost_job.
  */
 void nvhost_job_get(struct nvhost_job *job);
-
-/*
- * Increment reference for a hardware context.
- */
-void nvhost_job_get_hwctx(struct nvhost_job *job, struct nvhost_hwctx *hwctx);
 
 /*
  * Decrement reference job, free if goes to zero.

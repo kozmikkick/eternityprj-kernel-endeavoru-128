@@ -1,7 +1,9 @@
 /*
+ * linux/fs/inode.c
+ *
  * (C) 1997 Linus Torvalds
- * (C) 1999 Andrea Arcangeli <andrea@suse.de> (dynamic inode allocation)
  */
+
 #include <linux/fs.h>
 #include <linux/mm.h>
 #include <linux/dcache.h>
@@ -24,16 +26,15 @@
 #include <linux/posix_acl.h>
 #include <linux/ima.h>
 #include <linux/cred.h>
-#include <linux/buffer_head.h> /* for inode_has_buffers */
 #include "internal.h"
 
 /*
- * Inode locking rules:
+ * inode locking rules.
  *
  * inode->i_lock protects:
  *   inode->i_state, inode->i_hash, __iget()
- * inode->i_sb->s_inode_lru_lock protects:
- *   inode->i_sb->s_inode_lru, inode->i_lru
+ * inode_lru_lock protects:
+ *   inode_lru, inode->i_lru
  * inode_sb_list_lock protects:
  *   sb->s_inodes, inode->i_sb_list
  * bdi->wb.list_lock protects:
@@ -45,7 +46,7 @@
  *
  * inode_sb_list_lock
  *   inode->i_lock
- *     inode->i_sb->s_inode_lru_lock
+ *     inode_lru_lock
  *
  * bdi->wb.list_lock
  *   inode->i_lock
@@ -58,10 +59,56 @@
  *   inode_hash_lock
  */
 
+/*
+ * This is needed for the following functions:
+ *  - inode_has_buffers
+ *  - invalidate_bdev
+ *
+ * FIXME: remove all knowledge of the buffer layer from this file
+ */
+#include <linux/buffer_head.h>
+
+/*
+ * New inode.c implementation.
+ *
+ * This implementation has the basic premise of trying
+ * to be extremely low-overhead and SMP-safe, yet be
+ * simple enough to be "obviously correct".
+ *
+ * Famous last words.
+ */
+
+/* inode dynamic allocation 1999, Andrea Arcangeli <andrea@suse.de> */
+
+/* #define INODE_PARANOIA 1 */
+/* #define INODE_DEBUG 1 */
+
+/*
+ * Inode lookup is no longer as critical as it used to be:
+ * most of the lookups are going to be through the dcache.
+ */
+#define I_HASHBITS	i_hash_shift
+#define I_HASHMASK	i_hash_mask
+
 static unsigned int i_hash_mask __read_mostly;
 static unsigned int i_hash_shift __read_mostly;
 static struct hlist_head *inode_hashtable __read_mostly;
 static __cacheline_aligned_in_smp DEFINE_SPINLOCK(inode_hash_lock);
+
+/*
+ * Each inode can be on two separate lists. One is
+ * the hash list of the inode, used for lookups. The
+ * other linked list is the "type" list:
+ *  "in_use" - valid inode, i_count > 0, i_nlink > 0
+ *  "dirty"  - as "in_use" but also dirty
+ *  "unused" - valid inode, i_count = 0
+ *
+ * A "dirty" list is maintained for each super block,
+ * allowing for low-overhead inode sync() operations.
+ */
+
+static LIST_HEAD(inode_lru);
+static DEFINE_SPINLOCK(inode_lru_lock);
 
 __cacheline_aligned_in_smp DEFINE_SPINLOCK(inode_sb_list_lock);
 
@@ -71,7 +118,7 @@ __cacheline_aligned_in_smp DEFINE_SPINLOCK(inode_sb_list_lock);
  *
  * We don't actually need it to protect anything in the umount path,
  * but only need to cycle through it to make sure any inode that
- * prune_icache_sb took off the LRU list has been fully torn down by the
+ * prune_icache took off the LRU list has been fully torn down by the
  * time we are past evict_inodes.
  */
 static DECLARE_RWSEM(iprune_sem);
@@ -90,7 +137,6 @@ EXPORT_SYMBOL(empty_aops);
 struct inodes_stat_t inodes_stat;
 
 static DEFINE_PER_CPU(unsigned int, nr_inodes);
-static DEFINE_PER_CPU(unsigned int, nr_unused);
 
 static struct kmem_cache *inode_cachep __read_mostly;
 
@@ -105,11 +151,7 @@ static int get_nr_inodes(void)
 
 static inline int get_nr_inodes_unused(void)
 {
-	int i;
-	int sum = 0;
-	for_each_possible_cpu(i)
-		sum += per_cpu(nr_unused, i);
-	return sum < 0 ? 0 : sum;
+	return inodes_stat.nr_unused;
 }
 
 int get_nr_dirty_inodes(void)
@@ -127,7 +169,6 @@ int proc_nr_inodes(ctl_table *table, int write,
 		   void __user *buffer, size_t *lenp, loff_t *ppos)
 {
 	inodes_stat.nr_inodes = get_nr_inodes();
-	inodes_stat.nr_unused = get_nr_inodes_unused();
 	return proc_dointvec(table, write, buffer, lenp, ppos);
 }
 #endif
@@ -337,24 +378,22 @@ EXPORT_SYMBOL(ihold);
 
 static void inode_lru_list_add(struct inode *inode)
 {
-	spin_lock(&inode->i_sb->s_inode_lru_lock);
+	spin_lock(&inode_lru_lock);
 	if (list_empty(&inode->i_lru)) {
-		list_add(&inode->i_lru, &inode->i_sb->s_inode_lru);
-		inode->i_sb->s_nr_inodes_unused++;
-		this_cpu_inc(nr_unused);
+		list_add(&inode->i_lru, &inode_lru);
+		inodes_stat.nr_unused++;
 	}
-	spin_unlock(&inode->i_sb->s_inode_lru_lock);
+	spin_unlock(&inode_lru_lock);
 }
 
 static void inode_lru_list_del(struct inode *inode)
 {
-	spin_lock(&inode->i_sb->s_inode_lru_lock);
+	spin_lock(&inode_lru_lock);
 	if (!list_empty(&inode->i_lru)) {
 		list_del_init(&inode->i_lru);
-		inode->i_sb->s_nr_inodes_unused--;
-		this_cpu_dec(nr_unused);
+		inodes_stat.nr_unused--;
 	}
-	spin_unlock(&inode->i_sb->s_inode_lru_lock);
+	spin_unlock(&inode_lru_lock);
 }
 
 /**
@@ -382,8 +421,8 @@ static unsigned long hash(struct super_block *sb, unsigned long hashval)
 
 	tmp = (hashval * (unsigned long)sb) ^ (GOLDEN_RATIO_PRIME + hashval) /
 			L1_CACHE_BYTES;
-	tmp = tmp ^ ((tmp ^ GOLDEN_RATIO_PRIME) >> i_hash_shift);
-	return tmp & i_hash_mask;
+	tmp = tmp ^ ((tmp ^ GOLDEN_RATIO_PRIME) >> I_HASHBITS);
+	return tmp & I_HASHMASK;
 }
 
 /**
@@ -541,7 +580,7 @@ void evict_inodes(struct super_block *sb)
 	dispose_list(&dispose);
 
 	/*
-	 * Cycle through iprune_sem to make sure any inode that prune_icache_sb
+	 * Cycle through iprune_sem to make sure any inode that prune_icache
 	 * moved off the list before we took the lock has been fully torn
 	 * down.
 	 */
@@ -609,10 +648,8 @@ static int can_unuse(struct inode *inode)
 }
 
 /*
- * Walk the superblock inode LRU for freeable inodes and attempt to free them.
- * This is called from the superblock shrinker function with a number of inodes
- * to trim from the LRU. Inodes to be freed are moved to a temporary list and
- * then are freed outside inode_lock by dispose_list().
+ * Scan `goal' inodes on the unused list for freeable ones. They are moved to a
+ * temporary list and then are freed outside inode_lru_lock by dispose_list().
  *
  * Any inodes which are pinned purely because of attached pagecache have their
  * pagecache removed.  If the inode has metadata buffers attached to
@@ -626,29 +663,29 @@ static int can_unuse(struct inode *inode)
  * LRU does not have strict ordering. Hence we don't want to reclaim inodes
  * with this flag set because they are the inodes that are out of order.
  */
-void prune_icache_sb(struct super_block *sb, int nr_to_scan)
+static void prune_icache(int nr_to_scan)
 {
 	LIST_HEAD(freeable);
 	int nr_scanned;
 	unsigned long reap = 0;
 
 	down_read(&iprune_sem);
-	spin_lock(&sb->s_inode_lru_lock);
-	for (nr_scanned = nr_to_scan; nr_scanned >= 0; nr_scanned--) {
+	spin_lock(&inode_lru_lock);
+	for (nr_scanned = 0; nr_scanned < nr_to_scan; nr_scanned++) {
 		struct inode *inode;
 
-		if (list_empty(&sb->s_inode_lru))
+		if (list_empty(&inode_lru))
 			break;
 
-		inode = list_entry(sb->s_inode_lru.prev, struct inode, i_lru);
+		inode = list_entry(inode_lru.prev, struct inode, i_lru);
 
 		/*
-		 * we are inverting the sb->s_inode_lru_lock/inode->i_lock here,
+		 * we are inverting the inode_lru_lock/inode->i_lock here,
 		 * so use a trylock. If we fail to get the lock, just move the
 		 * inode to the back of the list so we don't spin on it.
 		 */
 		if (!spin_trylock(&inode->i_lock)) {
-			list_move(&inode->i_lru, &sb->s_inode_lru);
+			list_move(&inode->i_lru, &inode_lru);
 			continue;
 		}
 
@@ -660,29 +697,28 @@ void prune_icache_sb(struct super_block *sb, int nr_to_scan)
 		    (inode->i_state & ~I_REFERENCED)) {
 			list_del_init(&inode->i_lru);
 			spin_unlock(&inode->i_lock);
-			sb->s_nr_inodes_unused--;
-			this_cpu_dec(nr_unused);
+			inodes_stat.nr_unused--;
 			continue;
 		}
 
 		/* recently referenced inodes get one more pass */
 		if (inode->i_state & I_REFERENCED) {
 			inode->i_state &= ~I_REFERENCED;
-			list_move(&inode->i_lru, &sb->s_inode_lru);
+			list_move(&inode->i_lru, &inode_lru);
 			spin_unlock(&inode->i_lock);
 			continue;
 		}
 		if (inode_has_buffers(inode) || inode->i_data.nrpages) {
 			__iget(inode);
 			spin_unlock(&inode->i_lock);
-			spin_unlock(&sb->s_inode_lru_lock);
+			spin_unlock(&inode_lru_lock);
 			if (remove_inode_buffers(inode))
 				reap += invalidate_mapping_pages(&inode->i_data,
 								0, -1);
 			iput(inode);
-			spin_lock(&sb->s_inode_lru_lock);
+			spin_lock(&inode_lru_lock);
 
-			if (inode != list_entry(sb->s_inode_lru.next,
+			if (inode != list_entry(inode_lru.next,
 						struct inode, i_lru))
 				continue;	/* wrong inode or list_empty */
 			/* avoid lock inversions with trylock */
@@ -698,18 +734,50 @@ void prune_icache_sb(struct super_block *sb, int nr_to_scan)
 		spin_unlock(&inode->i_lock);
 
 		list_move(&inode->i_lru, &freeable);
-		sb->s_nr_inodes_unused--;
-		this_cpu_dec(nr_unused);
+		inodes_stat.nr_unused--;
 	}
 	if (current_is_kswapd())
 		__count_vm_events(KSWAPD_INODESTEAL, reap);
 	else
 		__count_vm_events(PGINODESTEAL, reap);
-	spin_unlock(&sb->s_inode_lru_lock);
+	spin_unlock(&inode_lru_lock);
 
 	dispose_list(&freeable);
 	up_read(&iprune_sem);
 }
+
+/*
+ * shrink_icache_memory() will attempt to reclaim some unused inodes.  Here,
+ * "unused" means that no dentries are referring to the inodes: the files are
+ * not open and the dcache references to those inodes have already been
+ * reclaimed.
+ *
+ * This function is passed the number of inodes to scan, and it returns the
+ * total number of remaining possibly-reclaimable inodes.
+ */
+static int shrink_icache_memory(struct shrinker *shrink,
+				struct shrink_control *sc)
+{
+	int nr = sc->nr_to_scan;
+	gfp_t gfp_mask = sc->gfp_mask;
+
+	if (nr) {
+		/*
+		 * Nasty deadlock avoidance.  We may hold various FS locks,
+		 * and we don't want to recurse into the FS that called us
+		 * in clear_inode() and friends..
+		 */
+		if (!(gfp_mask & __GFP_FS))
+			return -1;
+		prune_icache(nr);
+	}
+	return (get_nr_inodes_unused() / 100) * sysctl_vfs_cache_pressure;
+}
+
+static struct shrinker icache_shrinker = {
+	.shrink = shrink_icache_memory,
+	.seeks = DEFAULT_SEEKS,
+};
 
 static void __wait_on_freeing_inode(struct inode *inode);
 /*
@@ -1304,7 +1372,7 @@ static void iput_final(struct inode *inode)
 
 	WARN_ON(inode->i_state & I_NEW);
 
-	if (op->drop_inode)
+	if (op && op->drop_inode)
 		drop = op->drop_inode(inode);
 	else
 		drop = generic_drop_inode(inode);
@@ -1590,6 +1658,7 @@ void __init inode_init(void)
 					 (SLAB_RECLAIM_ACCOUNT|SLAB_PANIC|
 					 SLAB_MEM_SPREAD),
 					 init_once);
+	register_shrinker(&icache_shrinker);
 
 	/* Hash may have been set up in inode_init_early */
 	if (!hashdist)

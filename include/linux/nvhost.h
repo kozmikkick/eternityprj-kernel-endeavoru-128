@@ -49,18 +49,13 @@ struct nvhost_device {
 	const char	*name;		/* Device name */
 	struct device	dev;		/* Linux device struct */
 	int		id;		/* Separates clients of same hw */
-	int		index;		/* Hardware channel number */
 	u32		num_resources;	/* Number of resources following */
 	struct resource	*resource;	/* Resources (IOMEM in particular) */
-	struct resource *reg_mem;
-	void __iomem	*aperture;	/* Iomem mapped to kernel */
 
 	struct nvhost_master *host;	/* Access to host1x resources */
 	u32		syncpts;	/* Bitfield of sync points used */
 	u32		waitbases;	/* Bit field of wait bases */
 	u32		modulemutexes;	/* Bit field of module mutexes */
-	u32		moduleid;	/* Module id for user space API */
-
 	u32		class;		/* Device class */
 	bool		exclusive;	/* True if only one user at a time */
 	bool		keepalive;	/* Do not power gate when opened */
@@ -83,9 +78,6 @@ struct nvhost_device {
 
 	struct nvhost_channel *channel;	/* Channel assigned for the module */
 
-	/* Allocates a context handler for the device */
-	struct nvhost_hwctx_handler *(*alloc_hwctx_handler)(u32 syncpt,
-			u32 waitbase, struct nvhost_channel *ch);
 	/* Preparing for power off. Used for context save. */
 	int (*prepare_poweroff)(struct nvhost_device *dev);
 	/* Finalize power on. Can be used for context restore. */
@@ -104,7 +96,6 @@ struct nvhost_device {
 
 /* Register device to nvhost bus */
 extern int nvhost_device_register(struct nvhost_device *);
-
 /* Deregister device from nvhost bus */
 extern void nvhost_device_unregister(struct nvhost_device *);
 
@@ -134,12 +125,6 @@ extern int nvhost_get_irq_byname(struct nvhost_device *, const char *);
 
 #define nvhost_get_drvdata(_dev) dev_get_drvdata(&(_dev)->dev)
 #define nvhost_set_drvdata(_dev, data) dev_set_drvdata(&(_dev)->dev, (data))
-static inline struct nvhost_master *nvhost_get_host(struct nvhost_device *_dev)
-{
-	return (_dev->dev.parent) ? \
-		((struct nvhost_master *) dev_get_drvdata(_dev->dev.parent)) : \
-		((struct nvhost_master *) dev_get_drvdata(&(_dev->dev)));
-}
 
 int nvhost_bus_add_host(struct nvhost_master *host);
 

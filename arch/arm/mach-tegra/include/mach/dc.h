@@ -111,29 +111,19 @@ struct tegra_dsi_cmd {
 struct dsi_phy_timing_ns {
 	u16		t_hsdexit_ns;
 	u16		t_hstrail_ns;
-//	u16		t_hsprepr_ns;
+	u16		t_hsprepr_ns;
 	u16		t_datzero_ns;
-	u16		t_hsprepare_ns;
 
 	u16		t_clktrail_ns;
 	u16		t_clkpost_ns;
 	u16		t_clkzero_ns;
 	u16		t_tlpx_ns;
-
-	u16		t_clkprepare_ns;
-	u16		t_clkpre_ns;
-	u16		t_wakeup_ns;
-
-	u16		t_taget_ns;
-	u16		t_tasure_ns;
-	u16		t_tago_ns;
 };
 
 struct tegra_dsi_out {
 	u8		n_data_lanes;			/* required */
 	u8		pixel_format;			/* required */
 	u8		refresh_rate;			/* required */
-	u8		rated_refresh_rate;
 	u8		panel_reset;			/* required */
 	u8		virtual_channel;		/* required */
 	u8		dsi_instance;
@@ -205,7 +195,6 @@ struct tegra_stereo_out {
 
 struct tegra_dc_mode {
 	int	pclk;
-	int	rated_pclk;
 	int	h_ref_to_sync;
 	int	v_ref_to_sync;
 	int	h_sync_width;
@@ -341,7 +330,6 @@ struct tegra_dc_out {
 	int				dcc_bus;
 	int				hotplug_gpio;
 	const char			*parent_clk;
-	const char			*parent_clk_backup;
 
 	unsigned			max_pixclock;
 	unsigned			order;

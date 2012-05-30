@@ -164,7 +164,6 @@ static void show_channel_gather(struct output *o, u32 addr,
 		phys_addr_t phys_addr,
 		u32 words, struct nvhost_cdma *cdma)
 {
-#if defined(CONFIG_TEGRA_NVMAP)
 	/* Map dmaget cursor to corresponding nvmap_handle */
 	struct push_buffer *pb = &cdma->push_buffer;
 	u32 cur = addr - pb->phys;
@@ -222,7 +221,6 @@ static void show_channel_gather(struct output *o, u32 addr,
 	}
 	nvmap_unpin(nvmap->client, &ref);
 	nvmap_munmap(&ref, map_addr);
-#endif
 }
 
 static void show_channel_pair(struct output *o, u32 addr,
@@ -259,9 +257,9 @@ u32 previous_oppair(struct nvhost_cdma *cdma, u32 cur)
 }
 
 static void t20_debug_show_channel_cdma(struct nvhost_master *m,
-	struct nvhost_channel *ch, struct output *o, int chid)
+					struct output *o, int chid)
 {
-	struct nvhost_channel *channel = ch;
+	struct nvhost_channel *channel = m->channels + chid;
 	struct nvhost_cdma *cdma = &channel->cdma;
 	u32 dmaput, dmaget, dmactrl;
 	u32 cbstat, cbread;
@@ -322,10 +320,10 @@ static void t20_debug_show_channel_cdma(struct nvhost_master *m,
 }
 
 void t20_debug_show_channel_fifo(struct nvhost_master *m,
-	struct nvhost_channel *ch, struct output *o, int chid)
+				 struct output *o, int chid)
 {
 	u32 val, rd_ptr, wr_ptr, start, end;
-	struct nvhost_channel *channel = ch;
+	struct nvhost_channel *channel = m->channels + chid;
 	int state, count;
 
 	nvhost_debug_output(o, "%d: fifo:\n", chid);

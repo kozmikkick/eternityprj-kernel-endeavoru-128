@@ -169,15 +169,6 @@ struct nvhost_ctrl_module_mutex_args {
 	__u32 lock;
 };
 
-enum nvhost_module_id {
-	NVHOST_MODULE_NONE = -1,
-	NVHOST_MODULE_DISPLAY_A = 0,
-	NVHOST_MODULE_DISPLAY_B,
-	NVHOST_MODULE_VI,
-	NVHOST_MODULE_ISP,
-	NVHOST_MODULE_MPE,
-};
-
 struct nvhost_ctrl_module_regrdwr_args {
 	__u32 id;
 	__u32 num_offsets;

@@ -15,6 +15,12 @@ config TEGRA_DC
 	help
 	  Tegra display controller support.
 
+config TEGRA_OVERLAY
+	tristate "Tegra Overlay Device Node"
+	depends on TEGRA_DC && !TEGRA_DC_EXTENSIONS
+	help
+	  Device node for multi-client overlay support.
+
 config FB_TEGRA
 	tristate "Tegra Framebuffer driver"
 	depends on TEGRA_DC && FB = y
@@ -115,23 +121,16 @@ config TEGRA_NVHDCP
 	  Say Y here to support NVHDCP upstream and downstream protocols, this
 	  requires a correctly fused chip to negotiate keys.
 
-config TEGRA_HDMI_74MHZ_LIMIT
-	bool "Support only up to 74.25 MHz HDMI pixel frequency"
-	default n
-	help
-	  Say Y here to make kernel report only low bandwidth modes.
-	  Useful only for boards which can't deliver 148.50 MHz.
-
 config TEGRA_HDMI_MHL
 	depends on TEGRA_DC
 	bool "Enable MHL"
 
 config TEGRA_HDMI_MHL_SUPERDEMO
-	depends on TEGRA_HDMI_MHL
-	bool "MHL SUPERDEMO"
-	default y
-	---help---
-	  Support for SCRATCHPAD event output through MHL SiI9234
+       depends on TEGRA_HDMI_MHL
+       bool "MHL SUPERDEMO"
+       default y
+       ---help---
+         Support for SCRATCHPAD event output through MHL SiI9234
 
 endif
 

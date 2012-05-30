@@ -3,19 +3,21 @@
  *
  * Tegra Graphics Host Command DMA
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2011, NVIDIA Corporation.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
- * This program is distributed in the hope it will be useful, but WITHOUT
+ * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
 #ifndef __NVHOST_CDMA_H
@@ -26,7 +28,7 @@
 
 #include <linux/nvhost.h>
 #include <mach/nvmap.h>
-#include <linux/list.h>
+#include <linux/kfifo.h>
 
 #include "nvhost_acm.h"
 
@@ -85,6 +87,7 @@ struct buffer_timeout {
 enum cdma_event {
 	CDMA_EVENT_NONE,		/* not waiting for any event */
 	CDMA_EVENT_SYNC_QUEUE_EMPTY,	/* wait for empty sync queue */
+	CDMA_EVENT_SYNC_QUEUE_SPACE,	/* wait for space in sync queue */
 	CDMA_EVENT_PUSH_BUFFER_SPACE	/* wait for space in push buffer */
 };
 
@@ -98,14 +101,14 @@ struct nvhost_cdma {
 	unsigned int last_put;		/* last value written to DMAPUT */
 	struct push_buffer push_buffer;	/* channel's push buffer */
 	struct syncpt_buffer syncpt_buffer; /* syncpt incr buffer */
-	struct list_head sync_queue;	/* job queue */
+	DECLARE_KFIFO_PTR(sync_queue, struct nvhost_job *); /* job queue */
 	struct buffer_timeout timeout;	/* channel's timeout state/wq */
 	bool running;
 	bool torndown;
 };
 
 #define cdma_to_channel(cdma) container_of(cdma, struct nvhost_channel, cdma)
-#define cdma_to_dev(cdma) nvhost_get_host(cdma_to_channel(cdma)->dev)
+#define cdma_to_dev(cdma) ((cdma_to_channel(cdma))->dev->host)
 #define cdma_op(cdma) (cdma_to_dev(cdma)->op.cdma)
 #define cdma_to_nvmap(cdma) ((cdma_to_dev(cdma))->nvmap)
 #define pb_to_cdma(pb) container_of(pb, struct nvhost_cdma, push_buffer)
