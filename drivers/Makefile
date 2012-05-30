@@ -121,3 +121,4 @@ obj-y				+= clk/
 obj-y				+= htc/
 
 obj-$(CONFIG_HWSPINLOCK)	+= hwspinlock/
+obj-$(CONFIG_IOMMU_API)		+= iommu/
