@@ -496,6 +496,7 @@ static int tegra_otg_suspend(struct device *dev)
 	/* store the interupt enable for cable ID and VBUS */
 	clk_enable(tegra_otg->clk);
 	tegra_otg->intr_reg_data = readl(tegra_otg->regs + USB_PHY_WAKEUP);
+	writel(0, (tegra_otg->regs + USB_PHY_WAKEUP));
 	clk_disable(tegra_otg->clk);
 	tegra_otg_disable_clk();
 	return 0;
