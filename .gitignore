@@ -84,5 +84,6 @@ patch2
 patch3
 *.diff
 *.orig
+*.patch
 *~
 \#*#
