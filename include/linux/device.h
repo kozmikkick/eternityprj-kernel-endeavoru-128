@@ -33,6 +33,7 @@ struct class;
 struct subsys_private;
 struct bus_type;
 struct device_node;
+struct iommu_ops;
 
 struct bus_attribute {
 	struct attribute	attr;
@@ -47,6 +48,41 @@ extern int __must_check bus_create_file(struct bus_type *,
 					struct bus_attribute *);
 extern void bus_remove_file(struct bus_type *, struct bus_attribute *);
 
+/**
+ * struct bus_type - The bus type of the device
+ *
+ * @name:	The name of the bus.
+ * @bus_attrs:	Default attributes of the bus.
+ * @dev_attrs:	Default attributes of the devices on the bus.
+ * @drv_attrs:	Default attributes of the device drivers on the bus.
+ * @match:	Called, perhaps multiple times, whenever a new device or driver
+ *		is added for this bus. It should return a nonzero value if the
+ *		given device can be handled by the given driver.
+ * @uevent:	Called when a device is added, removed, or a few other things
+ *		that generate uevents to add the environment variables.
+ * @probe:	Called when a new device or driver add to this bus, and callback
+ *		the specific driver's probe to initial the matched device.
+ * @remove:	Called when a device removed from this bus.
+ * @shutdown:	Called at shut-down time to quiesce the device.
+ * @suspend:	Called when a device on this bus wants to go to sleep mode.
+ * @resume:	Called to bring a device on this bus out of sleep mode.
+ * @pm:		Power management operations of this bus, callback the specific
+ *		device driver's pm-ops.
+ * @iommu_ops   IOMMU specific operations for this bus, used to attach IOMMU
+ *              driver implementations to a bus and allow the driver to do
+ *              bus-specific setup
+ * @p:		The private data of the driver core, only the driver core can
+ *		touch this.
+ *
+ * A bus is a channel between the processor and one or more devices. For the
+ * purposes of the device model, all devices are connected via a bus, even if
+ * it is an internal, virtual, "platform" bus. Buses can plug into each other.
+ * A USB controller is usually a PCI device, for example. The device model
+ * represents the actual connections between buses and the devices they control.
+ * A bus is represented by the bus_type structure. It contains the name, the
+ * default attributes, the bus' methods, PM operations, and the driver core's
+ * private data.
+ */
 struct bus_type {
 	const char		*name;
 	struct bus_attribute	*bus_attrs;
@@ -63,6 +99,8 @@ struct bus_type {
 	int (*resume)(struct device *dev);
 
 	const struct dev_pm_ops *pm;
+
+	struct iommu_ops *iommu_ops;
 
 	struct subsys_private *p;
 };
