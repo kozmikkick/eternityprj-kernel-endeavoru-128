@@ -91,8 +91,6 @@ static int ad5823_write(struct i2c_client *client, u8 addr, u32 value)
 
 static int ad5823_set_position(struct ad5823_info *info, u32 position)
 {
-	u8 msb = 0;
-
 	if (position < info->config.pos_low ||
 	    position > info->config.pos_high)
 		return -EINVAL;
@@ -159,14 +157,15 @@ static long ad5823_ioctl(struct file *file,
     case AD5823_IOCTL_GET_GSENSOR_DATA:
     {
         #if defined(CONFIG_MACH_ENDEAVORU) || defined(CONFIG_MACH_ENDEAVORTD)
-        short gsensor_info[3];
-        GSensorReadData(gsensor_info);
-
+        short gsensor_info[3] = {0, 0, 0};
         struct g_sensor_info data = {
             .x = gsensor_info[0],
             .y = gsensor_info[1],
             .z = gsensor_info[2],
         };
+
+		GSensorReadData(gsensor_info);
+		
         if (copy_to_user((void __user *) arg,
                  &data,
                  sizeof(struct g_sensor_info))) {

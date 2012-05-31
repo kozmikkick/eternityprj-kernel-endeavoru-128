@@ -76,7 +76,7 @@ static enum hrtimer_restart vib_timer_func(struct hrtimer *timer)
 
 static void vibrator_start(struct vibrator *vib)
 {
-	int ret, rc = 0;
+	int rc = 0;
 	I(" %s +++\n", __func__);
 	if (debugmode == 1)
 		printk("[VIB] vibrator_start\n");
@@ -96,7 +96,7 @@ static void vibrator_start(struct vibrator *vib)
 
 static void vibrator_stop(struct vibrator *vib)
 {
-	int ret, rc = 0;;
+	int rc = 0;;
 
 	I(" %s +++\n", __func__);
 	if (debugmode == 1)

@@ -89,8 +89,7 @@ static int polling = 1;
 
 struct nct1008_data *get_pwr_data()
 {
-	if (pwr_data != NULL)
-		return pwr_data;
+	return pwr_data;
 }
 
 static int conv_period_ms_table[] =
@@ -554,7 +553,7 @@ static void nct1008_work_func(struct work_struct *work)
 static void nct1008_polling_func(struct work_struct *work)
 {
 	struct nct1008_data *data = container_of(work, struct nct1008_data,
-						polling_work);
+						polling_work.work);
 	struct nct1008_platform_data *pdata = data->client->dev.platform_data;
 	u8 temp_ext_lo;
 	s8 temp_ext_hi;
@@ -604,7 +603,7 @@ error:
 static void nct1008_read_temp_func(struct work_struct *work)
 {
 	struct nct1008_data *data = container_of(work, struct nct1008_data,
-						read_temp_work);
+						read_temp_work.work);
 	struct nct1008_platform_data *pdata = data->client->dev.platform_data;
 	u8 temp_ext_lo;
 	s8 temp_ext_hi;
@@ -946,7 +945,7 @@ int nct1008_thermal_set_limits(struct nct1008_data *data,
 		data->current_hi_limit = hi_limit;
 	}
 
-	printk(KERN_INFO "[TMS] set hi_limit=%d, lo_limit=%d", hi_limit, lo_limit);
+	printk(KERN_INFO "[TMS] set hi_limit=%ld, lo_limit=%ld", hi_limit, lo_limit);
 
 	return 0;
 }
@@ -1008,7 +1007,6 @@ static int __devinit nct1008_probe(struct i2c_client *client,
 {
 	struct nct1008_data *data;
 	int err;
-	unsigned int delay;
 
 	data = kzalloc(sizeof(struct nct1008_data), GFP_KERNEL);
 	if (!data)

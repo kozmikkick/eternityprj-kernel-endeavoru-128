@@ -147,7 +147,6 @@ static int max_intfs = 2;
 unsigned static int txbyte=0,rxbyte=0;
 char gpr_buf[512];
 static int pcount=0;
-static int debugtestcoung=0; 
 module_param(max_intfs, int, 0644);
 MODULE_PARM_DESC(max_intfs, "usb class (cdc-acm) - Number of TTYACMs");
 
@@ -316,8 +315,8 @@ static void acm_write_done(struct acm *acm, struct acm_wb *wb)
 {
 	wb->use = 0;
 	acm->transmitting--;
-	if (verbose) ("[ref] - %s(%d) %d\n", __func__, __LINE__, --autopm_refcnt);
-	reflog("[ref] - %s(%d) %d\n", __func__, __LINE__, --autopm_refcnt);
+	if (verbose)
+		reflog("[ref] - %s(%d) %d\n", __func__, __LINE__, --autopm_refcnt);
 	usb_autopm_put_interface_async(acm->control);
 }
 
@@ -327,7 +326,7 @@ static void acm_write_done(struct acm *acm, struct acm_wb *wb)
  * the caller is responsible for locking
  */
 
-static int acm_start_wb(struct acm *acm, struct acm_wb *wb, char *func_name)
+static int acm_start_wb(struct acm *acm, struct acm_wb *wb, const char *func_name)
 {
 	int rc;
 
@@ -746,8 +745,8 @@ next_buffer:
 	int gsize = buf->size;
 	char *gdata_buf = buf->base;
 	int gi=0;
-	gsize = gsize > 16 ? 16 : gsize;
 	int grc = 0;
+	gsize = gsize > 16 ? 16 : gsize;
 	for (gi = 0; gi < gsize; gi++)
 		grc += sprintf(gpr_buf + grc, "%02x ", gdata_buf[gi]);
 	gpr_buf[grc] = '\0';
@@ -1034,10 +1033,10 @@ static int acm_tty_chars_in_buffer(struct tty_struct *tty);
 
 static void acm_port_down(struct acm *acm)
 {
+	int i, nr = acm->rx_buflimit;
 #if 1 //HTC_CSP_START
 	printk(MODULE_NAME":%s ttyACM%d +\n",__FUNCTION__,acm->minor);
 #endif //HTC_CSP_END
-	int i, nr = acm->rx_buflimit;
 	//mutex_lock(&open_mutex);
 	if (acm->dev) {
 		reflog("[ref] + %s(%d) %d\n", __func__, __LINE__, ++autopm_refcnt);
@@ -1137,13 +1136,16 @@ static void acm_tty_close(struct tty_struct *tty, struct file *filp)
 }
 
 static int acm_tty_write(struct tty_struct *tty,
-					const unsigned char *buf, int count)
+					 const unsigned char *buf, int count)
 {
 	struct acm *acm = tty->driver_data;
 	int stat;
 	unsigned long flags;
 	int wbn;
 	struct acm_wb *wb;
+	int i = 0, size = count, rc = 0;
+	const unsigned char *data_buf = buf;
+	char pr_buf[512];
 
 	if (verbose) pr_info("%s: buf %p count %d\n", __func__, buf, count);
 
@@ -1179,30 +1181,8 @@ static int acm_tty_write(struct tty_struct *tty,
 		if(pcount==1&&(acm->minor==0)){
 		pr_info(MODULE_NAME ":Debug Latest RX bin << [%s]\n", gpr_buf);
 		pcount=0;
-		}
-		
+		}		
 				
-		int i = 0, size = count, rc = 0;
-		char *data_buf = buf;
-		char pr_buf[512];
-#if 0
-		size = size > 16 ? 16 : size;
-		for (i=0; i < size; i++) {
-			unsigned char c = data_buf[i];
-			if (!isprint(c)) {
-				if (c == '\r')
-					rc += sprintf(pr_buf + rc, "\\r");
-				else if (c == '\n')
-					rc += sprintf(pr_buf + rc, "\\n");
-				else
-					rc += sprintf(pr_buf + rc, ".");
-			} else
-				rc += sprintf(pr_buf + rc, "%c", c);
-		}
-
-		pr_buf[rc] = '\0';
-		pr_info(MODULE_NAME ":[%03d] TX >> [%s]", count, pr_buf);
-#endif
 		/* print out binary */
 		size = size > 16 ? 16 : size;
 		rc = 0;
@@ -2065,7 +2045,6 @@ static int acm_suspend(struct usb_interface *intf, pm_message_t message)
 static int acm_resume(struct usb_interface *intf)
 {
 	struct acm *acm = usb_get_intfdata(intf);
-	struct acm_wb *wb;
 	int rv = 0;
 	int cnt;
 #ifdef CONFIG_PM
@@ -2099,13 +2078,8 @@ static int acm_resume(struct usb_interface *intf)
 	//printk(KERN_INFO"jerry usb_mark_last_busy %s\n",__func__);
 	//usb_mark_last_busy(acm->dev);
 
-	if (cnt) {
-		printk(MODULE_NAME": %s ttyACM%d susp_count=%d (already resumed)\n",
-			__func__, acm->minor, acm->susp_count);
+	if (cnt)
 		return 0;
-	} else
-		printk(MODULE_NAME": %s ttyACM%d resuming.....\n",
-			__func__, acm->minor, acm->susp_count);
 
 	mutex_lock(&acm->mutex);
 
@@ -2172,7 +2146,6 @@ err_out:
 static int acm_reset_resume(struct usb_interface *intf)
 {
 	struct acm *acm = usb_get_intfdata(intf);
-	struct tty_struct *tty = NULL;
 
 	printk(KERN_INFO"%s acm->port.count=%d\n",__func__,acm->port.count);
 	pr_info(MODULE_NAME "%s - don't hangup ttyacm\n", __func__);

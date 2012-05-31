@@ -135,7 +135,6 @@ long gpsdrv_st_recv(void *arg, struct sk_buff *skb)
 {
     struct gpsdrv_event_hdr gpsdrv_hdr = { 0x00, 0x0000 };
     struct gpsdrv_data *hgps = (struct gpsdrv_data *)arg;
-    int temp;
 
     /* SKB is NULL */
     if (NULL == skb) {

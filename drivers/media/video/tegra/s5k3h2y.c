@@ -497,67 +497,6 @@ static struct s5k3h2y_reg mode_768x432[] = {
     { S5K3H2Y_TABLE_END, 0x0000 }
 };
 
-static struct s5k3h2y_reg mode_1640x1232[] = {
-    //Readout	H:1/2 SubSampling binning, V:1/2 SubSampling binning
-    //EXCLK 24Mhz, vt_pix_clk_freq_mhz=182.4Mhz,op_sys_clk_freq_mhz=912Mhz
-    //Address	Data	Comment
-    { 0x0305, 0x04 },	//pre_pll_clk_div = 4
-    { 0x0306, 0x00 },	//pll_multiplier
-    { 0x0307, 0x98 },//pll_multiplier  = 152
-    { 0x0303, 0x01 },	//vt_sys_clk_div = 1
-    { 0x0301, 0x05 },	//vt_pix_clk_div = 5
-    { 0x030B, 0x01 },//op_sys_clk_div = 1
-    { 0x0309, 0x05 },	//op_pix_clk_div = 5
-    { 0x30CC, 0xE0 },	//DPHY_band_ctrl 870 MHz ~ 950 MHz
-    { 0x31A1, 0x5A },	//"DBR_CLK = PLL_CLK / DIV_DBR(s31A1[3:0]) = 912Mhz / 10 = 91.2Mhz[7:4] must be same as vt_pix_clk_div (s0301)"
-
-	//Readout	//H:1/2 SubSampling binning, V:1/2 SubSampling binning
-	//Address	//Data	Comment
-    { 0x0344, 0x00 },	//X addr start 0d
-    { 0x0345, 0x00 },	//
-    { 0x0346, 0x00 },	//Y addr start 0d
-    { 0x0347, 0x00 },	//
-    { 0x0348, 0x0C },	//X addr end 3277d
-    { 0x0349, 0xCD },	//
-    { 0x034A, 0x09 },	//Y addr end 2463d
-    { 0x034B, 0x9F },	//
-		//
-    { 0x0381, 0x01 },	//x_even_inc = 1
-    { 0x0383, 0x03 },	//x_odd_inc = 3
-    { 0x0385, 0x01 },	//y_even_inc = 1
-    { 0x0387, 0x03 },	//y_odd_inc = 3
-	//
-    { 0x0401, 0x00 },	//Derating_en  = 0 (disable)
-    { 0x0405, 0x10 },	//
-    { 0x0700, 0x05 },	//fifo_water_mark_pixels = 1328
-    { 0x0701, 0x30 },	//
-	//
-    { 0x034C, 0x06 },	//x_output_size = 1640
-    { 0x034D, 0x68 },	//
-    { 0x034E, 0x04 },	//y_output_size = 1232
-    { 0x034F, 0xD0 },	//
-	//
-    { 0x0200, 0x02 },	//fine integration time
-    { 0x0201, 0x50 },	//
-    { 0x0202, 0x04 },	//Coarse integration time
-    { 0x0203, 0xDB },	//
-    { 0x0204, 0x00 },	//Analog gain
-    { 0x0205, 0x20 },	//
-    { 0x0342, 0x0D },	//Line_length_pck 3470d
-    { 0x0343, 0x8E },	//
-    { 0x0340, 0x04 },	//Frame_length_lines 1268d
-    { 0x0341, 0xF4 },
-
-    //Manufacture Setting
-    //Address	Data	Comment
-    { 0x300E, 0x2D },	//Hbinnning[2] : 1b enale / 0b disable
-    { 0x31A3, 0x40 },	//Vbinning enable[6] : 1b enale / 0b disable
-    { 0x301A, 0xA7 },	//"In case of using the Vt_Pix_Clk more than 137Mhz, sA7h should be adopted! "
-    { 0x3053, 0xCF },
-
-	{ S5K3H2Y_TABLE_END, 0x0000 }
-};
-
 static struct s5k3h2y_reg mode_1640x510[] = {
     { 0x0305, 0x04 },	//pre_pll_clk_div = 4
     { 0x0306, 0x00 },	//pll_multiplier

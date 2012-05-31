@@ -235,8 +235,6 @@ fail:
 
 static int __devexit tps80032_vsys_alarm_teardown(struct platform_device *pdev)
 {
-	int ret;
-
 	CHECK_LOG();
 
 	if (vsys_alarm_data->notifier_count != 0)

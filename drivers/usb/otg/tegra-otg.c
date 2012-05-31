@@ -41,11 +41,6 @@
 #include <linux/wakelock.h>
 #include <linux/usb/htc_info.h>
 
-#define USB_INFO(fmt, args...) \
-	pr_info(KERN_INFO "[USBOTG] " fmt, ## args)
-#define USB_ERR(fmt, args...) \
-	pr_err("[USBOTG] " fmt, ## args)
-
 #define USB_PHY_WAKEUP		0x408
 #define  USB_ID_INT_EN		(1 << 0)
 #define  USB_ID_INT_STATUS	(1 << 1)
@@ -74,7 +69,7 @@ struct tegra_otg_data {
 static struct tegra_otg_data *tegra_clone;
 
 #if defined(CONFIG_CABLE_DETECT_ACCESSORY)
-extern void cable_detection_queue_recovery_host_work(time);
+extern void cable_detection_queue_recovery_host_work(int time);
 #endif
 
 static inline unsigned long otg_readl(struct tegra_otg_data *tegra,
@@ -307,7 +302,6 @@ static irqreturn_t tegra_otg_irq(int irq, void *data)
 void tegra_otg_check_vbus_detection(void)
 {
 	pr_info("[USBOTG] %s \n", __func__);
-	unsigned long flags;
 
 	tegra_otg_enable_clk();
 }
@@ -317,7 +311,7 @@ static int tegra_otg_set_peripheral(struct otg_transceiver *otg,
 				struct usb_gadget *gadget)
 {
 	struct tegra_otg_data *tegra;
-	unsigned long val, flags;
+	unsigned long val;
 
 	tegra = container_of(otg, struct tegra_otg_data, otg);
 	otg->gadget = gadget;
@@ -495,8 +489,6 @@ static int tegra_otg_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_otg_data *tegra_otg = platform_get_drvdata(pdev);
-	struct otg_transceiver *otg = &tegra_otg->otg;
-	enum usb_otg_state from = otg->state;
 	USB_INFO("%s",__func__);
 	/* store the interupt enable for cable ID and VBUS */
 	clk_enable(tegra_otg->clk);

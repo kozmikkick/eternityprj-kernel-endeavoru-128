@@ -90,7 +90,6 @@
 
 #define VUBS_IRQ -22
 #define VBUS_WAKEUP_ENR 19
-extern global_wakeup_state;
 
 static int irq_udc_debug;
 int irq_otg_debug;
@@ -1121,7 +1120,7 @@ err_unmap:
 static int fsl_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 {
 	struct fsl_ep *ep = container_of(_ep, struct fsl_ep, ep);
-	struct fsl_req *req;
+	struct fsl_req *req = container_of(_req, struct fsl_req, req);
 	unsigned long flags;
 	int ep_num, stopped, ret = 0;
 	u32 epctrl;
@@ -1467,25 +1466,7 @@ static int fsl_vbus_draw(struct usb_gadget *gadget, unsigned mA)
 		return otg_set_power(udc->transceiver, mA);
 	return -ENOTSUPP;
 }
-//++ htc ++
-//SW workarounds
-static int fsl_pullup_internal(struct usb_gadget *gadget, int is_on)
-{
-	struct fsl_udc *udc;
 
-	udc = container_of(gadget, struct fsl_udc, gadget);
-	udc->softconnect = (is_on != 0);
-	if (can_pullup(udc))
-		fsl_writel((fsl_readl(&dr_regs->usbcmd) | USB_CMD_RUN_STOP),
-				&dr_regs->usbcmd);
-	else {
-		fsl_writel((fsl_readl(&dr_regs->usbcmd) & ~USB_CMD_RUN_STOP),
-				&dr_regs->usbcmd);
-		/* S/W workaround, Issue#1 */
-		//TODO:otg_io_write(udc->transceiver, 0x48, 0x04);
-	}
-	return 0;
-}
 //-- htc --
 /* Change Data+ pullup status
  * this func is used by usb_gadget_connect/disconnet
@@ -1670,8 +1651,6 @@ static void udc_test_mode(struct fsl_udc *udc, u32 test_mode)
 	struct fsl_ep *ep;
 	u32 portsc, bitmask;
 	unsigned long timeout;
-	void __iomem *base = 0x7D000000;
-	u32 val;
 
 	/* Ack the ep0 IN */
 	if (ep0_prime_status(udc, EP_DIR_IN))
@@ -1687,7 +1666,7 @@ static void udc_test_mode(struct fsl_udc *udc, u32 test_mode)
 	/* Wait until ep0 IN endpoint txfr is complete */
 	while (!(fsl_readl(&dr_regs->endptcomplete) & bitmask)) {
 		if (time_after(jiffies, timeout)) {
-			USB_ERR("Timeout for Ep0 IN Ack\n");
+			pr_err("Timeout for Ep0 IN Ack\n");
 			break;
 		}
 		cpu_relax();
@@ -1701,10 +1680,6 @@ static void udc_test_mode(struct fsl_udc *udc, u32 test_mode)
 		VDBG("TEST_K\n");
 		break;
 	case PORTSCX_PTC_SEQNAK:
-		val = readl(IO_ADDRESS(base + UTMIP_HSRX_CFG1));
-		val &= ~UTMIP_HS_SYNC_START_DLY(~0);
-		val |= UTMIP_HS_SYNC_START_DLY(0x2);
-		writel(val, IO_ADDRESS(base + UTMIP_HSRX_CFG1));
 		VDBG("TEST_SE0_NAK\n");
 		break;
 	case PORTSCX_PTC_PACKET:
@@ -1765,7 +1740,7 @@ static void udc_test_mode(struct fsl_udc *udc, u32 test_mode)
 	 * See USB 2.0 spec, section 9.4.9 for test modes operation in "Set Feature"
 	 * See USB 2.0 spec, section 7.1.20 for test modes.
 	 */
-	USB_INFO("udc entering the test mode, power cycle to exit test mode\n");
+	pr_err("udc entering the test mode, power cycle to exit test mode\n");
 	return;
 stall:
 	ep0stall(udc);
@@ -2294,7 +2269,6 @@ static void fsl_udc_charger_detect_work(struct work_struct* work)
  */
 static void fsl_udc_restart(struct fsl_udc *udc)
 {
-	unsigned long flags = 0;
 	USB_INFO("fsl_udc_restart");
 	/* setup the controller in the device mode */
 	dr_controller_setup(udc);
@@ -2581,212 +2555,6 @@ int usb_register_notifier(struct t_usb_status_notifier *notifier)
 }
 #endif
 
-static void charger_detect_gpio(struct fsl_udc *udc)
-{
-	printk("charger_detect_gpio \n");
-	int val, val1, val2;
-	int charger_type;
-	int board_id = 0;
-	bool is5Pin;
-	int voltage;
-	u32 portsc;
-	int ret;
-	uint8_t command[2]={0};
-	mdelay(10);
-	board_id = htc_get_pcbid_info();
-	portsc = fsl_readl(&dr_regs->portsc1);
-	ret = (portsc & PORTSCX_LINE_STATUS_BITS);
-	if (ret != PORTSCX_LINE_STATUS_BITS) {
-		USB_INFO("USB charger\n");
-		udc->connect_type = CONNECT_TYPE_UNKNOWN;
-		return;
-
-	} else {
-		USB_INFO("AC charger\n");
-		udc->connect_type = CONNECT_TYPE_AC;
-	}
-
-	/* UART_USB_SW */
-	/* 1. Set GPIO PH3 output low, switch to UART bus */
-
-	ret = gpio_direction_output(UART_USB_SW, 0);
-	if (ret < 0) {
-		USB_WARNING("%s: gpio_direction_output failed %d\n", __func__, ret);
-		gpio_free(UART_USB_SW);
-		return;
-	}
-	tegra_gpio_enable(UART_USB_SW);
-
-	/* 2. Set GPIO PO2 (UART1_DEBUG_RX) input D-*/
-	ret = gpio_direction_input(UART1_DEBUG_RX);
-	if (ret < 0) {
-		USB_WARNING("%s: gpio_direction_input failed %d\n", __func__, ret);
-		gpio_free(UART1_DEBUG_RX);
-		return;
-	}
-	tegra_gpio_enable(UART1_DEBUG_RX);
-
-	/* 3. Set GPIO PO1 (UART1_DEBUG_TX) output high D+ (0)*/
-	
-
-	ret = gpio_direction_output(UART1_DEBUG_TX, 0);
-
-	if (ret < 0) {
-
-		USB_WARNING("%s: gpio_direction_output failed %d\n", __func__, ret);
-		gpio_free(UART1_DEBUG_TX);
-		return;
-	}
-	tegra_gpio_enable(UART1_DEBUG_TX);
-
-
-	mdelay(100);
-
-	/* 4. Set GPIO PO1 (UART1_DEBUG_TX) output high D+ (1) */
-	ret = gpio_direction_output(UART1_DEBUG_TX, 1);
-
-	if (ret < 0) {
-
-		USB_WARNING("%s: gpio_direction_output failed %d\n", __func__, ret);
-		gpio_free(UART1_DEBUG_TX);
-		return;
-	}
-
-	tegra_gpio_enable(UART1_DEBUG_TX);
-
-
-	/* 5. Read GPIO PO1(D-) */
-
-	val1 = gpio_get_value(UART1_DEBUG_RX);
-	mdelay(5);
-	val2 = gpio_get_value(UART1_DEBUG_RX);
-
-
-
-	/* 6. Set GPIO PO2 (UART1_DEBUG_RX) as SFIO2 (UART1 RX) */
-	tegra_gpio_disable(UART1_DEBUG_RX);
-
-	/* 7. Set GPIO PO1 (UART1_DEBUG_TX) as SFIO2 (UART1 TX) */
-	tegra_gpio_disable(UART1_DEBUG_TX);
-
-	/* 8. Set GPIO PH3 (UART/USB#SW) input */
-#ifndef CONFIG_USB_STRESS_TEST
-	
-	ret = gpio_direction_input(UART_USB_SW);
-	if (ret < 0) {
-		USB_WARNING("%s: gpio_direction_output failed %d\n", __func__, ret);
-		gpio_free(UART_USB_SW);
-		return;
-	}
-	tegra_gpio_enable(UART_USB_SW);
-#else
-	/* when stress test, we disable the uart in case hang the PC */
-	ret = gpio_direction_output(UART_USB_SW, 1);
-	if (ret < 0) {
-		USB_WARNING("%s: gpio_direction_output failed %d\n", __func__, ret);
-		gpio_free(UART_USB_SW);
-		return;
-	}
-	tegra_gpio_enable(UART_USB_SW);
-#endif
-	/* read the int state */
-	val = gpio_get_value(CHARGER_PIN_REC);
-
-	microp_read_adc(command);
-	voltage =  ((command[0]<<8) | command[1])&0xffff;
-	USB_INFO("voltage = %d \n",voltage);
-	if(voltage >  VOL_LEVEL_5PIN_LOWER && voltage < VOL_LEVEL_5PIN_UPPER ){
-		USB_INFO("5 Pin Adaptor\n");
-		charger_type = CHARGER_TYPE_5;
-	}
-	else if(voltage > VOL_LEVEL_37PIN_LOWER && voltage < VOL_LEVEL_37PIN_UPPER){
-		USB_INFO("32+5 Pin Adaptor\n");
-		charger_type = CHARGER_TYPE_32_5;
-	}
-	else if(voltage > VOL_LEVEL_DONGLE_LOWER && voltage < VOL_LEVEL_DONGLE_UPPER){
-		USB_INFO("HDMI Dongle Adaptor\n");
-		if(val == 1){
-			printk("HDMI_5\n");
-			charger_type = CHARGER_TYPE_HDMI_5;
-		}
-		else{
-			printk("HDMI_32_5\n");
-			charger_type = CHARGER_TYPE_HDMI_32_5;
-		}
-	}
-	else{
-		USB_INFO("undefined adaptor\n");
-		charger_type = CHARGER_TYPE_5;
-	}
-
-	voltage = ((2850 * voltage) >> 20)  ;//((voltage * 2.6) /1023);
-	USB_INFO("command = %x %x\n", command[1], command[0]);
-	is5Pin = (voltage > 0) ? true : false;
-	
-	if (board_id == PROJECT_PHASE_XA || board_id == PROJECT_PHASE_XB) {
-		if (val1 && val2) {
-			USB_INFO("5V/1A AC charger\n");
-		} else if (val1 == 0 && val2 == 1) {
-			if (is5Pin)
-				udc->connect_type = CONNECT_TYPE_1A2_AC;
-			else
-				udc->connect_type = CONNECT_TYPE_2A_AC;
-			USB_INFO("5V/2A AC charger\n");
-
-		} else if (val1 == 0 && val2 == 0) {
-			USB_INFO("USB charger\n");
-
-		} else{
-			USB_WARNING("Unknown Type\n");
-		}
-	}
-	else if(board_id >= PROJECT_PHASE_XC){
-		if (val1 && val2) { // 1A
-
-			if(charger_type == CHARGER_TYPE_5){
-				USB_INFO("1A CHARGER_TYPE_5\n");
-				udc->connect_type = CONNECT_TYPE_AC;
-			}
-			else if(charger_type == CHARGER_TYPE_32_5){
-				USB_INFO("1A CHARGER_TYPE_32\n");
-				udc->connect_type = CONNECT_TYPE_AC;
-			}
-			else if(charger_type == CHARGER_TYPE_HDMI_5){
-				USB_INFO("1A CHARGER_TYPE_HDMI_5\n");
-				udc->connect_type = CONNECT_TYPE_AC;
-			}
-			else if(charger_type == CHARGER_TYPE_HDMI_32_5){
-				USB_INFO("1A CHARGER_TYPE_HDMI_32_5\n");
-				udc->connect_type = CONNECT_TYPE_AC;
-			}
-		} else if (val1 == 0 && val2 == 1) { // 2A
-
-			if(charger_type == CHARGER_TYPE_5){
-				USB_INFO("1.25A CHARGER_TYPE_5\n");
-				udc->connect_type = CONNECT_TYPE_1A2_AC;
-			}
-			else if(charger_type == CHARGER_TYPE_32_5){
-				USB_INFO("2A CHARGER_TYPE_32\n");
-				udc->connect_type = CONNECT_TYPE_2A_AC;
-			}
-			else if(charger_type == CHARGER_TYPE_HDMI_5){
-				USB_INFO("1.1A CHARGER_TYPE_HDMI_5\n");
-				udc->connect_type = CONNECT_TYPE_1A1_AC;
-			}
-			else if(charger_type == CHARGER_TYPE_HDMI_32_5){
-				USB_INFO("1.6A CHARGER_TYPE_HDMI_32_5\n");
-				udc->connect_type = CONNECT_TYPE_1A6_AC;
-			}
-
-		} else if (val1 == 0 && val2 == 0) {
-			USB_INFO("USB charger\n");
-
-		} else{
-			USB_WARNING("Unknown Type\n");
-		}
-
-	}
-}
 static void update_wake_lock(int status)
 {
 	if (status == CONNECT_TYPE_USB || status == CONNECT_TYPE_UNKNOWN)
@@ -2965,12 +2733,11 @@ static void usb_do_work(struct work_struct *w)
 }
 static void usb_start(struct fsl_udc *udc)
 {
-	unsigned long flags;
-	USB_DEBUG("usb_start\n");
 	/*spin_lock_irqsave(&udc->lock, flags);*/ /* htc */
 	udc->flags |= USB_FLAG_START;
 	queue_work(udc->usb_wq, &udc->detect_work);
 	/*spin_unlock_irqrestore(&udc->lock, flags);*/ /* htc */
+	USB_DEBUG("usb_start\n");
 }
 
 #if defined(CONFIG_CABLE_DETECT_ACCESSORY)
@@ -3020,9 +2787,8 @@ static void usb_prepare(struct fsl_udc *udc)
  * */
 static void usb_vbus_state_work(struct work_struct *w)
 {
-	struct fsl_udc *udc = container_of(w, struct fsl_udc, check_vbus_work);
+	struct fsl_udc *udc = container_of(w, struct fsl_udc, check_vbus_work.work);
 	int _vbus;
-	unsigned long flags = 0;
 	if(!udc)
 		return;
 	_vbus = vbus_enabled();
@@ -3054,13 +2820,13 @@ static void usb_vbus_state_work(struct work_struct *w)
 -------------------------------------------------------------------------*/
 void tegra_usb_set_vbus_state(int online)
 {
+	int count = 0;
 	unsigned long flags = 0;
 	struct fsl_udc *udc = udc_controller;
 	VDBG("VBUS %s", online ? "on" : "off");
 	USB_INFO("tegra_usb_set_vbus_state %s \n", online ? "on" : "off");
 	wake_lock_timeout(&udc_wake_lock2, 1*HZ);
 	usb_check_count--;
-        int count = 0;
 
 	if (udc && udc->transceiver) {
 		if (udc->vbus_active && !online) {
@@ -3259,8 +3025,8 @@ static DEVICE_ATTR(tps_vbus, 0444, show_tps_vbus, NULL);
 
 static ssize_t show_charger(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	USB_INFO("show_charger\n");
 	unsigned length;
+	USB_INFO("show_charger\n");
 	if(udc_controller->connect_type == CONNECT_TYPE_USB || udc_controller->connect_type == CONNECT_TYPE_UNKNOWN){
 		length = sprintf(buf, "%d\n", 1);
 	}
@@ -3277,9 +3043,9 @@ static ssize_t show_charger(struct device *dev, struct device_attribute *attr, c
 static ssize_t store_charger(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	USB_INFO("store_charger\n");
 	int state;
 	sscanf(buf, "%d", &(state));
+	USB_INFO("store_charger\n");
 	if(state)
 	{
 		udc_controller->connect_type = CONNECT_TYPE_USB;
@@ -3719,7 +3485,6 @@ static int __init fsl_udc_probe(struct platform_device *pdev)
 	u32 dccparams;
 #if defined(CONFIG_ARCH_TEGRA)
 	struct resource *res_sys = NULL;
-	struct fsl_usb2_platform_data *pdata = pdev->dev.platform_data;
 #endif
 
 	if (strcmp(pdev->name, driver_name)) {
@@ -4029,41 +3794,22 @@ static int fsl_udc_suspend(struct platform_device *pdev, pm_message_t state)
  *-----------------------------------------------------------------*/
 static int fsl_udc_resume(struct platform_device *pdev)
 {
-	unsigned long val;
-	USB_INFO("fsl_udc_resume #0");
-	irq_udc_debug =1 ;
-	irq_otg_debug =1 ;
-	if(global_wakeup_state == VBUS_WAKEUP_ENR)
-		wake_lock_timeout(&udc_resume_wake_lock, 8*HZ);
-
-#if 0
-	val =fsl_readl(&usb_sys_regs->vbus_wakeup);
-	USB_INFO("fsl_udc_resume#1 reg:%lx",val);
+	
 	if (udc_controller->transceiver) {
-		fsl_udc_clk_enable();
-#if 0
-		if (!(fsl_readl(&usb_sys_regs->vbus_wakeup) & USB_SYS_ID_PIN_STATUS)) {
-			/* If ID status is low means host is connected, return */
-			USB_INFO("fsl_udc_resume #1");
-			fsl_udc_clk_disable();
-			//disable_irq_wake(udc_controller->irq);
+		fsl_udc_clk_resume(true);
+		if (!(fsl_readl(&usb_sys_regs->vbus_wakeup) & USB_SYS_ID_PIN_STATUS)) {			
+			fsl_udc_clk_suspend(false);
 			return 0;
 		}
-#endif
 		/* check for VBUS */
 		if (!(fsl_readl(&usb_sys_regs->vbus_wakeup) & USB_SYS_VBUS_STATUS)) {
-			/* if there is no VBUS then power down the clocks and return */
-			USB_INFO("fsl_udc_resume #2 no vbus");
-			fsl_udc_clk_disable();
-			//disable_irq_wake(udc_controller->irq);
+			fsl_udc_clk_suspend(false);
 			return 0;
 		} else {
 
-			fsl_udc_clk_disable();
-			if (udc_controller->transceiver->state == OTG_STATE_A_HOST) {
-			    //disable_irq_wake(udc_controller->irq);
+			fsl_udc_clk_suspend(false);
+			if (udc_controller->transceiver->state == OTG_STATE_A_HOST) 
 			    return 0;
-			}
 			/* Detected VBUS set the transceiver state to device mode */
 			udc_controller->transceiver->state = OTG_STATE_B_PERIPHERAL;
 		}
@@ -4085,8 +3831,7 @@ static int fsl_udc_resume(struct platform_device *pdev)
 	/* Power down the phy if cable is not connected */
 	if (!(fsl_readl(&usb_sys_regs->vbus_wakeup) & USB_SYS_VBUS_STATUS))
 		fsl_udc_clk_suspend(false);
-	//disable_irq_wake(udc_controller->irq);
-#endif
+
 	return 0;
 }
 

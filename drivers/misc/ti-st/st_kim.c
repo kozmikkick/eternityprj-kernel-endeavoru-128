@@ -49,7 +49,6 @@ extern void blue_pincfg_uartc_gpio_request(void);
 /* rfkill define*/
 struct rfkill *rfkillBT;
 static const char bt_name[] = "wl127x";
-static int pre_state;
 int rfkill_counter;
 /*bool after_suspend = false;*/
 bool after_BT_GPS_on = false;
@@ -479,7 +478,7 @@ long st_kim_start(void *kim_data)
 
 	do {
 
-		printk("\n[BT_GPS] nshutdown gpio new: %d\n", kim_gdata->nshutdown);
+		printk("\n[BT_GPS] nshutdown gpio new: %ld\n", kim_gdata->nshutdown);
 
 		if (pdata->chip_enable)
 			pdata->chip_enable();
@@ -625,7 +624,6 @@ static ssize_t show_install(struct device *dev,
 static ssize_t show_rfkilltool(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	struct kim_data_s *kim_data = dev_get_drvdata(dev);
 	return sprintf(buf, "%d\n", rfkilltool_on);
 }
 
@@ -822,7 +820,7 @@ static int kim_probe(struct platform_device *pdev)
 		/* rfill alloc */
 		rfkillBT = rfkill_alloc(bt_name, &pdev->dev, RFKILL_TYPE_BLUETOOTH, &wl127x_rfkill_ops, NULL);
 		status = rfkill_register(rfkillBT);
-		pr_info("rfkill prob for Bluetooth ==> status: %d\n", status);
+		pr_info("rfkill prob for Bluetooth ==> status: %ld\n", status);
 
 		/* pydtd_pincfg_uart0_suspend(); */
 		blue_pincfg_uartc_gpio_request();
@@ -867,9 +865,6 @@ static int kim_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static unsigned long retry_suspend;
-
-
 int kim_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct ti_st_plat_data	*pdata = pdev->dev.platform_data;
@@ -884,7 +879,7 @@ int kim_suspend(struct platform_device *pdev, pm_message_t state)
 	core_data = kim_gdata->core_data;
 
 	/* after_suspend = true; */
-	dev_info(&pdev->dev, "[BT] %s, st_data->ll_state=%d\n", __func__,
+	dev_info(&pdev->dev, "[BT] %s, st_data->ll_state=%lu\n", __func__,
 		kim_gdata->core_data->ll_state);
 /*
 	if ((kim_gdata->core_data->ll_state < 4) && (kim_gdata->core_data->ll_state > 0))
@@ -978,7 +973,6 @@ static void wl127x_config_bt_on()
 	}
 	//Avoid change rfkill state after boot up 
 	if ((rfkill_counter != 0) && (get_suspend_state() == PM_SUSPEND_ON) && (!after_BT_GPS_on)) {
-		long err = 0;
                 blue_pincfg_uartc_resume();
 
 		pr_info("wl127x_config_bt_on()\n");

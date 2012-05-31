@@ -225,10 +225,6 @@ static const struct driver_info	blob_info = {
 
 /*-------------------------------------------------------------------------*/
 
-#ifndef	HAVE_HARDWARE
-#warning You need to configure some hardware for this driver
-#endif
-
 /*
  * chip vendor names won't normally be on the cables, and
  * may not be on the device.

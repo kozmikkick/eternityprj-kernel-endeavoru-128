@@ -29,7 +29,6 @@
 #endif
 
 /*#define MHL_INTERNAL_POWER  1*/
-static bool g_vbus = 0;
 static bool g_desk_no_power = 0;
 
 static struct switch_dev dock_switch = {
@@ -1035,36 +1034,6 @@ struct platform_driver cable_detect_driver = {
 		.name = "cable_detect",
 		.owner = THIS_MODULE,
 	},
-};
-
-static void usb_status_notifier_func(int cable_type)
-{
-	struct cable_detect_info*pInfo = &the_cable_info;
-
-	CABLE_INFO("%s: cable_type = %d\n", __func__, cable_type);
-#if 0  /* Wireless Charger */
-	if (cable_type > CONNECT_TYPE_NONE) {
-		if (pInfo->is_wireless_charger) {
-			if (pInfo->is_wireless_charger())
-				cable_type = CONNECT_TYPE_WIRELESS;
-		}
-	}
-#endif
-#ifdef CONFIG_TEGRA_HDMI_MHL
-#ifdef MHL_INTERNAL_POWER
-	if (!pInfo->mhl_internal_3v3 && pInfo->accessory_type == DOCK_STATE_MHL) {
-		CABLE_INFO("%s: MHL detected. Do nothing\n", __func__);
-		return;
-	}
-#endif
-#endif
-	pInfo->connect_type = cable_type;
-	send_cable_connect_notify(cable_type);
-}
-
-static struct t_usb_status_notifier usb_status_notifier = {
-	.name = "cable_detect",
-	.func = usb_status_notifier_func,
 };
 
 static int __init cable_detect_init(void)

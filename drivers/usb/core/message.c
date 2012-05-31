@@ -21,41 +21,7 @@
 
 #include "usb.h"
 
-#define MODULE_NAME "[USBMSG] "
-
-/* HTC */
-static void urb_print(struct urb *urb, char *msg)
-{
-	if (IS_ERR_OR_NULL(urb) || !msg) {
-		pr_info(MODULE_NAME " %s - urb null", __func__);
-		return;
-	}
-
-    dev_dbg(&urb->dev->dev,
-        "%s %s -> ep%d%s, urb-pipe=0x%x, len=%u/%u ==> "
-		"ep_desc: type=%d, bLength=%d, bEndpointAddress=0x%xh, "
-		"bmAttributes=0x%x, wMaxPacketSize=%d, bInterval=%d",
-		//1
-        current->comm,
-		msg,
-        usb_endpoint_num(&urb->ep->desc),
-        usb_urb_dir_in(urb) ? "in" : "out",
-		urb->pipe,
-        urb->actual_length,
-        urb->transfer_buffer_length,
-
-		//2. urb descriptor
-		usb_endpoint_type(&urb->ep->desc),
-		urb->ep->desc.bLength,
-		urb->ep->desc.bEndpointAddress,
-
-		//3.
-		urb->ep->desc.bmAttributes,
-		urb->ep->desc.wMaxPacketSize,
-		urb->ep->desc.bInterval
-	);
-}
-
+#define MODULE_NAME "[USBMSG]"
 
 static void cancel_async_set_config(struct usb_device *udev);
 

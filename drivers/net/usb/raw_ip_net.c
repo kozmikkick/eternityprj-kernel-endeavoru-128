@@ -230,7 +230,6 @@ static int baseband_usb_driver_probe(struct usb_interface *intf,
 {
 	int i = g_i;
 	/* 77969-7 patch */
-	struct urb *urb;
 	/* 77969-7 patch */
 
 	pr_debug("%s(%d) with suspend conunt fix (do not return BUSY) { intf %p id %p g_i=%d max_intfs=%d\n", __func__, __LINE__, intf, id, i,max_intfs);
@@ -323,7 +322,7 @@ static void baseband_usb_driver_disconnect(struct usb_interface *intf)
 static int baseband_usb_driver_suspend(struct usb_interface *intf,
 	pm_message_t message)
 {
-	int i, err, susp_count;
+	int i, susp_count;
 
 	save_dbg(dbg_flag);/* HTC */
 	pr_debug("%s intf %p\n", __func__, intf);
