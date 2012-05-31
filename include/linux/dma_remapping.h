@@ -27,6 +27,7 @@ extern void free_dmar_iommu(struct intel_iommu *iommu);
 extern int iommu_calculate_agaw(struct intel_iommu *iommu);
 extern int iommu_calculate_max_sagaw(struct intel_iommu *iommu);
 extern int dmar_disabled;
+extern int intel_iommu_enabled;
 #else
 static inline int iommu_calculate_agaw(struct intel_iommu *iommu)
 {
@@ -40,6 +41,7 @@ static inline void free_dmar_iommu(struct intel_iommu *iommu)
 {
 }
 #define dmar_disabled	(1)
+#define intel_iommu_enabled (0)
 #endif
 
 
