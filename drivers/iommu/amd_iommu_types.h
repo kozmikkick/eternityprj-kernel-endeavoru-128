@@ -325,10 +325,17 @@ struct protection_domain {
  */
 struct iommu_dev_data {
 	struct list_head list;		  /* For domain->dev_list */
-	struct device *dev;		  /* Device this data belong to */
-	struct device *alias;		  /* The Alias Device */
+	struct list_head dev_data_list;	  /* For global dev_data_list */
+	struct iommu_dev_data *alias_data;/* The alias dev_data */
 	struct protection_domain *domain; /* Domain the device is bound to */
 	atomic_t bind;			  /* Domain attach reverent count */
+	u16 devid;			  /* PCI Device ID */
+	bool iommu_v2;			  /* Device can make use of IOMMUv2 */
+	bool passthrough;		  /* Default for device is pt_domain */
+	struct {
+		bool enabled;
+		int qdep;
+	} ats;				  /* ATS state */
 };
 
 /*
@@ -569,6 +576,8 @@ extern bool amd_iommu_unmap_flush;
 extern u32 amd_iommu_max_pasids;
 
 extern bool amd_iommu_v2_present;
+
+extern bool amd_iommu_force_isolation;
 
 /* takes bus and device/function and returns the device id
  * FIXME: should that be in generic PCI code? */
