@@ -59,9 +59,7 @@ enum {
 	AVP_DBG_TRACE_LIB	= 1U << 6,
 };
 
-static u32 avp_debug_mask = (AVP_DBG_TRACE_TRPC_CONN |
-			     AVP_DBG_TRACE_XPC_CONN |
-			     AVP_DBG_TRACE_LIB);
+static u32 avp_debug_mask = 0;
 module_param_named(debug_mask, avp_debug_mask, uint, S_IWUSR | S_IRUGO);
 
 #define DBG(flag, args...) \
@@ -113,7 +111,7 @@ struct avp_info {
 
 	struct trpc_node		*rpc_node;
 	struct miscdevice		misc_dev;
-	bool				opened;
+	int 				refcount;
 	struct mutex			open_lock;
 
 	spinlock_t			state_lock;
@@ -1036,6 +1034,7 @@ static void avp_uninit(struct avp_info *avp)
 
 	avp->shutdown = false;
 	smp_wmb();
+	pr_info("%s: avp teardown done\n", __func__);
 }
 
 /* returns the remote lib handle in lib->handle */
@@ -1050,7 +1049,7 @@ static int _load_lib(struct avp_info *avp, struct tegra_avp_lib *lib)
 	unsigned long lib_phys;
 	int ret;
 
-	pr_info("avp_lib: loading library %s\n", lib->name);
+	DBG(AVP_DBG_TRACE_LIB, "avp_lib: loading library '%s'\n", lib->name);
 
 	args = kmalloc(lib->args_len, GFP_KERNEL);
 	if (!args) {
@@ -1122,8 +1121,9 @@ static int _load_lib(struct avp_info *avp, struct tegra_avp_lib *lib)
 	}
 	lib->handle = resp.lib_id;
 	ret = 0;
-	pr_info("avp_lib: Successfully loaded library %s (lib_id=%x)\n",
-		lib->name, resp.lib_id);
+	DBG(AVP_DBG_TRACE_LIB,
+	    "avp_lib: Successfully loaded library %s (lib_id=%x)\n",
+	    lib->name, resp.lib_id);
 
 	/* We free the memory here because by this point the AVP has already
 	 * requested memory for the library for all the sections since it does
@@ -1328,16 +1328,13 @@ static int tegra_avp_open(struct inode *inode, struct file *file)
 	nonseekable_open(inode, file);
 
 	mutex_lock(&avp->open_lock);
-	/* only one userspace client at a time */
-	if (avp->opened) {
-		pr_err("%s: already have client, aborting\n", __func__);
-		ret = -EBUSY;
-		goto out;
-	}
 
-	ret = avp_init(avp, TEGRA_AVP_KERNEL_FW);
-	avp->opened = !ret;
-out:
+	if (!avp->refcount)
+		ret = avp_init(avp, TEGRA_AVP_KERNEL_FW);
+
+	if (!ret)
+		avp->refcount++;
+
 	mutex_unlock(&avp->open_lock);
 	return ret;
 }
@@ -1349,15 +1346,16 @@ static int tegra_avp_release(struct inode *inode, struct file *file)
 
 	pr_info("%s: release\n", __func__);
 	mutex_lock(&avp->open_lock);
-	if (!avp->opened) {
+	if (!avp->refcount) {
 		pr_err("%s: releasing while in invalid state\n", __func__);
 		ret = -EINVAL;
 		goto out;
 	}
+	if (avp->refcount > 0)
+		avp->refcount--;
+	if (!avp->refcount)
+		avp_uninit(avp);
 
-	avp_uninit(avp);
-
-	avp->opened = false;
 out:
 	mutex_unlock(&avp->open_lock);
 	return ret;
@@ -1681,12 +1679,11 @@ static int tegra_avp_remove(struct platform_device *pdev)
 		return 0;
 
 	mutex_lock(&avp->open_lock);
-	if (avp->opened) {
+	if (avp->refcount) {
 		mutex_unlock(&avp->open_lock);
 		return -EBUSY;
 	}
 	/* ensure that noone can open while we tear down */
-	avp->opened = true;
 	mutex_unlock(&avp->open_lock);
 
 	misc_deregister(&avp->misc_dev);
