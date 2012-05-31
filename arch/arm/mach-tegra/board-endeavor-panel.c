@@ -19,6 +19,8 @@
  */
 
 #include <linux/delay.h>
+#include <linux/ion.h>
+#include <linux/tegra_ion.h>
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/resource.h>
@@ -2701,10 +2703,50 @@ static struct platform_device enterprise_nvmap_device = {
 	},
 };
 
+#if defined(CONFIG_ION_TEGRA)
+static struct ion_platform_data tegra_ion_data = {
+	.nr = 3,
+	.heaps = {
+		{
+			.type = ION_HEAP_TYPE_CARVEOUT,
+			.id = TEGRA_ION_HEAP_CARVEOUT,
+			.name = "carveout",
+			.base = 0,
+			.size = 0,
+		},
+		{
+			.type = ION_HEAP_TYPE_CARVEOUT,
+			.id = TEGRA_ION_HEAP_IRAM,
+			.name = "iram",
+			.base = TEGRA_IRAM_BASE + TEGRA_RESET_HANDLER_SIZE,
+			.size = TEGRA_IRAM_SIZE - TEGRA_RESET_HANDLER_SIZE,
+		},
+		{
+			.type = ION_HEAP_TYPE_CARVEOUT,
+			.id = TEGRA_ION_HEAP_VPR,
+			.name = "vpr",
+			.base = 0,
+			.size = 0,
+		},
+	},
+};
+
+static struct platform_device tegra_ion_device = {
+	.name = "ion-tegra",
+	.id = -1,
+	.dev = {
+		.platform_data = &tegra_ion_data,
+	},
+};
+#endif
+
 static struct platform_device *enterprise_gfx_devices[] __initdata = {
 	&enterprise_nvmap_device,
 #ifdef CONFIG_TEGRA_GRHOST
 	&tegra_grhost_device,
+#endif
+#ifdef CONFIG_ION_TEGRA
+	&tegra_ion_device,
 #endif
 	&tegra_pwfm0_device,
 };
@@ -2822,6 +2864,11 @@ int __init enterprise_panel_init(void)
 
 	enterprise_carveouts[1].base = tegra_carveout_start;
 	enterprise_carveouts[1].size = tegra_carveout_size;
+
+#ifdef CONFIG_ION_TEGRA
+	tegra_ion_data.heaps[0].base = tegra_carveout_start;
+	tegra_ion_data.heaps[0].size = tegra_carveout_size;
+#endif
 
 	err = gpio_request_array(panel_init_gpios, ARRAY_SIZE(panel_init_gpios));
 	if(err) {
