@@ -965,7 +965,6 @@ static struct kobj_type htc_batt_ktype = {
 static unsigned long target_interval_ms = 0;
 static int htc_battery_prepare(struct device *dev)
 {
-	int rc = 0;
 	int time_diff;
 	int time_out;
 	struct timespec xtime;

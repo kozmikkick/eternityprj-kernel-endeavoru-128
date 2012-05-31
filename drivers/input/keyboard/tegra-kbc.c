@@ -720,11 +720,6 @@ err_free_input_dev:
 	input_free_device(kbc->idev);
 err_free_kbc:
 	kfree(kbc);
-err_free_mem:
-	if (kbc) {
-		input_free_device(kbc->idev);
-		kfree(kbc);
-	}
 
 	return err;
 }

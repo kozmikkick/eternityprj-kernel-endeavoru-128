@@ -378,6 +378,9 @@ static irqreturn_t sim_det_irq(int irq, void *dev_id)
 static void radio_detect_work_handler(struct work_struct *work)
 {
 		int radiopower=0;
+		char message[20] = "RADIO=";
+		char *envp[] = { message, NULL };
+		int status = gpio_get_value(CORE_DUMP_DETECT);
 
 		pr_info("Enter radio_detect_work_handler\n");
 
@@ -395,10 +398,6 @@ static void radio_detect_work_handler(struct work_struct *work)
 			pr_info("baseband_power2_driver_data is null\n");
 			return ;
     }
-
-	char message[20] = "RADIO=";
-	char *envp[] = { message, NULL };
-	int status = gpio_get_value(CORE_DUMP_DETECT);
 
 	pr_info("CORE_DUMP_DETECT = %d\n", status);
 		if (status) {
@@ -610,33 +609,6 @@ static void baseband_xmm_power2_flashless_pm_ver_ge_1130_step2
 	queue_work(workqueue, (struct work_struct *)
 		baseband_xmm_power2_work);
 	pr_info("%s }\n", __func__);
-}
-
-#define FILE_EXIST 0
-#define FILE_NOT_EXIST -1
-static int file_open_check(const char *file)
-{
-	mm_segment_t oldfs;
-	struct file *filp;
-	int ret = FILE_EXIST;
-
-	oldfs = get_fs();
-	set_fs(KERNEL_DS);
-
-	filp = filp_open(file,
-		O_RDONLY, 0);
-	if (IS_ERR(filp) || (filp == NULL)) {
-		pr_info("open %s %ld\n", file, PTR_ERR(filp));
-		ret = FILE_NOT_EXIST;
-		goto open_fail;
-	}
-
-	/* open success */
-	filp_close(filp, NULL);
-
-open_fail:
-	set_fs(oldfs);
-	return ret;
 }
 
 static void baseband_xmm_power2_flashless_pm_ver_ge_1130_step3
@@ -901,7 +873,8 @@ static int baseband_xmm_power2_driver_probe(struct platform_device *device)
 		= (struct baseband_power_platform_data *)
 			device->dev.platform_data;
 
-	int err=0;
+	int err = 0;
+	int err_radio;
 	pr_debug("%s 0309 - CPU Freq with data protect.\n", __func__);
 
 	if (data == NULL) {
@@ -919,82 +892,16 @@ static int baseband_xmm_power2_driver_probe(struct platform_device *device)
 	/* OEM specific initialization */
 #ifdef BB_XMM_OEM1
 #if defined(CONFIG_MACH_EDGE) || defined(CONFIG_MACH_ENDEAVORU) || defined(CONFIG_MACH_EDGE_TD) || defined(CONFIG_MACH_BLUE)
-#if 0//sim move to other driver
-		/* may be better to put this in init2()??*/
-		sim_detect_status = SIM_STATUS_UNKNOWN;
-		int err;
-		err = request_irq(gpio_to_irq(SIM_DETECT),
-			sim_det_irq,
-			IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
-			"SIM_DETECT",
-		&modem_info);
 
-		if (err < 0) {
-			pr_err("%s - request irq SIM_DETECT failed\n",
-				__func__);
-			//return err;
-		}
-
-		sim_detect_status = SIM_STATUS_READY;
-		pr_err("enable sim detection irq here\n");
-		err = gpio_get_value(SIM_DETECT/* 69*/);
-		pr_err("gpio 69 value is %d\n", err);
-#endif//sim move to other driver
-
-#if 0 //only open for XA,XB device
-
-		int err = gpio_get_value(SIM_INIT);
-		pr_info("gpio 32 value is %d\n", err);
-
-
-#if defined(CONFIG_MACH_EDGE) || defined(CONFIG_MACH_ENDEAVORU) || defined(CONFIG_MACH_EDGE_TD) || defined(CONFIG_MACH_BLUE)
-	if(err) /*if GPIO_PI5 is high, set as high*/
-	{
-	    gpio_set_value(SIM_INIT, 1);
-	    pr_info("SIM_INIT value is 1\n");
-	}
-	else  /*if GPIO_PI5 is low, keep 50ms high, then pull low*/
-	{
-	    gpio_set_value(SIM_INIT, 1);
-	    msleep(50);
-	    gpio_set_value(SIM_INIT, 0);
-	    pr_info("SIM_INIT value is 1 and then set to low\n");
-	}
-#endif
-#endif
 		kobj_hsic_device =
 			 kobject_get(&baseband_power2_driver_data->modem.xmm.hsic_device->dev.kobj);
 		if (!kobj_hsic_device) {
 			pr_err("[FLS] can not get modem_kobject\n");
 			goto fail;
 		}
-#if 0//sim move to other driver
-		modem_kset_sim = kset_create_and_add("modem", NULL, kobj_hsic_device);
-		if (!modem_kset_sim) {
-			kobject_put(kobj_hsic_device);
-			pr_err("[FLS] can not allocate modem_kset_sim%d\n", err);
-			goto fail;
-		}
-
-		modem_info.modem_sim_det_kobj.kset = modem_kset_sim;
-		err = kobject_init_and_add(&modem_info.modem_sim_det_kobj,
-			&htc_modem_ktype, NULL, "htc_modem_sim_det");
-		if (err) {
-			pr_err("init kobject modem_kset_sim failed.");
-			kobject_put(&modem_info.modem_sim_det_kobj);
-
-			kset_unregister(modem_kset_sim);
-			modem_kset_sim = NULL;
-
-			kobject_put(kobj_hsic_device);
-
-			goto fail;
-		}
-#endif//sim move to other driver
 
 		/* radio detect*/
 		radio_detect_status = RADIO_STATUS_UNKNOWN;
-		int err_radio;
 		err_radio = request_irq(gpio_to_irq(CORE_DUMP_DETECT),
 			radio_det_irq,
 			/*IRQF_TRIGGER_RISING |*/ IRQF_TRIGGER_FALLING,
@@ -1068,59 +975,17 @@ fail:
 
 static int baseband_xmm_power2_driver_remove(struct platform_device *device)
 {
-	struct baseband_power_platform_data *data
-		= (struct baseband_power_platform_data *)
-			device->dev.platform_data;
-
 	pr_debug("%s\n", __func__);
 
 	/* check for platform data */
-	if (!data)
+	if (!baseband_power2_driver_data)
 		return 0;
 
-	/* free irq */
-	if (free_ipc_ap_wake_irq) {
-		free_irq(gpio_to_irq(data->modem.xmm.ipc_ap_wake), NULL);
-		free_ipc_ap_wake_irq = 0;
-	}
-
-	/* OEM specific - free sim detect irq */
-#ifdef BB_XMM_OEM1
-#if defined(CONFIG_MACH_EDGE) || defined(CONFIG_MACH_ENDEAVORU) || defined(CONFIG_MACH_EDGE_TD) || defined(CONFIG_MACH_BLUE)
-#if 0//sim move to other driver
-    free_irq(gpio_to_irq(SIM_DETECT), &modem_info);
-#endif//sim move to other driver
-    free_irq(gpio_to_irq(CORE_DUMP_DETECT), &modem_info);
-#endif
-#if 0//sim move to other driver
-	/* HTC: 20111027 free kobj & kset */
-	if (modem_kset_sim) {
-		kobject_put(&modem_info.modem_sim_det_kobj);
-		kset_unregister(modem_kset_sim);
-		modem_kset_sim = NULL;
-	}
-#endif//sim move to other driver
-
-	if (modem_kset_radio) {
-		kobject_put(&modem_info.modem_core_dump_kobj);
-		kset_unregister(modem_kset_radio);
-		modem_kset_radio = NULL;
-	}
-
-if (kobj_hsic_device) {
-	pr_debug("free kobj_hsic_device");
-	kobject_put(kobj_hsic_device);
-}
-
-#endif /* BB_XMM_OEM1 */
-
-	/* free work structure */
-	if (workqueue) {
-		cancel_work_sync(baseband_xmm_power2_work);
-		destroy_workqueue(workqueue);
-	}
-	kfree(baseband_xmm_power2_work);
-	baseband_xmm_power2_work = (struct baseband_xmm_power_work_t *) 0;
+	/* free baseband irq(s) */
+	free_irq(gpio_to_irq(baseband_power2_driver_data
+		->modem.xmm.ipc_ap_wake), NULL);
+	free_irq(gpio_to_irq(baseband_power2_driver_data
+		->modem.xmm.ipc_hsic_sus_req), NULL);
 
 	return 0;
 }

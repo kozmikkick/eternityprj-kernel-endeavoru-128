@@ -1587,8 +1587,7 @@ static int tsensor_within_limits(struct tegra_tsensor_data *data)
 
 static void tsensor_work_func(struct work_struct *work)
 {
-	struct tegra_tsensor_data *data = container_of(work,
-		struct tegra_tsensor_data, work);
+	struct tegra_tsensor_data *data = NULL;
 
 	if (!data->alert_func)
 		return;

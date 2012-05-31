@@ -508,7 +508,6 @@ EXPORT_SYMBOL(gyro_gsensor_kvalue);
 
 static int __init parse_tag_gyro_gsensor_calibration(const struct tag *tag)
 {
-	int i;
 	unsigned char *ptr = (unsigned char *)&tag->u;
 	memcpy(&gyro_gsensor_kvalue[0], ptr, sizeof(gyro_gsensor_kvalue));
 #if 0
@@ -878,7 +877,7 @@ int msm_fixup(struct tag *tags, struct meminfo *mi)
 }
 #endif
 
-static unsigned int radio_flag = 0;
+static long unsigned int radio_flag = 0;
 int __init radio_flag_init(char *s)
 {
 	strict_strtoul(s, 16, &radio_flag);
@@ -891,7 +890,7 @@ unsigned int get_radio_flag(void)
 	return radio_flag;
 }
 
-static unsigned int kernel_flag = 0;
+static long unsigned int kernel_flag = 0;
 int __init kernel_flag_init(char *s)
 {
 	strict_strtoul(s, 16, &kernel_flag);
@@ -904,7 +903,7 @@ unsigned int get_kernel_flag(void)
 	return kernel_flag;
 }
 
-static unsigned int extra_kernel_flag = 0;
+static long unsigned int extra_kernel_flag = 0;
 int __init extra_kernel_flag_init(char *s)
 {
 	strict_strtoul(s, 16, &extra_kernel_flag);

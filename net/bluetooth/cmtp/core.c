@@ -35,7 +35,6 @@
 #include <linux/ioctl.h>
 #include <linux/file.h>
 #include <linux/init.h>
-#include <linux/kthread.h>
 #include <net/sock.h>
 
 #include <linux/isdn/capilli.h>
@@ -236,12 +235,9 @@ static void cmtp_process_transmit(struct cmtp_session *session)
 
 		size = min_t(uint, ((tail < 258) ? (tail - 2) : (tail - 3)), skb->len);
 
-		if (scb->id < 0) {
-			scb->id = cmtp_alloc_block_id(session);
-			if (scb->id < 0) {
-				skb_queue_head(&session->transmit, skb);
-				break;
-			}
+		if ((scb->id < 0) && ((scb->id = cmtp_alloc_block_id(session)) < 0)) {
+			skb_queue_head(&session->transmit, skb);
+			break;
 		}
 
 		if (size < 256) {
@@ -288,15 +284,14 @@ static int cmtp_session(void *arg)
 
 	BT_DBG("session %p", session);
 
+	daemonize("kcmtpd_ctr_%d", session->num);
 	set_user_nice(current, -15);
 
 	init_waitqueue_entry(&wait, current);
 	add_wait_queue(sk_sleep(sk), &wait);
-	while (1) {
+	while (!atomic_read(&session->terminate)) {
 		set_current_state(TASK_INTERRUPTIBLE);
 
-		if (atomic_read(&session->terminate))
-			break;
 		if (sk->sk_state != BT_CONNECTED)
 			break;
 
@@ -309,7 +304,7 @@ static int cmtp_session(void *arg)
 
 		schedule();
 	}
-	__set_current_state(TASK_RUNNING);
+	set_current_state(TASK_RUNNING);
 	remove_wait_queue(sk_sleep(sk), &wait);
 
 	down_write(&cmtp_session_sem);
@@ -348,8 +343,7 @@ int cmtp_add_connection(struct cmtp_connadd_req *req, struct socket *sock)
 
 	bacpy(&session->bdaddr, &bt_sk(sock->sk)->dst);
 
-	session->mtu = min_t(uint, l2cap_pi(sock->sk)->chan->omtu,
-					l2cap_pi(sock->sk)->chan->imtu);
+	session->mtu = min_t(uint, l2cap_pi(sock->sk)->omtu, l2cap_pi(sock->sk)->imtu);
 
 	BT_DBG("mtu %d", session->mtu);
 
@@ -373,25 +367,21 @@ int cmtp_add_connection(struct cmtp_connadd_req *req, struct socket *sock)
 
 	__cmtp_link_session(session);
 
-	session->task = kthread_run(cmtp_session, session, "kcmtpd_ctr_%d",
-								session->num);
-	if (IS_ERR(session->task)) {
-		err = PTR_ERR(session->task);
+	err = kernel_thread(cmtp_session, session, CLONE_KERNEL);
+	if (err < 0)
 		goto unlink;
-	}
 
 	if (!(session->flags & (1 << CMTP_LOOPBACK))) {
 		err = cmtp_attach_device(session);
-		if (err < 0) {
-			atomic_inc(&session->terminate);
-			wake_up_process(session->task);
-			up_write(&cmtp_session_sem);
-			return err;
-		}
+		if (err < 0)
+			goto detach;
 	}
 
 	up_write(&cmtp_session_sem);
 	return 0;
+
+detach:
+	cmtp_detach_device(session);
 
 unlink:
 	__cmtp_unlink_session(session);
@@ -416,9 +406,9 @@ int cmtp_del_connection(struct cmtp_conndel_req *req)
 		/* Flush the transmit queue */
 		skb_queue_purge(&session->transmit);
 
-		/* Stop session thread */
+		/* Kill session thread */
 		atomic_inc(&session->terminate);
-		wake_up_process(session->task);
+		cmtp_schedule(session);
 	} else
 		err = -ENOENT;
 
