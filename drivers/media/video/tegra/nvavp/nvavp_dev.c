@@ -1041,7 +1041,6 @@ static int tegra_nvavp_open(struct inode *inode, struct file *filp)
 
 	filp->private_data = clientctx;
 
-	nvhost_module_busy(nvavp->nvhost_dev->host->dev);
 	mutex_unlock(&nvavp->open_lock);
 
 	return ret;
@@ -1057,7 +1056,6 @@ static int tegra_nvavp_release(struct inode *inode, struct file *filp)
 
 	filp->private_data = NULL;
 
-	nvhost_module_idle(nvavp->nvhost_dev->host->dev);
 	mutex_lock(&nvavp->open_lock);
 
 	if (!nvavp->refcount) {
@@ -1380,7 +1378,10 @@ static int tegra_nvavp_suspend(struct nvhost_device *ndev, pm_message_t state)
 	mutex_lock(&nvavp->open_lock);
 
 	if (nvavp->refcount) {
-		nvhost_module_idle(ndev);
+		if (nvavp_check_idle(nvavp))
+			nvavp_uninit(nvavp);
+		else
+			ret = -EBUSY;
 	}
 
 	mutex_unlock(&nvavp->open_lock);
@@ -1395,7 +1396,7 @@ static int tegra_nvavp_resume(struct nvhost_device *ndev)
 	mutex_lock(&nvavp->open_lock);
 
 	if (nvavp->refcount)
-		nvhost_module_busy(ndev);
+		nvavp_init(nvavp);
 
 	mutex_unlock(&nvavp->open_lock);
 

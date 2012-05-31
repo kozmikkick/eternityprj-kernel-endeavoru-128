@@ -247,7 +247,7 @@ static int cdma_timeout_init(struct nvhost_cdma *cdma,
 			sb->mapped[i++] = nvhost_class_host_incr_syncpt_base(
 						NVWAITBASE_3D, 1);
 		}
-		sb->mapped[i++] = nvhost_opcode_setclass(ch->dev->class,
+		sb->mapped[i++] = nvhost_opcode_setclass(ch->desc->class,
 						0, 0);
 	}
 	wmb();
@@ -546,7 +546,7 @@ void cdma_timeout_teardown_begin(struct nvhost_cdma *cdma)
 		ch->aperture + HOST1X_CHANNEL_DMACTRL);
 
 	writel(BIT(ch->chid), dev->sync_aperture + HOST1X_SYNC_CH_TEARDOWN);
-	nvhost_module_reset(ch->dev);
+	nvhost_module_reset(&dev->pdev->dev, &ch->mod);
 
 	cdma->running = false;
 	cdma->torndown = true;

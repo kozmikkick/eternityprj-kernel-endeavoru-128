@@ -65,10 +65,10 @@ int nvhost_mutex_try_lock(struct nvhost_cpuaccess *ctx, unsigned int idx)
 	u32 reg;
 	BUG_ON(!cpuaccess_op(ctx).mutex_try_lock);
 
-	nvhost_module_busy(dev->dev);
+	nvhost_module_busy(&dev->mod);
 	reg = cpuaccess_op(ctx).mutex_try_lock(ctx, idx);
 	if (reg) {
-		nvhost_module_idle(dev->dev);
+		nvhost_module_idle(&dev->mod);
 		return -EBUSY;
 	}
 	atomic_inc(&ctx->lock_counts[idx]);
@@ -81,7 +81,7 @@ void nvhost_mutex_unlock(struct nvhost_cpuaccess *ctx, unsigned int idx)
 	BUG_ON(!cpuaccess_op(ctx).mutex_unlock);
 
 	cpuaccess_op(ctx).mutex_unlock(ctx, idx);
-	nvhost_module_idle(dev->dev);
+	nvhost_module_idle(&dev->mod);
 	atomic_dec(&ctx->lock_counts[idx]);
 }
 
@@ -93,13 +93,13 @@ void nvhost_read_module_regs(struct nvhost_cpuaccess *ctx, u32 module,
 	u32 *out = (u32 *)values;
 	BUG_ON(size & 3);
 	size >>= 2;
-	nvhost_module_busy(dev->dev);
+	nvhost_module_busy(&dev->mod);
 	while (size--) {
 		*(out++) = readl(p);
 		p += 4;
 	}
 	rmb();
-	nvhost_module_idle(dev->dev);
+	nvhost_module_idle(&dev->mod);
 }
 
 void nvhost_write_module_regs(struct nvhost_cpuaccess *ctx, u32 module,
@@ -110,11 +110,11 @@ void nvhost_write_module_regs(struct nvhost_cpuaccess *ctx, u32 module,
 	const u32 *in = (const u32 *)values;
 	BUG_ON(size & 3);
 	size >>= 2;
-	nvhost_module_busy(dev->dev);
+	nvhost_module_busy(&dev->mod);
 	while (size--) {
 		writel(*(in++), p);
 		p += 4;
 	}
 	wmb();
-	nvhost_module_idle(dev->dev);
+	nvhost_module_idle(&dev->mod);
 }
