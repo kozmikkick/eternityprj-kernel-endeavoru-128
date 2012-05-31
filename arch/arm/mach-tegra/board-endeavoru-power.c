@@ -655,7 +655,7 @@ static void enterprise_power_off(void)
 #else
         pr_info("enterprise: Powering off the device or"
                 " enter offmode charging\n");
-        tps80031_power_off_or_reboot();
+        ret = tps80031_power_off_or_reboot();
 #endif
 	if (ret)
 		pr_err("enterprise: failed to power off\n");
@@ -684,12 +684,10 @@ int __init enterprise_regulator_init(void)
 
 	endeavor_gpio_rtc_init();
 
-	int projectPhase = htc_get_pcbid_info();
-
-	if (projectPhase == PROJECT_PHASE_XD){
+	if (htc_get_pcbid_info() == PROJECT_PHASE_XD){
 		tps_platform.num_subdevs = ARRAY_SIZE(tps80031_devs_xd);
 		tps_platform.subdevs = tps80031_devs_xd;
-	} else if (projectPhase >= PROJECT_PHASE_XE){
+	} else if (htc_get_pcbid_info() >= PROJECT_PHASE_XE){
 		tps_platform.num_subdevs = ARRAY_SIZE(tps80031_devs_xe);
 		tps_platform.subdevs = tps80031_devs_xe;
 	}

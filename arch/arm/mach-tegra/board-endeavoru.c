@@ -495,23 +495,6 @@ static struct tegra_utmip_config utmi_phy_config[] = {
 	},
 };
 
-static struct resource enterprise_bcm4329_rfkill_resources[] = {
-	{
-		.name   = "bcm4329_nshutdown_gpio",
-		.start  = TEGRA_GPIO_PE6,
-		.end    = TEGRA_GPIO_PE6,
-		.flags  = IORESOURCE_IO,
-	},
-};
-
-// TODO unused?
-static struct platform_device enterprise_bcm4329_rfkill_device = {
-	.name = "bcm4329_rfkill",
-	.id		= -1,
-	.num_resources  = ARRAY_SIZE(enterprise_bcm4329_rfkill_resources),
-	.resource       = enterprise_bcm4329_rfkill_resources,
-};
-
 static unsigned long retry_suspend;
 
 /* TI 128x Bluetooth begin */
@@ -677,23 +660,6 @@ static struct platform_device android_usb_device = {
 };
 #endif	//end of #if 0 //k30
 
-#ifdef CONFIG_USB_ANDROID_RNDIS
-static struct usb_ether_platform_data rndis_pdata = {
-	.ethaddr = {0, 0, 0, 0, 0, 0},
-	.vendorID = USB_VENDOR_ID,
-	.vendorDescr = USB_MANUFACTURER_NAME,
-};
-
-//TODO unused? Should probably be added as device
-static struct platform_device rndis_device = {
-	.name   = "rndis",
-	.id     = -1,
-	.dev    = {
-		.platform_data  = &rndis_pdata,
-	},
-};
-#endif
-
 static struct tegra_i2c_platform_data enterprise_i2c1_platform_data = {
 	.adapter_nr	= 0,
 	.bus_count	= 1,
@@ -816,25 +782,6 @@ static struct platform_device htc_headset_gpio = {
 	},
 };
 
-/* HTC_HEADSET_MICROP Driver */
-static struct htc_headset_microp_platform_data htc_headset_microp_data = {
-	.eng_cfg			= HS_EDE_U,
-	.remote_int		= 1 << 13,
-	.remote_irq		= TEGRA_uP_TO_INT(13),
-	.remote_enable_pin	= 0,
-	.adc_channel		= 0x01,
-	.adc_remote		= {0, 33, 38, 85, 95, 180},
-};
-
-//TODO unused?
-static struct platform_device htc_headset_microp = {
-	.name	= "HTC_HEADSET_MICROP",
-	.id	= -1,
-	.dev	= {
-		.platform_data	= &htc_headset_microp_data,
-	},
-};
-
 /* HTC_HEADSET_PMIC Driver */
 static struct htc_headset_pmic_platform_data htc_headset_pmic_data = {
 	.eng_cfg		= HS_EDE_U,
@@ -923,26 +870,6 @@ static struct headset_adc_config htc_headset_mgr_config_xe[] = {
 		.type = HEADSET_NO_MIC,
 		.adc_max = 1499,
 		.adc_min = 0,
-	},
-};
-
-
-
-/* HTC_HEADSET_MISC Driver */
-static struct htc_headset_misc_platform_data htc_headset_misc_data = {
-/*
-	.driver_flag		= DRIVER_HS_MISC_EXT_HP_DET,
-	.ext_hpin_gpio		= PM8058_GPIO_PM_TO_SYS(FLYER_H2W_CABLE_IN1),
-	.ext_accessory_type	= USB_AUDIO_OUT,
-*/
-};
-
-//TODO unused?
-static struct platform_device htc_headset_misc = {
-	.name	= "HTC_HEADSET_MISC",
-	.id	= -1,
-	.dev	= {
-		.platform_data	= &htc_headset_misc_data,
 	},
 };
 
@@ -1943,13 +1870,6 @@ static void enterprise_cable_detect_init(void)
 	platform_device_register(&cable_detect_device);
 }
 
-//TODO can be removed I assume
-static void enterprise_gps_init(void)
-{
-	//tegra_gpio_enable(TEGRA_GPIO_PE4);
-	//tegra_gpio_enable(TEGRA_GPIO_PE5);
-}
-
 //#if CONFIG_IMC_FLASHLESS
 static struct baseband_power_platform_data tegra_baseband_power_data = {
 	.baseband_type = BASEBAND_XMM,
@@ -2111,47 +2031,6 @@ static void enterprise_modem_init(void)
 //		break;
 //	}
 }
-
-static void gpio_o_l(int gpio, char* name)
-{
-	int ret = gpio_request(gpio, name);
-	if (ret < 0)
-	{
-		pr_err("[KW] %s: gpio_request failed for gpio %s\n",
-			__func__, name);
-		//return;
-	}
-	ret = gpio_direction_output(gpio, 0);
-	if (ret < 0) {
-		pr_err("[KW] %s: gpio_direction_output failed %d\n", __func__, ret);
-		gpio_free(gpio);
-		return;
-	}
-	tegra_gpio_enable(gpio);
-	gpio_export(gpio, true);
-}
-
-//TODO unused?
-static void modem_not_init(void)
-{
-	pr_info("%s: disable gpio\n", __func__);
-
-	gpio_o_l(TEGRA_GPIO_PM4, "TEGRA_GPIO_PM4");
-	gpio_o_l(TEGRA_GPIO_PC1, "TEGRA_GPIO_PC1");
-	gpio_o_l(TEGRA_GPIO_PN0, "TEGRA_GPIO_PN0");
-	gpio_o_l(TEGRA_GPIO_PN3, "TEGRA_GPIO_PN3");
-	gpio_o_l(TEGRA_GPIO_PC6, "TEGRA_GPIO_PC6");
-	gpio_o_l(TEGRA_GPIO_PJ0, "TEGRA_GPIO_PJ0");
-	gpio_o_l(TEGRA_GPIO_PV0, "TEGRA_GPIO_PV0");
-	gpio_o_l(TEGRA_GPIO_PN1, "TEGRA_GPIO_PN1");
-	gpio_o_l(TEGRA_GPIO_PN2, "TEGRA_GPIO_PN2");
-	gpio_o_l(TEGRA_GPIO_PJ7, "TEGRA_GPIO_PJ7");
-	gpio_o_l(TEGRA_GPIO_PK7, "TEGRA_GPIO_PK7");
-	gpio_o_l(TEGRA_GPIO_PB0, "TEGRA_GPIO_PB0");
-	gpio_o_l(TEGRA_GPIO_PB1, "TEGRA_GPIO_PB1");
-
-}
-
 
 static void enterprise_baseband_init(void)
 {

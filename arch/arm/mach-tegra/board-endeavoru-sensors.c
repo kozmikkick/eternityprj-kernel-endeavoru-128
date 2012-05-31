@@ -140,7 +140,6 @@ void cm3629_enable_power(int enable)
 
 static struct cm3628_platform_data cm3628_pdata = {
 	/*.intr = PSNENOR_INTz,*/
-	.pwr = NULL,
 	.intr = TEGRA_GPIO_PK2,
 	.levels = { 12, 14, 16, 41, 83, 3561, 6082, 6625, 7168, 65535},
 	.golden_adc = 0x1145,
@@ -165,7 +164,7 @@ static struct cm3629_platform_data cm3629_pdata = {
 	.intr = TEGRA_GPIO_PK2,
 	.levels = { 12, 14, 16, 176, 361, 4169, 6891, 9662, 12433, 65535},
 	.golden_adc = 0x13EF,
-	.power = cm3629_enable_power,
+	.power = NULL,
 	.cm3629_slave_address = 0xC0>>1,
 	.ps_calibration_rule = 1,
 	.ps1_thd_set = 0x3,
@@ -659,12 +658,6 @@ static void enterprise_gyro_sleep_pin(void)
 
 }
 
-static struct i2c_board_info enterprise_i2c0_isl_board_info[] = {
-	{
-		I2C_BOARD_INFO("isl29028", 0x44),
-	}
-};
-
 static void enterprise_comp_irq_init(void)
 {
 	int ret = 0;
@@ -686,12 +679,6 @@ static void enterprise_comp_irq_init(void)
 	tegra_gpio_enable(TEGRA_GPIO_PJ2);
 	tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_GMI_CS1_N, TEGRA_PUPD_NORMAL);
 	gpio_free(TEGRA_GPIO_PJ2);
-}
-
-static void enterprise_isl_init(void)
-{
-	i2c_register_board_info(0, enterprise_i2c0_isl_board_info,
-				ARRAY_SIZE(enterprise_i2c0_isl_board_info));
 }
 
 static int endeavor_s5k3h2y_power_state = 0;
@@ -982,7 +969,7 @@ struct ad5823_platform_data endeavor_ad5823_data = {
 
 static int endeavor_s5k6a1gx03_power_on(void)
 {
-    int ret;
+    //int ret;
     pr_info("[CAM] s5k6a1g power on ++\n");
     gpio_direction_output(FRONT_CAM_RST_GPIO, 0);
     gpio_direction_output(CAM_SEL_GPIO, 0);
@@ -1231,19 +1218,6 @@ static struct endeavor_cam_gpio endeavor_cam_gpio_input_data[] = {
 	[2] = TEGRA_CAMERA_GPIO(RAW_INTR0, "RAW_INTR0", 0),
 	[3] = TEGRA_CAMERA_GPIO(RAW_INTR1, "RAW_INTR1", 0),
 };
-
-static struct pca954x_platform_mode enterprise_pca954x_modes[] = {
-	{ .adap_id = PCA954x_I2C_BUS0, .deselect_on_exit = true, },
-	{ .adap_id = PCA954x_I2C_BUS1, .deselect_on_exit = true, },
-	{ .adap_id = PCA954x_I2C_BUS2, .deselect_on_exit = true, },
-	{ .adap_id = PCA954x_I2C_BUS3, .deselect_on_exit = true, },
-};
-
-static struct pca954x_platform_data enterprise_pca954x_data = {
-	.modes    = enterprise_pca954x_modes,
-	.num_modes      = ARRAY_SIZE(enterprise_pca954x_modes),
-};
-
 	
 /*
 static struct tps61050_platform_data enterprise_tps61050_data = {
@@ -1443,15 +1417,16 @@ static int __init enterprise_ina230_init(void)
 #endif
 
 int __init enterprise_sensors_init(void)
-{
+{	
+	int ret;
 	psensor_init();
 	
-	int ret;
+	enterprise_comp_irq_init();
+	
 	if (htc_get_pcbid_info() == PROJECT_PHASE_XA){
 		pr_info("[GYRO]Use Invensense solution");
 		enterprise_mpuirq_init();
 	}
-	enterprise_comp_irq_init();
 	//enterprise_srio_1v8_en();
 	enterprise_gsensor_irq_init(); 
 	if (htc_get_pcbid_info() != PROJECT_PHASE_XA ){
