@@ -1142,7 +1142,7 @@ int tegra_emc_set_over_temp_state(unsigned long state)
 #ifdef CONFIG_DEBUG_FS
 
 static struct dentry *emc_debugfs_root;
-static bool eack_state = true;
+//static bool eack_state = true;
 
 static int emc_stats_show(struct seq_file *s, void *data)
 {
