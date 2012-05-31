@@ -78,10 +78,18 @@ extern unsigned long gen_pool_alloc_addr(struct gen_pool *,
  * gen_pool_alloc - allocate special memory from the pool
  * @pool: pool to allocate from
  * @size: number of bytes to allocate from the pool
+ *
+ * EternityProject - 31/05/2012:
+ * The usage of gen_pool_alloc_addr was not correct:
+ * we've added the unsigned long alloc_addr to it.
+ * The normal gen_pool_alloc behavior is to allocate at
+ * a non-fixed address: specify alloc_addr as zero to
+ * fall into the old behavior and to not produce
+ * compilation time errors.
  */
 static inline unsigned long gen_pool_alloc(struct gen_pool *pool, size_t size)
 {
-	return gen_pool_alloc_addr(pool, size);
+	return gen_pool_alloc_addr(pool, size, 0);
 }
 extern void gen_pool_free(struct gen_pool *, unsigned long, size_t);
 extern void gen_pool_for_each_chunk(struct gen_pool *,
