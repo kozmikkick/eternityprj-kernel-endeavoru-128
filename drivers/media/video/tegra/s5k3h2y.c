@@ -752,7 +752,7 @@ static int s5k3h2y_read_reg(struct i2c_client *client, u16 addr, u8 *val)
 }
 #endif
 
-static int s5k3h2y_check_sensorid()
+static int s5k3h2y_check_sensorid(void)
 {
 	uint16_t chipid = 0;
 	int32_t rc = 0;

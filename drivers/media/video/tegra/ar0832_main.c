@@ -1972,63 +1972,6 @@ static int ar0832_focuser_set_position(struct ar0832_dev *dev,
 	return ret;
 }
 
-
-/*
- * This function is not currently called as we have the hardcoded
- * step time in ar0832_focuser_set_config function. If we need to
- * compute the actual step time based on a number of clocks, we need
- * to use this function. The formula for computing the clock-based
- * step time is obtained from Aptina and is not part of external
- * documentation and hence this code needs to be saved.
- */
-static u16 ar0832_get_focuser_vcm_step_time(struct ar0832_dev *dev)
-{
-	struct i2c_client *i2c_client = dev->i2c_client;
-	int ret;
-	u16 pll_multiplier = 0;
-	u16 pre_pll_clk_div = 0;
-	u16 vt_sys_clk_div = 0;
-	u16 vt_pix_clk_div = 0;
-	u16 vt_pix_clk_freq_mhz = 0;
-
-	ret = ar0832_read_reg16(dev->i2c_client, 0x306, &pll_multiplier);
-	if (ret) {
-		dev_err(&i2c_client->dev, "%s pll_multiplier read failed\n",
-				__func__);
-	}
-
-	ret = ar0832_read_reg16(dev->i2c_client, 0x304, &pre_pll_clk_div);
-	if (ret) {
-		dev_err(&i2c_client->dev, "%s pre_pll_clk_div read failed\n",
-				__func__);
-	}
-
-	ret = ar0832_read_reg16(dev->i2c_client, 0x302, &vt_sys_clk_div);
-	if (ret) {
-		dev_err(&i2c_client->dev, "%s vt_sys_clk_div read failed\n",
-				__func__);
-	}
-
-	ret = ar0832_read_reg16(dev->i2c_client, 0x300, &vt_pix_clk_div);
-	if (ret) {
-		dev_err(&i2c_client->dev, "%s vt_pix_clk_div read failed\n",
-				__func__);
-	}
-
-	vt_pix_clk_freq_mhz =
-		(24 * pll_multiplier) / (pre_pll_clk_div * vt_sys_clk_div *
-		 vt_pix_clk_div);
-
-	dev_dbg(&i2c_client->dev, "%s pll_multiplier 0x%X pre_pll_clk_div 0x%X "
-			"vt_sys_clk_div 0x%X vt_pix_clk_div 0x%X vt_pix_clk_freq_mhz 0x%X\n",
-			__func__, pll_multiplier,
-			pre_pll_clk_div, vt_sys_clk_div,
-			vt_pix_clk_div, vt_pix_clk_freq_mhz);
-
-	return vt_pix_clk_freq_mhz;
-
-}
-
 static inline
 int ar0832_get_sensorid(struct ar0832_dev *dev, u16 *sensor_id)
 {

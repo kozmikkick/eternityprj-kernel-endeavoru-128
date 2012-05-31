@@ -59,13 +59,12 @@ int ak8975_suspend(void *mlsl_handle,
 		   struct ext_slave_descr *slave,
 		   struct ext_slave_platform_data *pdata)
 {
-	printk(KERN_INFO "[COMP]%s: comp suspend start\n", __func__);
-
 	int result = ML_SUCCESS;
 	result =
 	    MLSLSerialWriteSingle(mlsl_handle, pdata->address,
 				  AK8975_REG_CNTL,
 				  AK8975_CNTL_MODE_POWER_DOWN);
+	printk(KERN_INFO "[COMP]%s: comp suspend start\n", __func__);
 	MLOSSleep(1);		/* wait at least 100us */
 	ERROR_CHECK(result);
 	printk(KERN_INFO "[COMP]%s: comp suspend end\n", __func__);
@@ -76,13 +75,12 @@ int ak8975_resume(void *mlsl_handle,
 		  struct ext_slave_descr *slave,
 		  struct ext_slave_platform_data *pdata)
 {
-	printk(KERN_INFO "[COMP]%s: comp resume start\n", __func__);
-
 	int result = ML_SUCCESS;
 	result =
 	    MLSLSerialWriteSingle(mlsl_handle, pdata->address,
 				  AK8975_REG_CNTL,
 				  AK8975_CNTL_MODE_SINGLE_MEASUREMENT);
+	printk(KERN_INFO "[COMP]%s: comp resume start\n", __func__);
 	ERROR_CHECK(result);
 	printk(KERN_INFO "[COMP]%s: comp resume end \n", __func__);
 	return result;

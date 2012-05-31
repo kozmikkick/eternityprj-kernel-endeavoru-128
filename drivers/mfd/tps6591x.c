@@ -312,7 +312,6 @@ extern struct rtc_device *extern_alarm_rtc_dev;
 
 static int set_RTC_alarm_for_power_off_test(struct device *dev)
 {
-
 	struct file *wakeup_after = NULL;
 	static char *wakeup_after_file_path = "/sys/module/power/parameters/wakeup_after";
 	char    buf[64];
@@ -322,10 +321,10 @@ static int set_RTC_alarm_for_power_off_test(struct device *dev)
 	//RTC var
 	struct rtc_time     rtc_current_rtc_time;
 	unsigned long       rtc_current_time;
-	struct timespec     wall_time;
-	struct timespec     rtc_delta;
 	struct rtc_wkalrm   rtc_alarm;
 	unsigned long       rtc_alarm_time;
+	
+	int value_int = simple_strtol(value_str, NULL, 0);
 
 	/* change to KERNEL_DS address limit */
 	old_fs = get_fs();
@@ -351,9 +350,9 @@ static int set_RTC_alarm_for_power_off_test(struct device *dev)
 	set_fs(old_fs);
 
 
-	int value_int = simple_strtol(value_str, NULL, 0);
 	if(value_int == 0)
-		return;
+		return 0;
+		
 	value_int /= 1000;
 	
 	rtc_read_time(extern_alarm_rtc_dev, &rtc_current_rtc_time);
@@ -382,13 +381,13 @@ int tps6591x_power_off(void)
 	int ret;
 	u8 tmp;
 
+	int wakeup_after_value = set_RTC_alarm_for_power_off_test(dev);
+	tps6591x = i2c_get_clientdata(tps6591x_i2c_client);
+
 	if (!tps6591x_i2c_client)
 		return -EINVAL;
 
 	dev = &tps6591x_i2c_client->dev;
-	int wakeup_after_value = set_RTC_alarm_for_power_off_test(dev);
-
-	tps6591x = i2c_get_clientdata(tps6591x_i2c_client);
 
 	tps6591x_read(dev, TPS6591X_INT_STS3, &tmp);
 	usb_in_at_power_off = !!(tmp & TPS6591X_GPIO4_RISING_EDGE);

@@ -52,7 +52,6 @@ struct keyreset_state {
 };
 
 static int restart_requested;
-static unsigned long restart_timeout;
 
 static volatile int power_off_led_requested = 0;
 static struct hrtimer led_timer;

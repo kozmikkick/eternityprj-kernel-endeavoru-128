@@ -1444,7 +1444,7 @@ static void synaptics_ts_finger_func(struct synaptics_ts_data *ts)
 	} else {
 		int finger_data[ts->finger_support][4];
 		int base = (ts->finger_support + 3) / 4;
-		uint8_t i, j, k;
+		uint8_t i, j;
 		uint16_t finger_press_changed = 0, finger_release_changed = 0, finger_pressed = 0;
 
 		ts->finger_count = 0;
@@ -2359,8 +2359,6 @@ err_init_failed:
 	if(ts->address_table != NULL)
 		kfree(ts->address_table);
 err_detect_failed:
-err_get_platform_data_fail:
-	kfree(ts);
 
 err_alloc_data_failed:
 err_check_functionality_failed:
@@ -2442,7 +2440,7 @@ static int synaptics_ts_suspend(struct i2c_client *client, pm_message_t mesg)
 	if (ret < 0)
 		i2c_syn_error_handler(ts, 0, "r:0", __func__);
 
-	data = data & (0x1<<7 - 1);
+	data = data & ((0x1<<7) - 1);
 
 	ret = i2c_syn_write_byte_data(client,
 			get_address_base(ts, 0x11, CONTROL_BASE) + 41, data);

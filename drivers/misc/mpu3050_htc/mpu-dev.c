@@ -757,9 +757,9 @@ static long mpu_ioctl(struct file *file,
 		break;
 	case MPU_SUSPEND:
 	{
-	        printk("[GYRO]MPU_SUSPEND start\n");
 		unsigned long sensors;
 		sensors = ~(mldl_cfg->requested_sensors);
+		printk("[GYRO]MPU_SUSPEND start\n");
 		retval = mpu3050_suspend(mldl_cfg,
 					client->adapter,
 					accel_adapter,
@@ -778,9 +778,9 @@ static long mpu_ioctl(struct file *file,
 	break;
 	case MPU_RESUME:
 	{
-	        printk("[GYRO]MPU_RESUME start\n");
 		unsigned long sensors;
 		sensors = mldl_cfg->requested_sensors;
+		printk("[GYRO]MPU_RESUME start\n");
 		retval = mpu3050_resume(mldl_cfg,
 					client->adapter,
 					accel_adapter,
@@ -870,7 +870,6 @@ static long mpu_ioctl(struct file *file,
 #ifdef CONFIG_HAS_EARLYSUSPEND
 void mpu3050_early_suspend(struct early_suspend *h)
 {
-  	printk("[GYRO]mpu3050_early_suspend start\n");
 	struct mpu_private_data *mpu = container_of(h,
 						    struct
 						    mpu_private_data,
@@ -879,6 +878,8 @@ void mpu3050_early_suspend(struct early_suspend *h)
 	struct i2c_adapter *accel_adapter;
 	struct i2c_adapter *compass_adapter;
 	struct i2c_adapter *pressure_adapter;
+
+	printk("[GYRO]mpu3050_early_suspend start\n");
 
 	accel_adapter = i2c_get_adapter(mldl_cfg->pdata->accel.adapt_num);
 	compass_adapter =
@@ -897,7 +898,6 @@ void mpu3050_early_suspend(struct early_suspend *h)
 
 void mpu3050_early_resume(struct early_suspend *h)
 {
-  	printk("[GYRO]mpu3050_later_resume start\n");
 	struct mpu_private_data *mpu = container_of(h,
 						    struct
 						    mpu_private_data,
@@ -906,6 +906,8 @@ void mpu3050_early_resume(struct early_suspend *h)
 	struct i2c_adapter *accel_adapter;
 	struct i2c_adapter *compass_adapter;
 	struct i2c_adapter *pressure_adapter;
+
+	printk("[GYRO]mpu3050_later_resume start\n");
 
 	accel_adapter = i2c_get_adapter(mldl_cfg->pdata->accel.adapt_num);
 	compass_adapter =
@@ -957,13 +959,14 @@ void mpu_shutdown(struct i2c_client *client)
 
 int mpu_suspend(struct i2c_client *client, pm_message_t mesg)
 {
-  	printk("[GYRO]mpu_suspend start\n");
 	struct mpu_private_data *mpu =
 	    (struct mpu_private_data *) i2c_get_clientdata(client);
 	struct mldl_cfg *mldl_cfg = &mpu->mldl_cfg;
 	struct i2c_adapter *accel_adapter;
 	struct i2c_adapter *compass_adapter;
 	struct i2c_adapter *pressure_adapter;
+
+	printk("[GYRO]mpu_suspend start\n");
 
 	accel_adapter = i2c_get_adapter(mldl_cfg->pdata->accel.adapt_num);
 	compass_adapter =
@@ -999,13 +1002,14 @@ int mpu_suspend(struct i2c_client *client, pm_message_t mesg)
 
 int mpu_resume(struct i2c_client *client)
 {
-  	printk("[GYRO]mpu_resume start\n");
 	struct mpu_private_data *mpu =
 	    (struct mpu_private_data *) i2c_get_clientdata(client);
 	struct mldl_cfg *mldl_cfg = &mpu->mldl_cfg;
 	struct i2c_adapter *accel_adapter;
 	struct i2c_adapter *compass_adapter;
 	struct i2c_adapter *pressure_adapter;
+
+	printk("[GYRO]mpu_resume start\n");
 
     if(mldl_cfg->pdata->microP_1v8) // only for vertex XC
     {
@@ -1123,7 +1127,6 @@ static struct regulator *srio_1v8_en ;
 int mpu3050_probe(struct i2c_client *client,
 		  const struct i2c_device_id *devid)
 {
-	printk("[GYRO]mpu3050_probe start");
 	struct mpu3050_platform_data *pdata;
 	struct mpu_private_data *mpu;
 	struct mldl_cfg *mldl_cfg;
@@ -1132,6 +1135,7 @@ int mpu3050_probe(struct i2c_client *client,
 	struct i2c_adapter *compass_adapter = NULL;
 	struct i2c_adapter *pressure_adapter = NULL;
 	
+	printk("[GYRO]mpu3050_probe start");
 
 	dev_dbg(&client->adapter->dev, "%s\n", __func__);
 
