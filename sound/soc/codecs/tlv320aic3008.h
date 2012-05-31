@@ -604,6 +604,4 @@ struct aic3008_priv {
 	struct snd_pcm_substream *slave_substream;
 };
 
-static int aic3008_config(CODEC_SPI_CMD *cmds, int size);
-
 #endif /* _AIC3008_H */

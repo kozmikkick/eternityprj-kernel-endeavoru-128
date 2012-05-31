@@ -552,7 +552,6 @@ struct snd_soc_codec {
 	struct snd_soc_dapm_context dapm;
 
 	/* htc */
-	enum snd_soc_bias_level;
 	bool is_call_mode;
 	int pla_device;
 	int capture_deviece;

@@ -1005,7 +1005,6 @@ err_gpio_config_failed:
 static void tegra_uart_hw_deinit(struct tegra_uart_port *t)
 {
 	unsigned long flags;
-	int retry = 0;
 	unsigned long char_time = DIV_ROUND_UP(10000000, t->baud);
 	unsigned long fifo_empty_time = t->uport.fifosize * char_time;
 	unsigned long wait_time;
@@ -1027,7 +1026,7 @@ static void tegra_uart_hw_deinit(struct tegra_uart_port *t)
 
 		/* Wait for Tx fifo to be empty */
 		while ((lsr & UART_LSR_TEMT) != UART_LSR_TEMT) {
-			wait_time = min(fifo_empty_time, 100);
+			wait_time = min(fifo_empty_time, (unsigned long) 100);
 			udelay(wait_time);
 			fifo_empty_time -= wait_time;
 			if (!fifo_empty_time) {
@@ -1207,8 +1206,6 @@ static int tegra_uart_init_rx_dma_buffer(struct tegra_uart_port *t)
 
 static int tegra_uart_init_rx_dma(struct tegra_uart_port *t)
 {
-	dma_addr_t rx_dma_phys;
-
 	t->rx_dma = tegra_dma_allocate_channel(TEGRA_DMA_MODE_CONTINUOUS,
 					"uart_rx_%d", t->uport.line);
 	if (!t->rx_dma) {
@@ -2002,12 +1999,13 @@ static int tegra_uart_suspend(struct platform_device *pdev, pm_message_t state)
 		int bt_en_value = gpio_get_value(t->bt.bt_en);
 		if (bt_en_value) {
 			int bt_cts_irq = gpio_to_irq(t->bt.bt_cts_irq);
+			int bt_cts_err = irq_set_irq_wake(bt_cts_irq, 1);
+			
 			dev_dbg(t->uport.dev,
 				"bt_cts_irq = %d\n",
 				bt_cts_irq);
 
 			irq_set_irq_type(bt_cts_irq, IRQ_TYPE_LEVEL_HIGH);
-			int bt_cts_err = irq_set_irq_wake(bt_cts_irq, 1);
 			if (bt_cts_err < 0) {
 				dev_err(t->uport.dev,
 					"%s :Failed to enable BT_CTS wake, err=%d\n",
@@ -2060,11 +2058,11 @@ static int tegra_uart_resume(struct platform_device *pdev)
 			int bt_en_value = gpio_get_value(t->bt.bt_en);
 			if (bt_en_value) {
 				int bt_cts_irq = gpio_to_irq(t->bt.bt_cts_irq);
+				int bt_cts_err = irq_set_irq_wake(bt_cts_irq, 0);
 				dev_dbg(t->uport.dev,
 					"bt_cts_irq = %d\n",
 					bt_cts_irq);
 
-				int bt_cts_err = irq_set_irq_wake(bt_cts_irq, 0);
 				if (bt_cts_err < 0) {
 					dev_err(t->uport.dev,
 						"%s :Failed to disable BT_CTS wake, err=%d\n",

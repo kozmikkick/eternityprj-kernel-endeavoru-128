@@ -1711,10 +1711,8 @@ void setbkl(struct tegra_dc *dc,u16 brightness)
 	int err = 0;
 	u16 data = 0x51;
 	u8 *pdata = NULL;
-	int val = 0;
 
 	struct tegra_dc_dsi_data *dsi= tegra_dc_get_outdata(dc);
-	u32 frame_period = DIV_ROUND_UP(S_TO_MS(1), dsi->info.refresh_rate);
 
 	mutex_lock(&dsi->lock);
 	if(!dsi->enabled)

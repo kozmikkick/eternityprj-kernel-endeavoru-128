@@ -423,10 +423,6 @@ fail:
 }
 
 #ifdef CONFIG_TEGRA_HDMI_MHL_SUPERDEMO
-static struct st_demotv_patterns demotv_list[] = {
-	{"OTS"}, /*{"VSC"},*/
-};
-
 static struct st_demotv_data_v0 demotv_data;
 /*static struct st_demotv_data_v1 demotv_data_sample =
 	{0x01, 0xFE, 0xABCD, 0x0010, 0x001F, 0x0002, 0x0000, 0xA8};*/

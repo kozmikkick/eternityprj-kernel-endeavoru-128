@@ -161,8 +161,10 @@ static inline unsigned long tegra_dc_readl(struct tegra_dc *dc,
 	//BUG_ON(!nvhost_module_powered(&dc->ndev->host->mod));
 	if (nvhost_module_powered(&dc->ndev->host->mod))
 		return readl(dc->base + reg * 4);
-	else
+	else {
 		dump_stack();
+		return 0;
+	}
 }
 
 static inline void tegra_dc_writel(struct tegra_dc *dc, unsigned long val,
