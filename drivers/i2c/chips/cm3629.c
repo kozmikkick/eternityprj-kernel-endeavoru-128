@@ -534,8 +534,8 @@ static unsigned long period_jiffies = 0.35 * HZ;
     3. enable_irq and unlock need to be set in report_p_input when prestatus == curstatus*/
 static void report_p_input(int nowstatus)
 {
-	mutex_lock(&ps_report_input_mutex);
 	struct cm3629_info *lpi = lp_info;
+	mutex_lock(&ps_report_input_mutex);
 	
 	if(laststatus != nowstatus) {
 		D("[PS][cm3629]  %s: report proximity status : %s\n", __func__, nowstatus ? "FAR" : "NEAR");
@@ -551,7 +551,7 @@ static void report_p_input(int nowstatus)
 static void report_debounce_do_work(struct work_struct *w)
 {
 	struct ps_debounce_struct *ps_debounce = container_of(w,
-				struct ps_debounce_struct, report_debounce_work);
+				struct ps_debounce_struct, report_debounce_work.work);
 	int nowstatus = ps_debounce->status_val;
 	report_p_input(nowstatus);
 }

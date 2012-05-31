@@ -671,7 +671,6 @@ int EWTZMU2_Report_Value(void)
 {
 	struct ewtzmu_i2c_data *data = i2c_get_clientdata(ewtzmu_i2c_client);
 	int report_enable = 0;
-	static int report_times;
 	static int report_gyro_times;
 	static int report_pitch_times;
 	static int report_rota_times;

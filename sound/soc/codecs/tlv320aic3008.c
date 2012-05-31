@@ -33,7 +33,6 @@
 
 #include "tlv320aic3008.h"
 #include "tlv320aic3008-reg.h"
-#include "tlv320aic3008-tonegen.h"
 #include <linux/spi-tegra.h>
 #include <../arch/arm/mach-tegra/htc_audio_power.h>
 #include <mach/board_htc.h>
@@ -92,8 +91,6 @@ struct aic3008_clk_state {
 	struct wake_lock idlelock;
 	struct wake_lock wakelock;
 };
-
-static struct aic3008_clk_state codec_clk;
 
 static const struct snd_kcontrol_new aic3008_snd_controls[] = { };
 static const struct snd_soc_dapm_widget aic3008_dapm_widgets[] = { };
@@ -230,81 +227,6 @@ static int32_t spi_write_table_parsepage(CODEC_SPI_CMD *cmds, int num)
 	}
 
 	return status;
-}
-
-/* write a register then read a register, compare them ! */
-static int32_t spi_write_read_list(CODEC_SPI_CMD *cmds, int num)
-{
-	int i;
-	int rc;
-	unsigned char write_buffer[2];
-	unsigned char read_result[2] = { 0, 0 };
-
-	if (!codec_spi_dev)
-		return 0;
-
-	codec_spi_dev->bits_per_word = 16;
-	for (i = 0; i < num; i++) {
-		/*if writing page, then don't read its value */
-		switch (cmds[i].act) {
-		case 'w':
-			write_buffer[1] = cmds[i].reg << 1;
-			write_buffer[0] = cmds[i].data;
-			if (cmds[i].reg == 0x00 || cmds[i].reg == 0x7F) {
-				rc = spi_write(codec_spi_dev, write_buffer, sizeof(write_buffer));
-				if (rc < 0)
-					return rc;
-				if(cmds[i].reg == 0x00)
-				{
-					AUD_DBG("------ write page: 0x%02X ------\n", cmds[i].data);
-				}
-				else if(cmds[i].reg == 0x7F)
-				{
-					AUD_DBG("------ write book: 0x%02X ------\n", cmds[i].data);
-				}
-			} else {
-				rc = spi_write_then_read(codec_spi_dev, write_buffer, 2, read_result, 2);
-				if (rc < 0)
-					return rc;
-
-				if (read_result[0] != cmds[i].data)
-					AUD_INFO("incorrect value,reg 0x%02x, write 0x%02x, read 0x%02x",
-						cmds[i].reg, cmds[i].data, read_result[0]);
-			}
-			break;
-		case 'd':
-			msleep(cmds[i].data);
-			break;
-		default:
-			break;
-		}
-	}
-	return 0;
-}
-
-/*
- * This function arranges the address and data bytes in a large command list
- * and use kernel SPI API,
- * i.e. use single spi_write() to write spi commands to the audio codec.
- */
-static int32_t spi_write_list(CODEC_SPI_CMD *cmds, int num)
-{
-	int i;
-	int rc;
-	unsigned char buffer[2];
-
-	if (!codec_spi_dev)
-		return 0;
-
-	codec_spi_dev->bits_per_word = 16;
-	for (i = 0; i < num; i++) {
-		buffer[1] = cmds[i].reg << 1;
-		buffer[0] = cmds[i].data;
-		rc = spi_write(codec_spi_dev, buffer, sizeof(buffer));
-		if (rc < 0)
-			return rc;
-	}
-	return 0;
 }
 
 /*
@@ -551,97 +473,6 @@ int aic3008_setMode(int cmd, int idx, int is_call_mode)
 }
 EXPORT_SYMBOL_GPL(aic3008_setMode);
 
-void aic3008_set_mic_bias(int on)
-{
-	if (on) {
-		AUD_INFO("[PWR] enalbe_AUD_HPMIC_BIAS\n");
-		if (!aic3008_power_ctl->isPowerOn) {
-			AUD_INFO("[PWR] codec was power off wakeup first\n");
-			aic3008_powerup();
-			aic3008_config(ENABLE_AUD_HPMIC_EXT, ARRAY_SIZE(ENABLE_AUD_HPMIC_EXT));
-			aic3008_powerdown();
-		} else aic3008_config(ENABLE_AUD_HPMIC_EXT, ARRAY_SIZE(ENABLE_AUD_HPMIC_EXT));
-	} else {
-		AUD_INFO("[PWR] disalbe_AUD_HPMIC_BIAS\n");
-		if (aic3008_tx_mode == CALL_UPLINK_IMIC_SPEAKER ||
-				aic3008_tx_mode == CALL_UPLINK_IMIC_SPEAKER_DUALMIC ||
-				aic3008_tx_mode == VOIP_UPLINK_IMIC_SPEAKER ||
-				aic3008_tx_mode == CALL_UPLINK_IMIC_SPEAKER_DUALMIC_WB
-				)
-		{
-			if (!aic3008_power_ctl->isPowerOn) {
-				AUD_INFO("[PWR] codec was power off wakeup first\n");
-				aic3008_powerup();
-				aic3008_config(DISABLE_AUD_HPMIC_EXT_ONLY, ARRAY_SIZE(DISABLE_AUD_HPMIC_EXT_ONLY));
-				aic3008_powerdown();
-			} else aic3008_config(DISABLE_AUD_HPMIC_EXT_ONLY, ARRAY_SIZE(DISABLE_AUD_HPMIC_EXT_ONLY));
-		}
-		else
-		{
-			if (!aic3008_power_ctl->isPowerOn) {
-				AUD_INFO("[PWR] codec was power off wakeup first\n");
-				aic3008_powerup();
-				aic3008_config(DISABLE_AUD_HPMIC_EXT, ARRAY_SIZE(DISABLE_AUD_HPMIC_EXT));
-				aic3008_powerdown();
-			} else aic3008_config(DISABLE_AUD_HPMIC_EXT, ARRAY_SIZE(DISABLE_AUD_HPMIC_EXT));
-		}
-	}
-}
-EXPORT_SYMBOL_GPL(aic3008_set_mic_bias);
-
-/*****************************************************************************/
-/* other Audio Codec controls                                                */
-/*****************************************************************************/
-static void aic3008_sw_reset(struct snd_soc_codec *codec)
-{
-	AUD_DBG("aic3008 soft reset\n");
-	/*  SW RESET on AIC3008. */
-	aic3008_config(CODEC_SW_RESET, ARRAY_SIZE(CODEC_SW_RESET));
-}
-
-static int aic3008_volatile_register(unsigned int reg)
-{
-	/* check which registers are volatile on the T30S side */
-	return 0;
-}
-
-void aic3008_register_ctl_ops(struct aic3008_ctl_ops *ops)
-{
-	ctl_ops = ops;
-}
-
-/* call by SPI probe to create space for the SPI commands */
-static CODEC_SPI_CMD **init_2d_array(int row_sz, int col_sz)
-{
-	CODEC_SPI_CMD *table = NULL;
-	CODEC_SPI_CMD **table_ptr = NULL;
-	int i = 0;
-
-	table_ptr = kzalloc(row_sz * sizeof(CODEC_SPI_CMD *), GFP_KERNEL);
-	table = kzalloc(row_sz * col_sz * sizeof(CODEC_SPI_CMD), GFP_KERNEL);
-	if (table_ptr == NULL || table == NULL) {
-		AUD_ERR("%s: out of memory\n", __func__);
-		kfree(table);
-		kfree(table_ptr);
-	} else
-		for (i = 0; i < row_sz; i++)
-			table_ptr[i] = (CODEC_SPI_CMD *) table + i * col_sz;
-
-	return table_ptr;
-}
-
-static void spi_aic3008_prevent_sleep(void)
-{
-	wake_lock(&codec_clk.wakelock);
-	wake_lock(&codec_clk.idlelock);
-}
-
-static void spi_aic3008_allow_sleep(void)
-{
-	wake_unlock(&codec_clk.idlelock);
-	wake_unlock(&codec_clk.wakelock);
-}
-
 /* Access function pointed by ctl_ops to call control operations */
 static int aic3008_config(CODEC_SPI_CMD *cmds, int size)
 {
@@ -699,6 +530,79 @@ static int aic3008_config(CODEC_SPI_CMD *cmds, int size)
 		AUD_DBG("Here is bulk mode\n");
 	}
 	return 0;
+}
+
+void aic3008_set_mic_bias(int on)
+{
+	if (on) {
+		AUD_INFO("[PWR] enalbe_AUD_HPMIC_BIAS\n");
+		if (!aic3008_power_ctl->isPowerOn) {
+			AUD_INFO("[PWR] codec was power off wakeup first\n");
+			aic3008_powerup();
+			aic3008_config(ENABLE_AUD_HPMIC_EXT, ARRAY_SIZE(ENABLE_AUD_HPMIC_EXT));
+			aic3008_powerdown();
+		} else aic3008_config(ENABLE_AUD_HPMIC_EXT, ARRAY_SIZE(ENABLE_AUD_HPMIC_EXT));
+	} else {
+		AUD_INFO("[PWR] disalbe_AUD_HPMIC_BIAS\n");
+		if (aic3008_tx_mode == CALL_UPLINK_IMIC_SPEAKER ||
+				aic3008_tx_mode == CALL_UPLINK_IMIC_SPEAKER_DUALMIC ||
+				aic3008_tx_mode == VOIP_UPLINK_IMIC_SPEAKER ||
+				aic3008_tx_mode == CALL_UPLINK_IMIC_SPEAKER_DUALMIC_WB
+				)
+		{
+			if (!aic3008_power_ctl->isPowerOn) {
+				AUD_INFO("[PWR] codec was power off wakeup first\n");
+				aic3008_powerup();
+				aic3008_config(DISABLE_AUD_HPMIC_EXT_ONLY, ARRAY_SIZE(DISABLE_AUD_HPMIC_EXT_ONLY));
+				aic3008_powerdown();
+			} else aic3008_config(DISABLE_AUD_HPMIC_EXT_ONLY, ARRAY_SIZE(DISABLE_AUD_HPMIC_EXT_ONLY));
+		}
+		else
+		{
+			if (!aic3008_power_ctl->isPowerOn) {
+				AUD_INFO("[PWR] codec was power off wakeup first\n");
+				aic3008_powerup();
+				aic3008_config(DISABLE_AUD_HPMIC_EXT, ARRAY_SIZE(DISABLE_AUD_HPMIC_EXT));
+				aic3008_powerdown();
+			} else aic3008_config(DISABLE_AUD_HPMIC_EXT, ARRAY_SIZE(DISABLE_AUD_HPMIC_EXT));
+		}
+	}
+}
+EXPORT_SYMBOL_GPL(aic3008_set_mic_bias);
+
+/*****************************************************************************/
+/* other Audio Codec controls                                                */
+/*****************************************************************************/
+static void aic3008_sw_reset(struct snd_soc_codec *codec)
+{
+	AUD_DBG("aic3008 soft reset\n");
+	/*  SW RESET on AIC3008. */
+	aic3008_config(CODEC_SW_RESET, ARRAY_SIZE(CODEC_SW_RESET));
+}
+
+void aic3008_register_ctl_ops(struct aic3008_ctl_ops *ops)
+{
+	ctl_ops = ops;
+}
+
+/* call by SPI probe to create space for the SPI commands */
+static CODEC_SPI_CMD **init_2d_array(int row_sz, int col_sz)
+{
+	CODEC_SPI_CMD *table = NULL;
+	CODEC_SPI_CMD **table_ptr = NULL;
+	int i = 0;
+
+	table_ptr = kzalloc(row_sz * sizeof(CODEC_SPI_CMD *), GFP_KERNEL);
+	table = kzalloc(row_sz * col_sz * sizeof(CODEC_SPI_CMD), GFP_KERNEL);
+	if (table_ptr == NULL || table == NULL) {
+		AUD_ERR("%s: out of memory\n", __func__);
+		kfree(table);
+		kfree(table_ptr);
+	} else
+		for (i = 0; i < row_sz; i++)
+			table_ptr[i] = (CODEC_SPI_CMD *) table + i * col_sz;
+
+	return table_ptr;
 }
 
 static int aic3008_config_ex(CODEC_SPI_CMD *cmds, int size)
@@ -994,7 +898,7 @@ static int aic3008_set_config(int config_tbl, int idx, int en)
 		if(!aic3008_power_ctl->isPowerOn)
 		{
 			AUD_ERR("[TX] AIC3008 is power off now, can't do IO CONFIG TX = %d, please check this condition!!", idx);
-			AUD_ERR("[TX] Since IO CONFIG TX = %d can't be done, it maybe no sound on device");
+			AUD_ERR("[TX] Since IO CONFIG TX = %d can't be done, it maybe no sound on device", idx);
 			break;
 		}
 		if (en) {
@@ -1019,7 +923,7 @@ static int aic3008_set_config(int config_tbl, int idx, int en)
 		if(!aic3008_power_ctl->isPowerOn)
 		{
 			AUD_ERR("[RX] AIC3008 is power off now, can't do IO CONFIG RX = %d, please check this condition!!", idx);
-			AUD_ERR("[RX] Since IO CONFIG RX = %d can't be done, it maybe no sound on device");
+			AUD_ERR("[RX] Since IO CONFIG RX = %d can't be done, it maybe no sound on device", idx);
 			break;
 		}
 		if(!first_boot_path && idx == 10)
@@ -1542,7 +1446,6 @@ static int aic3008_dai_startup(struct snd_pcm_substream *substream,
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_codec *codec = rtd->codec;
 	struct aic3008_priv *aic3008 = snd_soc_codec_get_drvdata(codec);
-	struct spi_device *spi = codec->control_data;
 	struct snd_pcm_runtime *master_runtime;
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
@@ -1671,16 +1574,17 @@ struct snd_soc_dai_driver aic3008_dai = {
 /*****************************************************************************/
 static int __devinit aic3008_probe(struct snd_soc_codec *codec)
 {
-	AUD_INFO("aic3008_probe() start... aic3008_codec:%p", codec);
 	int ret = 0;
 
 	struct aic3008_priv *aic3008 = snd_soc_codec_get_drvdata(codec);
 	aic3008->codec = codec;
 	aic3008->codec->control_data = (void *)codec_spi_dev;
 
+	AUD_INFO("aic3008_probe() start... aic3008_codec:%p", codec);
+
 	if (!aic3008) {
 		AUD_ERR("%s: Codec not registered, SPI device not yet probed\n",
-				&aic3008->codec->name);
+				(char *)&aic3008->codec->name);
 		return -ENODEV;
 	}
 	aic3008_sw_reset(codec); // local call to reset codec
@@ -1725,7 +1629,6 @@ static struct snd_soc_codec_driver soc_codec_dev_aic3008 __refdata = {
 	.suspend =	aic3008_suspend,
 	.resume =	aic3008_resume,
 	.set_bias_level = aic3008_set_bias_level,
-	.volatile_register = aic3008_volatile_register,
 };
 
 /*****************************************************************************/
@@ -1733,12 +1636,14 @@ static struct snd_soc_codec_driver soc_codec_dev_aic3008 __refdata = {
 /*****************************************************************************/
 static int spi_aic3008_probe(struct spi_device *spi_aic3008)
 {
+	int ret = 0;
+	struct aic3008_priv *aic3008 = kzalloc(sizeof(struct aic3008_priv), GFP_KERNEL);
+	codec_spi_dev = spi_aic3008; /* assign global pointer to SPI device. */
+	
+	
 	AUD_DBG("spi device: %s, addr = 0x%p. YAY! ***** Start to Test *****\n",
 		spi_aic3008->modalias, spi_aic3008);
-	int ret = 0;
-	codec_spi_dev = spi_aic3008; /* assign global pointer to SPI device. */
-
-	struct aic3008_priv *aic3008 = kzalloc(sizeof(struct aic3008_priv), GFP_KERNEL);;
+		
 	if (aic3008 == NULL)
 		return -ENOMEM;
 	
