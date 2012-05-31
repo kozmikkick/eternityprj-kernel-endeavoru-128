@@ -307,6 +307,8 @@ static int mmc_read_ext_csd(struct mmc_card *card)
 			ext_csd[EXT_CSD_ERASE_TIMEOUT_MULT];
 		card->ext_csd.hc_erase_size =
 			ext_csd[EXT_CSD_HC_ERASE_GRP_SIZE] << 10;
+
+		card->ext_csd.rel_sectors = ext_csd[EXT_CSD_REL_WR_SEC_C];
 	}
 
 	if (card->ext_csd.rev >= 4) {
@@ -380,6 +382,9 @@ static int mmc_read_ext_csd(struct mmc_card *card)
 		if (ext_csd[EXT_CSD_BKOPS_SUPPORT] & 0x1)
 			card->ext_csd.bk_ops = 1;
 	}
+
+	if (card->ext_csd.rev >= 5)
+		card->ext_csd.rel_param = ext_csd[EXT_CSD_WR_REL_PARAM];
 
 	if (ext_csd[EXT_CSD_ERASED_MEM_CONT])
 		card->erased_byte = 0xFF;
