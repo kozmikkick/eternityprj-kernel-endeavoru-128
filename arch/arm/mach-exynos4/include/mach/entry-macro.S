@@ -82,3 +82,8 @@
 		streq	\irqstat, [\base, #GIC_CPU_EOI]
 		cmp	\tmp, #0
 		.endm
+
+		/* As above, this assumes that irqstat and base are preserved.. */
+
+		.macro test_for_ltirq, irqnr, irqstat, base, tmp
+		.endm
