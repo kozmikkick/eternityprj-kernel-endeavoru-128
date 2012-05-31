@@ -199,7 +199,7 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 		return -EINVAL;
 
 	mask = 0xff << shift;
-	bit = 1 << (cpu + shift);
+	bit = 1 << (cpu_logical_map(cpu) + shift);
 
 	spin_lock(&irq_controller_lock);
 	d->node = cpu;
@@ -287,9 +287,15 @@ static void __init gic_dist_init(struct gic_chip_data *gic,
 	unsigned int irq_start)
 {
 	unsigned int gic_irqs, irq_limit, i;
+	u32 cpumask;
 	void __iomem *base = gic->dist_base;
-	u32 cpumask = 1 << smp_processor_id();
+	u32 cpu = 0;
 
+#ifdef CONFIG_SMP
+	cpu = cpu_logical_map(smp_processor_id());
+#endif
+
+	cpumask = 1 << cpu;
 	cpumask |= cpumask << 8;
 	cpumask |= cpumask << 16;
 
@@ -601,7 +607,12 @@ void __cpuinit gic_enable_ppi(unsigned int irq)
 #ifdef CONFIG_SMP
 void gic_raise_softirq(const struct cpumask *mask, unsigned int irq)
 {
-	unsigned long map = *cpus_addr(*mask);
+	int cpu;
+	unsigned long map = 0;
+
+	/* Convert our logical CPU mask into a physical one. */
+	for_each_cpu(cpu, mask)
+		map |= 1 << cpu_logical_map(cpu);
 
 	/* this always happens on GIC0 */
 	writel(map << 16 | irq, gic_data[0].dist_base + GIC_DIST_SOFTINT);
