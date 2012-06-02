@@ -3,6 +3,9 @@
 
 /* see Documentation/gpio.txt */
 
+/* Gpio pin is open drain */
+#define GPIOF_OPEN_DRAIN	(1 << 2)
+
 #ifdef CONFIG_GENERIC_GPIO
 #include <asm/gpio.h>
 
