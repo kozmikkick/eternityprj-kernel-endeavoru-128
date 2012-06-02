@@ -44,7 +44,7 @@
 enum tegra_wdt_status {
 	WDT_DISABLED = 1 << 0,
 	WDT_ENABLED = 1 << 1,
-	WDT_IOCTL_ENABBLED_AT_PROBE = 1 << 2,
+	WDT_ENABLED_AT_PROBE = 1 << 2,
 };
 
 struct tegra_wdt {
