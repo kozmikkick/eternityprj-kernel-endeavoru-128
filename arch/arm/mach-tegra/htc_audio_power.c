@@ -13,12 +13,11 @@
 #define PWR_DEVICE_TAG LOG_TAG
 
 #undef AUDIO_DEBUG
-#define AUDIO_DEBUG 0
 
 #define AUD_ERR(fmt, ...) pr_tag_err(LOG_TAG, fmt, ##__VA_ARGS__)
 #define AUD_INFO(fmt, ...) pr_tag_info(LOG_TAG, fmt, ##__VA_ARGS__)
 
-#if AUDIO_DEBUG
+#ifdef AUDIO_DEBUG
 #define AUD_DBG(fmt, ...) pr_tag_info(LOG_TAG, fmt, ##__VA_ARGS__)
 #else
 #define AUD_DBG(fmt, ...) do { } while (0)
@@ -51,19 +50,24 @@ void power_config(const char *name, int pin, int method)
 		if (ret < 0) {
 			AUD_ERR("[PWR] couldn't enable regulator %s, pin = %d, ret = %d.\n", name, pin, ret);
 		}
-
+#ifdef AUDIO_DEBUG 
 		AUD_INFO("[PWR] ***** regulator %s %d enable *****\n", name, pin);
+#endif
 		break;
 	case GPIO_OUTPUT:
 		gpio_direction_output(pin, 1);
 		tegra_gpio_enable(pin);
 		gpio_set_value(pin, 1);
+#ifdef AUDIO_DEBUG
 		AUD_INFO("[PWR] ***** gpio %s %d output enable *****\n", name, pin);
+#endif
 		break;
 	case GPIO_INPUT:
 		gpio_direction_input(pin);
 		tegra_gpio_enable(pin);
+#ifdef AUDIO_DEBUG
 		AUD_INFO("[PWR] ***** gpio %s %d input enable *****\n", name, pin);
+#endif
 		break;
 	case INIT_OUTPUT_LOW:
 		gpio_request(pin, name);
@@ -109,12 +113,15 @@ void power_deconfig(const char *name, int pin, int method)
 		if (ret < 0) {
 			AUD_ERR("[PWR] couldn't enable regulator %s %d, ret = %d.\n", name, pin, ret);
 		}
-
+#ifdef AUDIO_DEBUG
 		AUD_INFO("[PWR] ***** regulator %s %d disable *****\n", name, pin);
+#endif
 		break;
 	case GPIO_OUTPUT:
 		gpio_set_value(pin, 0);
+#ifdef AUDIO_DEBUG
 		AUD_INFO("[PWR] ***** gpio %s %d disable *****\n", name, pin);
+#endif
 		break;
 	default:
 		AUD_ERR("[PWR] ***** power_deconfig nothing *****\n");

@@ -53,12 +53,11 @@
 #define PWR_DEVICE_TAG LOG_TAG
 
 #undef AUDIO_DEBUG
-#define AUDIO_DEBUG 0
 
 #define AUD_ERR(fmt, ...) pr_tag_err(LOG_TAG, fmt, ##__VA_ARGS__);
 #define AUD_INFO(fmt, ...) pr_tag_info(LOG_TAG, fmt, ##__VA_ARGS__);
 
-#if AUDIO_DEBUG
+#ifdef AUDIO_DEBUG
 #define AUD_DBG(fmt, ...) pr_tag_info(LOG_TAG, fmt, ##__VA_ARGS__);
 #else
 #define AUD_DBG(fmt, ...) do { } while (0)
@@ -627,7 +626,9 @@ static __devinit int tegra_aic3008_driver_probe(struct platform_device *pdev)
 	struct tegra_aic3008 *machine;
 	int ret;
 
+#ifdef AUDIO_DEBUG
 	AUD_INFO("starting tegra_aic3008_driver_probe...\n");
+#endif
 
 	machine = kzalloc(sizeof(struct tegra_aic3008), GFP_KERNEL);
 	if (!machine) {

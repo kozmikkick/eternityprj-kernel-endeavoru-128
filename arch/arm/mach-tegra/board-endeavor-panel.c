@@ -99,9 +99,6 @@ static struct gpio enterprise_gpios[] = {
 };
 #endif
 
-//Riemer 11-may-2012: Commented, as the result is not used.
-//static atomic_t sd_brightness = ATOMIC_INIT(255);
-
 /*global varible for work around*/
 static bool g_display_on = true;
 
@@ -146,7 +143,9 @@ static unsigned char shrink_pwm(int val)
 	shrink_br = def_pwm +
 	(val-ORIG_PWM_DEF)*(max_pwm-def_pwm)/(ORIG_PWM_MAX-ORIG_PWM_DEF);
 
+#ifdef DEBUGENABLED
 	pr_info("brightness orig = %d, transformed=%d\n", val, shrink_br);
+#endif
 
 	return shrink_br;
 }
@@ -154,9 +153,6 @@ static unsigned char shrink_pwm(int val)
 
 static int enterprise_backlight_notify(struct device *unused, int brightness)
 {
-	//Riemer 11-may-2012: Commented, as the result is not used.
-	//int cur_sd_brightness = atomic_read(&sd_brightness);
-
 	if (brightness > 0)
 		brightness = shrink_pwm(brightness);
 

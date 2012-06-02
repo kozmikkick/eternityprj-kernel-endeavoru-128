@@ -192,6 +192,10 @@ static void acm_write_bulk(struct urb *urb);
 static const struct tty_port_operations acm_port_ops = {
 };
 
+// EternityProject 02/06/2012: START
+#undef CDCACM_DEBUG
+// END
+
 //#ifdef VERBOSE_DEBUG
 //#define verbose	1
 //#else
@@ -920,9 +924,9 @@ static int acm_tty_open(struct tty_struct *tty, struct file *filp)
 	else
 		rv = 0;
 
-#if 1 //HTC_CSP_START
+#ifdef CDCACM_DEBUG
 	printk(MODULE_NAME":%s ttyACM%d +\n",__FUNCTION__,acm->minor);
-#endif //HTC_CSP_END
+#endif
 
 	/* Current acm implementation does not have acm->disconnected
 	   feature to know whether acm is probed. Adding a check to
@@ -1034,9 +1038,9 @@ static int acm_tty_chars_in_buffer(struct tty_struct *tty);
 static void acm_port_down(struct acm *acm)
 {
 	int i, nr = acm->rx_buflimit;
-#if 1 //HTC_CSP_START
+#ifdef CDCACM_DEBUG
 	printk(MODULE_NAME":%s ttyACM%d +\n",__FUNCTION__,acm->minor);
-#endif //HTC_CSP_END
+#endif
 	//mutex_lock(&open_mutex);
 	if (acm->dev) {
 		reflog("[ref] + %s(%d) %d\n", __func__, __LINE__, ++autopm_refcnt);
@@ -1054,9 +1058,9 @@ static void acm_port_down(struct acm *acm)
 		usb_autopm_put_interface(acm->control);
 	}
 	//mutex_unlock(&open_mutex);
-#if 1 //HTC_CSP_START
+#ifdef CDCACM_DEBUG
 	printk(MODULE_NAME":%s ttyACM%d -\n",__FUNCTION__,acm->minor);
-#endif //HTC_CSP_END
+#ifdef CDCACM_DEBUG
 }
 
 static void acm_tty_hangup(struct tty_struct *tty)
@@ -1077,15 +1081,15 @@ static void acm_tty_hangup(struct tty_struct *tty)
 	}
 
 
-#if 1 //HTC_CSP_START
+#ifdef CDCACM_DEBUG
 			printk(MODULE_NAME":%s ttyACM%d +\n",__FUNCTION__,acm->minor);
-#endif //HTC_CSP_END
+#endif
 
 	tty_port_hangup(&acm->port);
 	acm_port_down(acm);
-#if 1 //HTC_CSP_START
+#ifdef CDCACM_DEBUG
 		printk(MODULE_NAME":%s ttyACM%d -\n",__FUNCTION__,acm->minor);
-#endif //HTC_CSP_END
+#ifdef CDCACM_DEBUG
 
 out:
 	mutex_unlock(&open_mutex);
@@ -1106,9 +1110,9 @@ static void acm_tty_close(struct tty_struct *tty, struct file *filp)
 		pr_err("%s: !acm\n", __func__);
 		return;
 		}
-#if 1 //HTC_CSP_START
+#ifdef CDCACM_DEBUG
 	printk(MODULE_NAME":%s ttyACM%d +\n",__FUNCTION__,acm->minor);
-#endif //HTC_CSP_END	
+#ifdef CDCACM_DEBUG
 	mutex_lock(&open_mutex);
 	if (tty_port_close_start(&acm->port, tty, filp) == 0) {
 		if (!acm->dev) {
@@ -1121,18 +1125,13 @@ static void acm_tty_close(struct tty_struct *tty, struct file *filp)
 		return;
 	}
 
-	/* HTC: delete timer, support FLASHLESS first */
-/*
-	if (acm->minor == 0 && (mach_ble_flashless || is_mach_edge))
-		del_timer_sync(&acm_timer);
-*/
 	acm_port_down(acm);
 	tty_port_close_end(&acm->port, tty);
 	tty_port_tty_set(&acm->port, NULL);
 	mutex_unlock(&open_mutex);
-#if 1 //HTC_CSP_START
+#ifdef CDCACM_DEBUG
 	printk(MODULE_NAME":%s ttyACM%d -\n",__FUNCTION__,acm->minor);
-#endif //HTC_CSP_END
+#endif
 }
 
 static int acm_tty_write(struct tty_struct *tty,
@@ -1234,26 +1233,26 @@ static int acm_tty_chars_in_buffer(struct tty_struct *tty)
 static void acm_tty_throttle(struct tty_struct *tty)
 {
 	struct acm *acm = tty->driver_data;
-#if 1 //HTC_CSP_START
+#ifdef CDCACM_DEBUG
 	printk(MODULE_NAME":%s ttyACM%d +\n",__FUNCTION__,acm->minor);
-#endif //HTC_CSP_END
+#ifdef CDCACM_DEBUG
 	if (!ACM_READY(acm))
 		return;
 	spin_lock_bh(&acm->throttle_lock);
 	acm->throttle = 1;
 	spin_unlock_bh(&acm->throttle_lock);
-#if 1 //HTC_CSP_START
+#ifdef CDCACM_DEBUG
 	printk(MODULE_NAME":%s ttyACM%d -\n",__FUNCTION__,acm->minor);
-#endif //HTC_CSP_END
+#endif
 
 }
 
 static void acm_tty_unthrottle(struct tty_struct *tty)
 {
 	struct acm *acm = tty->driver_data;
-#if 1 //HTC_CSP_START
+#ifdef CDCACM_DEBUG
 	printk(MODULE_NAME":%s ttyACM%d +\n",__FUNCTION__,acm->minor);
-#endif //HTC_CSP_END
+#endif
 
 	if (!ACM_READY(acm))
 		return;
@@ -1261,9 +1260,9 @@ static void acm_tty_unthrottle(struct tty_struct *tty)
 	acm->throttle = 0;
 	spin_unlock_bh(&acm->throttle_lock);
 	tasklet_schedule(&acm->urb_task);
-#if 1 //HTC_CSP_START
+#ifdef CDCACM_DEBUG
 		printk(MODULE_NAME":%s ttyACM%d -\n",__FUNCTION__,acm->minor);
-#endif //HTC_CSP_END
+#endif
 
 }
 
@@ -1874,9 +1873,9 @@ static void stop_data_traffic(struct acm *acm)
 		return;
 	}
 
-#if 1 //HTC_CSP_START
-	//printk(MODULE_NAME "%s ttyACM%d +\n",__FUNCTION__,acm->minor);
-#endif //HTC_CSP_END
+#ifdef CDCACM_DEBUG
+	printk(MODULE_NAME "%s ttyACM%d +\n",__FUNCTION__,acm->minor);
+#endif
 
 	tasklet_disable(&acm->urb_task);
 
@@ -1891,9 +1890,9 @@ static void stop_data_traffic(struct acm *acm)
 	cancel_work_sync(&acm->work);
 
 
-#if 1 //HTC_CSP_START
-	//printk(MODULE_NAME "%s ttyACM%d -\n",__FUNCTION__,acm->minor);
-#endif //HTC_CSP_END
+#ifdef CDCACM_DEBUG
+	printk(MODULE_NAME "%s ttyACM%d -\n",__FUNCTION__,acm->minor);
+#endif
 }
 
 static void acm_disconnect(struct usb_interface *intf)
@@ -1904,13 +1903,13 @@ static void acm_disconnect(struct usb_interface *intf)
 	struct urb *res;
 
 	int i;
-#if 1 //HTC_CSP_START
+#ifdef CDCACM_DEBUG
 	if (acm){
 		pr_info(MODULE_NAME "%s ttyACM%d + {\n", __func__, acm->minor);
 		}else{
 		pr_info(MODULE_NAME "%s ttyACM + acm!=1\n", __func__);
 		}
-#endif //HTC_CSP_END
+#endif
 
 	for (i=0; i < MAX_ACM_NUM; i++){
 		acm_ready_table[i] = false;
@@ -1979,9 +1978,9 @@ static int acm_suspend(struct usb_interface *intf, pm_message_t message)
 {
 	struct acm *acm = usb_get_intfdata(intf);
 	int cnt;
-#if 1 //HTC_CSP_START
+#ifdef CDCACM_DEBUG
 	printk(MODULE_NAME": %s ttyACM%d +\n",__FUNCTION__,acm->minor);
-#endif //HTC_CSP_END
+#endif
 
 	if (!acm) {
 		pr_err("%s: !acm\n", __func__);
@@ -2000,14 +1999,14 @@ static int acm_suspend(struct usb_interface *intf, pm_message_t message)
 		spin_unlock(&acm->write_lock);
 		spin_unlock_irq(&acm->read_lock);
 		if (b)
-#if 1 //HTC_CSP_START
+#ifdef CDCACM_DEBUG
 		{
 			printk(MODULE_NAME": %s ttyACM%d BUSY -> retry later %d %d\n",
 				__func__, acm->minor, acm->processing, acm->transmitting);
 			pr_info("%s: ttyACM%d processing %d transmitting %d -EBUSY\n", __func__, acm->minor, acm->processing, acm->transmitting);
 			return -EBUSY;
 		}
-#endif //HTC_CSP_END
+#endif
 	}
 
 	spin_lock_irq(&acm->read_lock);
@@ -2017,12 +2016,16 @@ static int acm_suspend(struct usb_interface *intf, pm_message_t message)
 	spin_unlock_irq(&acm->read_lock);
 
 	if (cnt) {
+#ifdef CDCACM_DEBUG
 		printk(MODULE_NAME": %s ttyACM%d susp_count=%d (already suspend)\n",
 			__func__, acm->minor, acm->susp_count);
+#endif
 		return 0;
 	} else
+#ifdef CDCACM_DEBUG
 		printk(MODULE_NAME": %s ttyACM%d suspending.... port.count=%d\n",
 			__func__, acm->minor, acm->port.count);
+#endif
 
 	/*
 	we treat opened interfaces differently,
@@ -2035,9 +2038,9 @@ static int acm_suspend(struct usb_interface *intf, pm_message_t message)
 
 	mutex_unlock(&acm->mutex);
 
-#if 1 //HTC_CSP_START
+#ifdef CDCACM_DEBUG
 	printk(MODULE_NAME": %s ttyACM%d -\n",__FUNCTION__,acm->minor);
-#endif //HTC_CSP_END
+#endif
 
 	return 0;
 }
@@ -2051,9 +2054,9 @@ static int acm_resume(struct usb_interface *intf)
 	struct urb *res;
 #endif
 
-#if 1 //HTC_CSP_START
+#ifdef CDCACM_DEBUG
 	pr_info(MODULE_NAME "%s, intf %p, acm %p\n", __func__, intf, acm);
-#endif //HTC_CSP_END
+#endif
 
 	if (!acm) {
 		pr_err("%s: !acm\n", __func__);
@@ -2126,9 +2129,9 @@ static int acm_resume(struct usb_interface *intf)
 err_out:
 	mutex_unlock(&acm->mutex);
 
-#if 1 //HTC_CSP_START
+#ifdef CDCACM_DEBUG
 	printk(MODULE_NAME": %s ttyACM%d -\n",__FUNCTION__,acm->minor);
-#endif //HTC_CSP_END
+#endif
 
 #if 0
 	//test only

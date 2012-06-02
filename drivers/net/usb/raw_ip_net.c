@@ -112,6 +112,9 @@ struct rmnet_private
 };
 //-Sophia:0112
 
+// EternityProject 02/06/2012: START
+#undef RAWIPNET_DEBUG
+// END
 
 #ifndef USB_NET_BUFSIZ
 #define USB_NET_BUFSIZ				8192
@@ -268,8 +271,9 @@ static void baseband_usb_driver_disconnect(struct usb_interface *intf)
 	struct urb *urb;
 	/* 77969-7 patch*/
 
+#ifdef RAWIPNET_DEBUG
 	pr_info("%s intf %p\n", __func__, intf);
-
+#endif
 	for (i = 0; i < max_intfs; i++) {
 		pr_debug("[%d]\n", i);
 		if (!baseband_usb_net[i])
@@ -283,8 +287,10 @@ static void baseband_usb_driver_disconnect(struct usb_interface *intf)
 		/* kill usb tx */
 		while ((urb = usb_get_from_anchor(&baseband_usb_net[i]->
 			usb.tx_urb_deferred)) != (struct urb *) 0) {
+#ifdef RAWIPNET_DEBUG
 			pr_info("%s: kill deferred tx urb %p\n",
 				__func__, urb);
+#endif
 			/* decrement count from usb_get_from_anchor() */
 			usb_free_urb(urb);
 			/* kill tx urb */
@@ -325,8 +331,9 @@ static int baseband_usb_driver_suspend(struct usb_interface *intf,
 	int i, susp_count;
 
 	save_dbg(dbg_flag);/* HTC */
+#ifdef RAWIPNET_DEBUG
 	pr_debug("%s intf %p\n", __func__, intf);
-
+#endif
 
 	//pr_info("%s: cnt %d intf=%p &intf->dev=%p kobje=%s\n",
 		//	__func__, atomic_read(&intf->dev.power.usage_count),intf,&intf->dev,kobject_name(&intf->dev.kobj));
@@ -343,18 +350,24 @@ static int baseband_usb_driver_suspend(struct usb_interface *intf,
 		/* increment suspend count */
 		susp_count = (baseband_usb_net[i]->susp_count)++;
 		if (susp_count > 0) {
+#ifdef RAWIPNET_DEBUG
 			pr_info("%s: susp_count %d > 0 (already suspended)\n",
 				__func__, susp_count);
+#endif
 			continue;
 		}
 		if (susp_count < 0) {
+#ifdef RAWIPNET_DEBUG
 			pr_info("%s: susp_count %d < 0 (ILLEGAL VALUE)\n",
 				__func__, susp_count);
+#endif
 			baseband_usb_net[i]->susp_count = 0;
 			continue;
 		}
+#ifdef RAWIPNET_DEBUG
 		pr_info("%s: susp_count = %d (suspending...)\n",
 			__func__, susp_count);
+#endif
 		/* kill usb rx */
 		if (!baseband_usb_net[i]->usb.rx_urb) {
 			pr_debug("rx_usb already killed\n");
@@ -387,8 +400,9 @@ static int baseband_usb_driver_resume(struct usb_interface *intf)
 	int i, err, susp_count;
 
 	save_dbg(dbg_flag);/* HTC */
+#ifdef RAWIPNET_DEBUG
 	pr_debug("%s intf %p \n", __func__, intf);
-
+#endif
 
 	//pr_info("%s: cnt with put async %d intf=%p &intf->dev=%p kobje=%s\n",
 		//	__func__, atomic_read(&intf->dev.power.usage_count),intf,&intf->dev,kobject_name(&intf->dev.kobj));
@@ -405,21 +419,29 @@ static int baseband_usb_driver_resume(struct usb_interface *intf)
 		/* decrement suspend count */
 		susp_count = --(baseband_usb_net[i]->susp_count);
 		if (susp_count > 0) {
+#ifdef RAWIPNET_DEBUG
 			pr_info("%s: susp_count %d > 0 (not resuming yet)\n",
 				__func__, susp_count);
+#endif
 			continue;
 		}
 		if (susp_count < 0) {
+#ifdef RAWIPNET_DEBUG
 			pr_info("%s: susp_count %d < 0 (ILLEGAL VALUE)\n",
 				__func__, susp_count);
+#endif
 			baseband_usb_net[i]->susp_count = 0;
 			continue;
 		}
+#ifdef RAWIPNET_DEBUG
 		pr_info("%s: susp_count = %d (resuming...)\n",
 			__func__, susp_count);
+#endif
 		/* start usb rx */
 		if (baseband_usb_net[i]->usb.rx_urb) {
+#ifdef RAWIPNET_DEBUG
 			pr_debug("rx_usb already exists\n");
+#.ndif
 			continue;
 		}
 		err = usb_net_raw_ip_rx_urb_submit(baseband_usb_net[i]);
@@ -441,7 +463,9 @@ static int baseband_usb_driver_resume(struct usb_interface *intf)
 }
 static int baseband_usb_driver_reset_resume(struct usb_interface *intf)
 {
+#ifdef RAWIPNET_DEBUG
 	pr_info("%s intf %p\n", __func__, intf);
+#endif
 	return baseband_usb_driver_resume(intf);
 }
 #endif /* CONFIG_PM */
@@ -877,17 +901,23 @@ static void usb_net_raw_ip_rx_urb_comp(struct urb *urb)
 		break;
 	case -ESHUTDOWN:
 		/* fall through */
+#ifdef RAWIPNET_DEBUG
 		pr_info("%s: rx urb %p - link shutdown %d\n",
 			__func__, urb, urb->status);
+#endif
 		goto err_exit;
 	case -EPROTO:
+#ifdef RAWIPNET_DEBUG
 		pr_info("%s: rx urb %p - link shutdown %d EPROTO\n",
 			__func__, urb, urb->status);
+#endif
 		usb_register_dump();
 		goto err_exit;
 	default:
+#ifdef RAWIPNET_DEBUG
 		pr_info("%s: rx urb %p - status %d\n",
 			__func__, urb, urb->status);
+#endif
 		break;
  	}
 	/* 77969-8 patch */
@@ -1102,8 +1132,10 @@ static void usb_net_raw_ip_tx_urb_work(struct work_struct *work)
 
 	/* check if suspended */
 	if (usb->susp_count > 0) {
+#ifdef RAWIPNET_DEBUG
 		pr_info("%s: usb->susp_count %d > 0 (suspended)\n",
 			__func__, usb->susp_count);
+#endif
 		return;
 	}
 
@@ -1199,20 +1231,26 @@ static void usb_net_raw_ip_tx_urb_comp(struct urb *urb)
 	case -ESHUTDOWN:
 		/* fall through */
 	case -EPROTO:
+#ifdef RAWIPNET_DEBUG
 		pr_info("%s: rx urb %p - link shutdown %d\n",
 			__func__, urb, urb->status);
+#endif
 		usb_autopm_put_interface_async(usb->usb.interface);
 		goto err_exit;
 	default:
+#ifdef RAWIPNET_DEBUG
 		pr_info("%s: rx urb %p - status %d\n",
 			__func__, urb, urb->status);
+#endif
 		break;
  	}
+#ifdef RAWIPNET_DEBUG
 	/* 77969-8 patch */
 	if (urb->status) {
 		pr_info("tx urb status %d\n", urb->status);
 	/* 77969-7 patch */
 	}
+#endif
 	
 	/* autosuspend after tx completed */
 	/* 77969-7 patch */
@@ -1366,7 +1404,9 @@ static void usb_net_raw_ip_exit(void)
 {
 	int i;
 
+#ifdef RAWIPNET_DEBUG
 	pr_info("usb_net_raw_ip_exit {\n");
+#endif
 
 	/* destroy multiple raw-ip network devices */
 	for (i = 0; i < max_intfs; i++) {
@@ -1407,7 +1447,9 @@ static void usb_net_raw_ip_exit(void)
 		}
 	}
 
+#ifdef RAWIPNET_DEBUG
 	pr_info("usb_net_raw_ip_exit }\n");
+#endif
 }
 
 module_init(usb_net_raw_ip_init)

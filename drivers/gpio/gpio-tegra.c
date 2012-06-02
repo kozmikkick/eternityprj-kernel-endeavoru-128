@@ -32,11 +32,11 @@
 #include <asm/mach/irq.h>
 
 #include <mach/iomap.h>
-#include "pm-irq.h"
+#include "../../arch/arm/mach-tegra/pm-irq.h"
 #include <mach/pinmux.h>
 
-#include "gpio-names.h"
-#include "htc-gpio.h"
+#include "../../arch/arm/mach-tegra/gpio-names.h"
+#include "../../arch/arm/mach-tegra/htc-gpio.h"
 #include <mach/board_htc.h>
 
 #define GPIO_BANK(x)		((x) >> 5)
@@ -591,7 +591,6 @@ static int __init tegra_gpio_init(void)
 	int gpio;
 	int i;
 	int j;
-	int gpio;
 
 	for (i = 0; i < ARRAY_SIZE(tegra_gpio_banks); i++) {
 		for (j = 0; j < 4; j++) {
