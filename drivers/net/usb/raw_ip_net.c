@@ -441,7 +441,7 @@ static int baseband_usb_driver_resume(struct usb_interface *intf)
 		if (baseband_usb_net[i]->usb.rx_urb) {
 #ifdef RAWIPNET_DEBUG
 			pr_debug("rx_usb already exists\n");
-#.ndif
+#endif
 			continue;
 		}
 		err = usb_net_raw_ip_rx_urb_submit(baseband_usb_net[i]);

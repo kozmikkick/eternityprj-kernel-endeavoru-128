@@ -30,8 +30,10 @@
 #include <linux/regulator/consumer.h>
 
 #define LP5521_MAX_LEDS			3	/* Maximum number of LEDs */
-#define LED_DEBUG				1
-#if LED_DEBUG
+//#define LED_DEBUG				1
+// EternityProject 02/06/2012
+#undef LED_DEBUG
+#ifdef LED_DEBUG
 	#define D(x...) printk(KERN_DEBUG "[LED]" x)
 	#define I(x...) printk(KERN_INFO "[LED]" x)		
 #else
@@ -132,7 +134,9 @@ static int i2c_write_block(struct i2c_client *client, uint8_t addr,
 
 	cdata = i2c_get_clientdata(client);
 	if (length + 1 > LED_I2C_WRITE_BLOCK_SIZE) {
+#ifdef LED_DEBUG
 		dev_err(&client->dev, "[LED] i2c_write_block length too long\n");
+#endif
 		return -E2BIG;
 	}
 
@@ -148,8 +152,10 @@ static int i2c_write_block(struct i2c_client *client, uint8_t addr,
 		msleep(led_rw_delay);
 	}
 	if (retry >= I2C_WRITE_RETRY_TIMES) {
+#ifdef LED_DEBUG
 		dev_err(&client->dev, "[LED] i2c_write_block retry over %d times\n",
 			I2C_WRITE_RETRY_TIMES);
+#endif
 		mutex_unlock(&cdata->led_i2c_rw_mutex);
 		return -EIO;
 	}
@@ -168,7 +174,9 @@ static void lp5521_led_enable(struct i2c_client *client)
 	// === led pin enable ===
 	ret = gpio_direction_output(pdata->ena_gpio, 1);
 	if (ret < 0) {
+#ifdef LED_DEBUG
 		pr_err("[LED] %s: gpio_direction_output high failed %d\n", __func__, ret);
+#endif
 		gpio_free(pdata->ena_gpio);
 	}
 	mutex_lock(&led_mutex);
@@ -1109,20 +1117,28 @@ static void lp5521_led_early_suspend(struct early_suspend *handler)
 {
 	struct i2c_client *client = private_lp5521_client;
 	
+#ifdef LED_DEBUG
 	printk("[LED][SUSPEND] lp5521_led_early_suspend +++\n");
+#endif
 	suspend_mode = 1;
 	if( backlight_mode == 1 )
 		lp5521_backlight_off(client);
 	else if ( backlight_mode == 2 )
 		lp5521_led_current_set_for_key(0);
+#ifdef LED_DEBUG
 	printk("[LED][SUSPEND] lp5521_led_early_suspend ---\n");
+#endif
 }
 
 static void lp5521_led_late_resume(struct early_suspend *handler)
 {
+#ifdef LED_DEBUG
 	printk("[LED][RESUME] lp5521_led_late_resume +++\n");
+#endif
 	suspend_mode = 0;
+#ifdef LED_DEBUG
 	printk("[LED][RESUME] lp5521_led_late_resume ---\n");
+#endif
 }
 
 static int lp5521_led_probe(struct i2c_client *client
@@ -1134,7 +1150,9 @@ static int lp5521_led_probe(struct i2c_client *client
 	int ret, i;
 	uint8_t data;
 
+#ifdef LED_DEBUG
 	printk("[LED][PROBE] led driver probe +++\n");
+#endif
 	
 	// === init platform and client data ===
 	cdata = kzalloc(sizeof(struct lp5521_chip), GFP_KERNEL);
@@ -1246,7 +1264,9 @@ static int lp5521_led_probe(struct i2c_client *client
 		gpio_direction_output(pdata->ena_gpio, 0);
 	}
 
+#ifdef LED_DEBUG
 	printk("[LED][PROBE] led driver probe ---\n");
+#endif
 	return 0;
 
 err_fun_init:

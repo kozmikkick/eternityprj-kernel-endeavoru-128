@@ -38,11 +38,15 @@
 #include <linux/jiffies.h>
 #include "../../../arch/arm/mach-tegra/board.h"
 
-#define debug_flag 0
+// EternityProject 02/06/2012: START
+#ifdef CM3629_DEBUG
 #define D(x...) pr_info(x)
-#define DIF(x...) { \
-	if (debug_flag) \
-		printk(KERN_DEBUG "" x); }
+#define DIF(x...) printk(KERN_DEBUG "" x)
+#else
+#define D(x...)
+#define DIF(x...)
+#endif
+// END
 
 #define I2C_RETRY_COUNT 10
 
