@@ -32,8 +32,11 @@
 #define PLAYBACK_DUTY_US 		36500
 #define ZERO_DUTY_US 			25000
 
-#define VIBE_DEBUG				0
-#if VIBE_DEBUG
+// EternityProject 02/06/2012
+#undef VIBE_PRINTS
+
+#undef VIBE_DEBUG
+#ifdef VIBE_DEBUG
 	#define D(x...) printk(KERN_DEBUG "[VIB]" ":" x)
 	#define I(x...) printk(KERN_INFO "[VIB]" ":" x)
 #else
@@ -60,7 +63,9 @@ static enum hrtimer_restart vib_timer_func(struct hrtimer *timer)
 
 	int rc;
 	I(" %s +++\n", __func__);
+#ifdef VIBE_PRINTS
 	printk("[VIB] vib_timer_func, vibration stop\n");
+#endif
 	rc = gpio_direction_output(vib->pdata->ena_gpio, 0);
 	if(rc<0){
 		pr_err("[VIB] set gpio output direction fail in timer function\n");
@@ -78,15 +83,18 @@ static void vibrator_start(struct vibrator *vib)
 {
 	int rc = 0;
 	I(" %s +++\n", __func__);
-	if (debugmode == 1)
+#ifdef VIBE_PRINTS
 		printk("[VIB] vibrator_start\n");
+#endif
 //	ret = regulator_is_enabled(regulator);
 //	if (ret > 0)
 //		regulator_disable(regulator);
 	rc = pwm_config(vib->pdata->pwm_data.pwm_dev, g_vib->pwm_duty, PLAYBACK_PERIOD_US);
+#ifdef VIBE_PRINTS
 	if (rc < 0) {
 		printk("[VIB][START]: pwm config fails\n");
 	}
+#endif
 	pwm_enable(vib->pdata->pwm_data.pwm_dev);
 	gpio_direction_output(vib->pdata->ena_gpio, 1);
 //	regulator_enable(regulator);
@@ -99,12 +107,15 @@ static void vibrator_stop(struct vibrator *vib)
 	int rc = 0;;
 
 	I(" %s +++\n", __func__);
-	if (debugmode == 1)
-		printk("[VIB] vibrator_stop\n");
+#ifdef VIBE_PRINTS
+	printk("[VIB] vibrator_stop\n");
+#endif
 	rc = pwm_config(vib->pdata->pwm_data.pwm_dev, ZERO_DUTY_US, PLAYBACK_PERIOD_US);
+#ifdef VIBE_PRINTS
 	if (rc < 0) {
 		printk("[VIB][STOP]: pwm config fails\n");
 	}
+#endif
 	pwm_enable(vib->pdata->pwm_data.pwm_dev);
 	gpio_direction_output(vib->pdata->ena_gpio, 0);
 	pwm_disable(vib->pdata->pwm_data.pwm_dev);
@@ -130,7 +141,9 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 	if (value < 0)
 		value = 0;
 	if (value) {
+#ifdef VIBE_PRINTS
 		printk("[VIB] vibrator_enable, vibration start and duration time = %d ms\n", value);
+#endif
 		vibrator_start(vib);
 		hrtimer_start(&vib->vib_timer,
 			      ktime_set(value / 1000, (value % 1000) * 1000000),
@@ -209,7 +222,9 @@ static int vibrator_probe(struct platform_device *pdev)
 	struct vibrator *vib;
 	int rc=0;
 
+#ifdef VIBE_PRINTS
 	printk("[VIB][PROBE] vibrator_probe +++\n");
+#endif
 	if (!pdata)
 		return -EINVAL;
 	vib=kzalloc(sizeof(struct vibrator), GFP_KERNEL);
@@ -292,7 +307,9 @@ static int vibrator_probe(struct platform_device *pdev)
 	debugmode = 0;
 	platform_set_drvdata(pdev, vib);
 
+#ifdef VIBE_PRINTS
 	printk("[VIB][PROBE] vibrator_probe ---\n");
+#endif
 	return 0;
 
 err_create_file:
@@ -312,13 +329,17 @@ static int vibrator_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct vibrator *vib = platform_get_drvdata(pdev);
 
+#ifdef VIBE_PRINTS
 	printk("[VIB][SUSPEND] vibrator_suspend +++\n");
+#endif
 	vibrator_stop(vib);
 	hrtimer_cancel(&vib->vib_timer);
 	cancel_work_sync(&vib->work);
 	gpio_direction_output(vib->pdata->pwm_gpio, 0);
 	tegra_gpio_enable(vib->pdata->pwm_gpio);
+#ifdef VIBE_PRINTS
 	printk("[VIB][SUSPEND] vibrator_suspend ---\n");
+#endif
 	return 0;
 }
 
@@ -326,10 +347,14 @@ static int vibrator_resume(struct platform_device *pdev)
 {
 	struct vibrator *vib = platform_get_drvdata(pdev);
 
+#ifdef VIBE_PRINTS
 	printk("[VIB][RESUME] vibrator_resume +++\n");
+#endif
 	tegra_gpio_disable(vib->pdata->pwm_gpio);
 	vib->pwm_duty = PLAYBACK_DUTY_US;
+#ifdef VIBE_PRINTS
 	printk("[VIB][RESUME] vibrator_resume ---\n");
+#endif
 	return 0;
 }
 
