@@ -89,6 +89,11 @@ static void tegra_wdt_disable(struct tegra_wdt *wdt)
 	writel(0, wdt->wdt_timer + TIMER_PTV);
 }
 
+static inline void tegra_wdt_ping(struct tegra_wdt *wdt)
+{
+	return;
+}
+
 static irqreturn_t tegra_wdt_interrupt(int irq, void *dev_id)
 {
 	struct tegra_wdt *wdt = dev_id;
@@ -116,15 +121,21 @@ static irqreturn_t tegra_wdt_interrupt(int irq, void *dev_id)
  #define WDT_UNLOCK_PATTERN		(0xC45A << 0)
 #define WRITE_CONFIG_TO_DISABLE_WDT	(1 << 0)
 
+static inline void tegra_wdt_ping(struct tegra_wdt *wdt)
+{
+	writel(WDT_CMD_START_COUNTER, wdt->wdt_source + WDT_CMD);
+}
+
 static void tegra_wdt_enable(struct tegra_wdt *wdt)
 {
 	u32 val;
 
+	writel(TIMER_PCR_INTR, wdt->wdt_timer + TIMER_PCR);
 	val = (wdt->timeout * 1000000ul) / 4;
 	val |= (TIMER_EN | TIMER_PERIODIC);
 	writel(val, wdt->wdt_timer + TIMER_PTV);
 
-	val = WDT_CFG_TMR_SRC | WDT_CFG_PERIOD | WDT_CFG_INT_EN |
+	val = WDT_CFG_TMR_SRC | WDT_CFG_PERIOD | /*WDT_CFG_INT_EN |*/
 		/*WDT_CFG_SYS_RST_EN |*/ WDT_CFG_PMC2CAR_RST_EN;
 	writel(val, wdt->wdt_source + WDT_CFG);
 	writel(WDT_CMD_START_COUNTER, wdt->wdt_source + WDT_CMD);
@@ -141,8 +152,8 @@ static void tegra_wdt_disable(struct tegra_wdt *wdt)
 static irqreturn_t tegra_wdt_interrupt(int irq, void *dev_id)
 {
 	struct tegra_wdt *wdt = dev_id;
-	pr_info("touch watchdog\n");
-	writel(WDT_CMD_START_COUNTER, wdt->wdt_source + WDT_CMD);
+
+	tegra_wdt_ping(wdt);
 	return IRQ_HANDLED;
 }
 #endif
@@ -204,6 +215,9 @@ static long tegra_wdt_ioctl(struct file *file, unsigned int cmd,
 		return put_user(0, (int __user *)arg);
 
 	case WDIOC_KEEPALIVE:
+		spin_lock(&lock);
+		tegra_wdt_ping(wdt);
+		spin_unlock(&lock);
 		return 0;
 
 	case WDIOC_SETTIMEOUT:
