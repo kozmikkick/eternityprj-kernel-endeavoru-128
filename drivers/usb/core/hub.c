@@ -883,14 +883,18 @@ static void hub_activate(struct usb_hub *hub, enum hub_activation_type type)
 					msecs_to_jiffies(delay));
 			return;		/* Continues at init3: below */
 		} else {
-			if (board_mfg_mode() == 2 /* recovery mode */) { /* htc */
-				pr_info(MODULE_NAME "%s: debounce msleep(%d)\n", __func__, delay);
-				msleep(delay);
-			}
-			else {
-				pr_info(MODULE_NAME "%s: debounce delay sleep(100msec) marked\n", __func__);
-				//msleep(delay);
-			}
+//			if (board_mfg_mode() == 2 /* recovery mode */) { /* htc */
+//				pr_info(MODULE_NAME "%s: debounce msleep(%d)\n", __func__, delay);
+//				msleep(delay);
+//			}
+//			else {
+//				pr_info(MODULE_NAME "%s: debounce delay sleep(100msec) marked\n", __func__);
+//				//msleep(delay);
+//			}
+// EternityProject 01/06/2012: HACK HACK HACK!!!
+//
+		pr_info(MODULE_NAME "%s: debounce msleep(%d)\n", __func__, delay);
+		msleep(delay);
 		}
 	}
  init3:
@@ -2070,16 +2074,21 @@ static int hub_port_wait_reset(struct usb_hub *hub, int port1,
 	for (delay_time = 0;
 			delay_time < HUB_RESET_TIMEOUT;
 			delay_time += delay) {
-		if (board_mfg_mode() == 2 /* recovery mode */) { /* htc */
-			/* wait to give the device a chance to reset */
-			pr_info(MODULE_NAME "%s: msleep(%d)\n", __func__, delay);
-			msleep(delay);
-		}
-		else {
-			pr_info(MODULE_NAME "%s: marked delay %d\n", __func__, delay);
-			/* wait to give the device a chance to reset */
-			//msleep(delay);
-		}
+//		if (board_mfg_mode() == 2 /* recovery mode */) { /* htc */
+//			/* wait to give the device a chance to reset */
+//			pr_info(MODULE_NAME "%s: msleep(%d)\n", __func__, delay);
+//			msleep(delay);
+//		}
+//		else {
+//			pr_info(MODULE_NAME "%s: marked delay %d\n", __func__, delay);
+//			/* wait to give the device a chance to reset */
+//			//msleep(delay);
+//		}
+// EternityProject 01/06/2012: HACK HACK HACK!!!
+//
+
+		pr_info(MODULE_NAME "%s: marked delay %d\n", __func__, delay);
+		msleep(delay);
 
 		/* read and decode port status */
 		ret = hub_port_status(hub, port1, &portstatus, &portchange);
@@ -2154,15 +2163,20 @@ static int hub_port_reset(struct usb_hub *hub, int port1,
 		switch (status) {
 		case 0:
 			/* TRSTRCY = 10 ms; plus some extra */
-			if (board_mfg_mode() == 2 /* recovery mode */) { /* htc */
-				pr_info(MODULE_NAME "%s: msleep(50)\n", __func__);
-				msleep(50);
-			}
-			else {
-				pr_info(MODULE_NAME "%s: reduced delay by 40msec\n", __func__);
-				//msleep(10 + 40);
-				msleep(10);
-			}
+//			if (board_mfg_mode() == 2 /* recovery mode */) { /* htc */
+//				pr_info(MODULE_NAME "%s: msleep(50)\n", __func__);
+//				msleep(50);
+//			}
+//			else {
+//				pr_info(MODULE_NAME "%s: reduced delay by 40msec\n", __func__);
+//				//msleep(10 + 40);
+//				msleep(10);
+//			}
+// EternityProject 01/06/2012: HACK HACK HACK!!!
+//
+			pr_info(MODULE_NAME "%s: msleep(50)\n", __func__);
+			msleep(50);
+
 			update_devnum(udev, 0);
 			if (hcd->driver->reset_device) {
 				status = hcd->driver->reset_device(hcd, udev);

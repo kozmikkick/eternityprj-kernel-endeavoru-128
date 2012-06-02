@@ -157,3 +157,9 @@ extern void htc_debug_info_init(void);
 #endif
 #endif
 #endif
+
+/*
+ * EternityProject 01/06/2012
+ * UGLY HACK: FIXME
+ */
+extern int eprj_usbh;

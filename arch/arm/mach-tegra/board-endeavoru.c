@@ -2170,10 +2170,12 @@ static void __init tegra_enterprise_init(void)
 	else
 		platform_device_register(&htc_headset_mgr_xe);
 
+#ifdef CONFIG_TEGRA_HDMI_MHL
 	if (board_id >= PROJECT_PHASE_A && engineer_id != 1) {
 		mhl_sii_device_data.ci2ca = 1;
 		mhl_sii_device_data.enMhlD3Guard = true;
 	}
+#endif
 
 	enterprise_regulator_init();
 	enterprise_sdhci_init();

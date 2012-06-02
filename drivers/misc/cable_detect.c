@@ -28,6 +28,9 @@
 #include "../video/tegra/sii9234/TPI.h"
 #endif
 
+//EternityProject 01/06/2012: UGLY HACK
+int eprj_usbh;
+
 /*#define MHL_INTERNAL_POWER  1*/
 static bool g_desk_no_power = 0;
 
@@ -139,7 +142,7 @@ int cable_detect_register_notifier(struct t_cable_status_notifier *notifier)
 	return 0;
 }
 
-#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST))
+#ifdef CONFIG_USB_OTG
 static DEFINE_MUTEX(usb_host_notify_sem);
 static void send_usb_host_connect_notify(int cable_in)
 {
@@ -157,6 +160,18 @@ static void send_usb_host_connect_notify(int cable_in)
 	mutex_unlock(&usb_host_notify_sem);
 }
 
+static void eprj_usbhost_refresh(int cable_in)
+{
+	mutex_lock(&usb_host_notify_sem);
+
+	if (cable_in)
+		enable_irq(52);
+	else		
+		disable_irq_nosync(52);
+
+	mutex_unlock(&usb_host_notify_sem);
+}
+
 int usb_host_detect_register_notifier(struct t_usb_host_status_notifier *notifier)
 {
 	if (!notifier || !notifier->name || !notifier->func)
@@ -167,7 +182,7 @@ int usb_host_detect_register_notifier(struct t_usb_host_status_notifier *notifie
 	mutex_unlock(&usb_host_notify_sem);
 	return 0;
 }
-#endif  // CONFIG_USB_OTG && CONFIG_USB_OTG_HOST
+#endif /* CONFIG_USB_OTG */
 
 static void check_vbus_in(struct work_struct *w)
 {
@@ -300,7 +315,8 @@ static int cable_detect_get_type(struct cable_detect_info *pInfo)
 		adc = cable_detect_get_adc();
 		CABLE_INFO("[1] accessory adc = %d\n", adc);
 
-		if (adc >= 0 && adc < 50)
+		// EternityProject: 01/06/2012 - adc MAX was 50
+		if (adc >= 0 && adc < 149)
 			type = sec_detect(pInfo);
 		else {
 			if (adc >= 150 && adc < 170)
@@ -331,6 +347,8 @@ static void cable_detect_handler(struct work_struct *w)
 			w, struct cable_detect_info, cable_detect_work.work);
 	int value;
 	int accessory_type;
+	// EternityProject 01/06/2012: UGLY HACK
+	eprj_usbh = 0;
 
 	if (pInfo == NULL)
 		return;
@@ -399,11 +417,17 @@ static void cable_detect_handler(struct work_struct *w)
 		sii9234_mhl_device_wakeup();
 		break;
 #endif
-#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST))
+#ifdef CONFIG_USB_OTG
 	case DOCK_STATE_USB_HOST:
 		CABLE_INFO("USB Host inserted\n");
-		send_usb_host_connect_notify(1);
+		switch_set_state(&dock_switch, DOCK_STATE_USB_HOST);
+//		send_usb_host_connect_notify(1);
+//		eprj_usbhost_refresh(1);
+// EternityProject 01/06/2012: UGLY HACK
+		eprj_usbh = 1;
+		switch_set_state(&dock_switch, DOCK_STATE_USB_HOST);
 		pInfo->accessory_type = DOCK_STATE_USB_HOST;
+		eprj_usbhost_refresh(1);
 		break;
 #endif
 #if 0  /* DMB */
@@ -450,11 +474,17 @@ static void cable_detect_handler(struct work_struct *w)
 			sii9234_disableIRQ();
 			break;
 #endif
-#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST))
+#ifdef CONFIG_USB_OTG
 		case DOCK_STATE_USB_HOST:
 			CABLE_INFO("USB Host removed\n");
+//			switch_set_state(&dock_switch, DOCK_STATE_UNDOCKED);
+//			send_usb_host_connect_notify(0);
+//			eprj_usbhost_refresh(0);
+// EternityProject 01/06/2012: UGLY HACK
+			eprj_usbh = 0;
+			eprj_usbhost_refresh(0);
+			switch_set_state(&dock_switch, DOCK_STATE_UNDOCKED);
 			pInfo->accessory_type = DOCK_STATE_UNDOCKED;
-			send_usb_host_connect_notify(0);
 			break;
 #endif
 #if 0  /* DMB */
@@ -542,7 +572,7 @@ static int sec_detect(struct cable_detect_info *pInfo)
 		type = DOCK_STATE_UNDEFINED;
 #endif
 	else
-#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST))
+#ifdef CONFIG_USB_OTG
 		type = DOCK_STATE_USB_HOST;
 #else
 		type = DOCK_STATE_UNDEFINED;
@@ -1029,7 +1059,9 @@ EXPORT_SYMBOL(cable_detection_queue_vbus_work);
 
 struct platform_driver cable_detect_driver = {
 	.probe = cable_detect_probe,
-	/*.remove = __devexit_p(vbus_cable_detect_remove),*/
+// EternityProject 01/06/2012: This is interesting
+//	.remove = __devexit_p(vbus_cable_detect_remove),
+
 	.driver = {
 		.name = "cable_detect",
 		.owner = THIS_MODULE,
@@ -1039,7 +1071,8 @@ struct platform_driver cable_detect_driver = {
 static int __init cable_detect_init(void)
 {
 	the_cable_info.connect_type = CONNECT_TYPE_NONE;
-	/*usb_register_notifier(&usb_status_notifier);*/
+// EternityProject 01/06/2012: This is interesting
+//	usb_register_notifier(&usb_status_notifier);
 #if (defined(CONFIG_CABLE_DETECT_ACCESSORY) && defined(CONFIG_TEGRA_HDMI_MHL))
 	mhl_detect_register_notifier(&mhl_status_notifier);
 #endif

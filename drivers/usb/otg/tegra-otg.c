@@ -171,9 +171,9 @@ void tegra_start_host(struct tegra_otg_data *tegra)
 							  pdata->ehci_pdata);
 
 #if defined(CONFIG_CABLE_DETECT_ACCESSORY)
-		if (board_mfg_mode() == 2 /* recovery mode */) {
+// EternityProject 01/06/2012		if (board_mfg_mode() == 2 /* recovery mode */) {
 			cable_detection_queue_recovery_host_work(HZ);
-		}
+//		}
 #endif
 	}
 }
@@ -195,6 +195,8 @@ static void irq_work(struct work_struct *work)
 	enum usb_otg_state to = OTG_STATE_UNDEFINED;
 	unsigned long flags;
 	unsigned long status,val;
+// EternityProject 01/06/2012: UGLY HACK
+//	extern int eprj_usbh;
 
 	val = otg_readl(tegra, USB_PHY_WAKEUP);
 
@@ -235,6 +237,14 @@ static void irq_work(struct work_struct *work)
 					to = OTG_STATE_A_SUSPEND;
 			}
 		}
+
+/*
+ * EternityProject 01/06/2012
+ * UGLY HACK: FIXME!
+ */
+		if (eprj_usbh)
+			to = OTG_STATE_A_HOST;
+
 	}
 	spin_unlock_irqrestore(&tegra->lock, flags);
 
@@ -292,7 +302,7 @@ static irqreturn_t tegra_otg_irq(int irq, void *data)
 			tegra->int_status = val;
 			schedule_work(&tegra->work);
 		}
-	}
+	} 
 
 	spin_unlock_irqrestore(&tegra->lock, flags);
 
@@ -489,6 +499,8 @@ static int tegra_otg_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_otg_data *tegra_otg = platform_get_drvdata(pdev);
+	struct otg_transceiver *otg = &tegra_otg->otg;
+	enum usb_otg_state from = otg->state;
 	USB_INFO("%s",__func__);
 	/* store the interupt enable for cable ID and VBUS */
 	clk_enable(tegra_otg->clk);

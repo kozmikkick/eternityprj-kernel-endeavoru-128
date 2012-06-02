@@ -115,6 +115,19 @@ struct t_usb_status_notifier {
 };
 static LIST_HEAD(g_lh_usb_notifier_list);
 
+/*
+ * EternityProject 01/06/2012:
+ * 
+ * Add USB Host Status Notifier structure for using the
+ * appropriate cable_detect function for USBHost.
+ */
+struct t_usb_host_status_notifier {
+	struct list_head usb_host_notifier_link;
+	const char *name;
+	void (*func)(int cable_type);
+};
+static LIST_HEAD(g_lh_usb_host_detect_notifier_list);
+
 /***********************************
 Direction: cable detect drvier -> battery driver or other
 ***********************************/
