@@ -210,6 +210,8 @@ static const struct imxi2c_platform_data mx25_3ds_i2c0_data __initconst = {
 
 static void __init mx25pdk_init(void)
 {
+	imx25_soc_init();
+
 	mxc_iomux_v3_setup_multiple_pads(mx25pdk_pads,
 			ARRAY_SIZE(mx25pdk_pads));
 
