@@ -716,12 +716,14 @@ static ssize_t store_UV_mV_table(struct cpufreq_policy *policy, char *buf, size_
 
 static ssize_t show_cpuinfo_max_mV(struct cpufreq_policy *policy, char *buf)
 {
-  sprintf(buf, "%u\n", CPUMVMAX);
+	sprintf(buf, "%u\n", CPUMVMAX);
+	return CPUMVMAX;
 }
 
 static ssize_t show_cpuinfo_min_mV(struct cpufreq_policy *policy, char *buf)
 {
-  sprintf(buf, "%u\n", CPUMVMIN);
+	sprintf(buf, "%u\n", CPUMVMIN);
+	return CPUMVMIN;
 }
 
 cpufreq_freq_attr_ro_perm(cpuinfo_cur_freq, 0400);
