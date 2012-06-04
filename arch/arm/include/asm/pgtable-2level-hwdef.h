@@ -88,4 +88,6 @@
 #define PTE_SMALL_AP_URO_SRW	(0xaa << 4)
 #define PTE_SMALL_AP_URW_SRW	(0xff << 4)
 
+#define PHYS_MASK		(~0UL)
+
 #endif
