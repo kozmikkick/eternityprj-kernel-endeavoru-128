@@ -1821,6 +1821,19 @@ static struct pmu pmu = {
 	.commit_txn	= x86_pmu_commit_txn,
 };
 
+void perf_update_user_clock(struct perf_event_mmap_page *userpg, u64 now)
+{
+	if (!boot_cpu_has(X86_FEATURE_CONSTANT_TSC))
+		return;
+
+	if (!boot_cpu_has(X86_FEATURE_NONSTOP_TSC))
+		return;
+
+	userpg->time_mult = this_cpu_read(cyc2ns);
+	userpg->time_shift = CYC2NS_SCALE_FACTOR;
+	userpg->time_offset = this_cpu_read(cyc2ns_offset) - now;
+}
+
 /*
  * callchain support
  */
