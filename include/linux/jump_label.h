@@ -3,6 +3,7 @@
 
 #include <linux/types.h>
 #include <linux/compiler.h>
+#include <linux/workqueue.h>
 
 #if defined(CC_HAVE_ASM_GOTO) && defined(CONFIG_JUMP_LABEL)
 
@@ -12,6 +13,12 @@ struct jump_label_key {
 #ifdef CONFIG_MODULES
 	struct jump_label_mod *next;
 #endif
+};
+
+struct jump_label_key_deferred {
+	struct jump_label_key key;
+	unsigned long timeout;
+	struct delayed_work work;
 };
 
 # include <asm/jump_label.h>
@@ -49,8 +56,11 @@ extern void arch_jump_label_text_poke_early(jump_label_t addr);
 extern int jump_label_text_reserved(void *start, void *end);
 extern void jump_label_inc(struct jump_label_key *key);
 extern void jump_label_dec(struct jump_label_key *key);
+extern void jump_label_dec_deferred(struct jump_label_key_deferred *key);
 extern bool jump_label_enabled(struct jump_label_key *key);
 extern void jump_label_apply_nops(struct module *mod);
+extern void jump_label_rate_limit(struct jump_label_key_deferred *key,
+		unsigned long rl);
 
 #else
 
@@ -60,6 +70,10 @@ extern void jump_label_apply_nops(struct module *mod);
 
 struct jump_label_key {
 	atomic_t enabled;
+};
+
+struct jump_label_key_deferred {
+	struct jump_label_key  key;
 };
 
 static __always_inline bool static_branch(struct jump_label_key *key)
@@ -77,6 +91,11 @@ static inline void jump_label_inc(struct jump_label_key *key)
 static inline void jump_label_dec(struct jump_label_key *key)
 {
 	atomic_dec(&key->enabled);
+}
+
+static inline void jump_label_dec_deferred(struct jump_label_key_deferred *key)
+{
+	jump_label_dec(&key->key);
 }
 
 static inline int jump_label_text_reserved(void *start, void *end)
@@ -97,6 +116,11 @@ static inline int jump_label_apply_nops(struct module *mod)
 	return 0;
 }
 
-#endif
+static inline void jump_label_rate_limit(struct jump_label_key_deferred *key,
+		unsigned long rl)
+{
+}
 
-#endif
+#endif /* HAVE_JUMP_LABEL */
+
+#endif /* _LINUX_JUMP_LABEL_H */

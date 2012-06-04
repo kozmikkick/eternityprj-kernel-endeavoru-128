@@ -1064,7 +1064,7 @@ static inline void perf_event_task_sched_out(struct task_struct *prev,
 {
 	perf_sw_event(PERF_COUNT_SW_CONTEXT_SWITCHES, 1, NULL, 0);
 
-	if (static_branch(&perf_sched_events))
+	if (static_branch(&perf_sched_events.key))
 		__perf_event_task_sched_out(prev, next);
 }
 
