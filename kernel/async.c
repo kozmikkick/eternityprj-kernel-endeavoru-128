@@ -77,7 +77,7 @@ static DECLARE_WAIT_QUEUE_HEAD(async_done);
 
 static atomic_t entry_count;
 
-extern int initcall_debug;
+extern bool initcall_debug;
 
 
 /*
