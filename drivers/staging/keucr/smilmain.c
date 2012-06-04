@@ -152,7 +152,7 @@ int Media_D_ReadSector(struct us_data *us, DWORD start,WORD count,BYTE *buf)
 {
 	WORD len, bn;
 
-	//if (Check_D_MediaPower())        ; ¦b 6250 don't care
+	//if (Check_D_MediaPower())        ; Â¦b 6250 don't care
 	//    return(ErrCode);
 	//if (Check_D_MediaFmt(fdoExt))    ;
 	//    return(ErrCode);
