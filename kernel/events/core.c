@@ -5732,6 +5732,7 @@ struct pmu *perf_init_event(struct perf_event *event)
 	pmu = idr_find(&pmu_idr, event->attr.type);
 	rcu_read_unlock();
 	if (pmu) {
+		event->pmu = pmu;
 		ret = pmu->event_init(event);
 		if (ret)
 			pmu = ERR_PTR(ret);
@@ -5739,6 +5740,7 @@ struct pmu *perf_init_event(struct perf_event *event)
 	}
 
 	list_for_each_entry_rcu(pmu, &pmus, entry) {
+		event->pmu = pmu;
 		ret = pmu->event_init(event);
 		if (!ret)
 			goto unlock;
@@ -5864,8 +5866,6 @@ done:
 		kfree(event);
 		return ERR_PTR(err);
 	}
-
-	event->pmu = pmu;
 
 	if (!event->parent) {
 		if (event->attach_state & PERF_ATTACH_TASK)
