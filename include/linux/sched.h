@@ -1202,8 +1202,9 @@ struct task_struct {
 
 #ifdef CONFIG_SMP
 #ifdef __ARCH_WANT_UNLOCKED_CTXSW
-	int oncpu;
+	int on_cpu;
 #endif
+	int on_rq;
 #endif
 
 	int prio, static_prio, normal_prio;
