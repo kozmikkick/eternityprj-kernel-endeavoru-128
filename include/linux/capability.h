@@ -425,7 +425,6 @@ extern const kernel_cap_t __cap_init_eff_set;
 #define CAP_INIT_EFF_SET    CAP_FULL_SET
 
 # define cap_clear(c)         do { (c) = __cap_empty_set; } while (0)
-# define cap_set_full(c)      do { (c) = __cap_full_set; } while (0)
 
 #define cap_raise(c, flag)  ((c).cap[CAP_TO_INDEX(flag)] |= CAP_TO_MASK(flag))
 #define cap_lower(c, flag)  ((c).cap[CAP_TO_INDEX(flag)] &= ~CAP_TO_MASK(flag))
@@ -548,7 +547,6 @@ extern bool task_ns_capable(struct task_struct *t, int cap);
 extern bool nsown_capable(int cap);
 
 extern const kernel_cap_t __cap_empty_set;
-extern const kernel_cap_t __cap_full_set;
 
 /* audit system wants to get cap info from files as well */
 extern int get_vfs_caps_from_disk(const struct dentry *dentry, struct cpu_vfs_cap_data *cpu_caps);
