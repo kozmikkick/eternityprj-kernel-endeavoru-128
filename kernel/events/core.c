@@ -1486,6 +1486,18 @@ ctx_sched_in(struct perf_event_context *ctx,
 	     enum event_type_t event_type,
 	     struct task_struct *task);
 
+static void perf_event_sched_in(struct perf_cpu_context *cpuctx,
+				struct perf_event_context *ctx,
+				struct task_struct *task)
+{
+	cpu_ctx_sched_in(cpuctx, EVENT_PINNED, task);
+	if (ctx)
+		ctx_sched_in(ctx, cpuctx, EVENT_PINNED, task);
+	cpu_ctx_sched_in(cpuctx, EVENT_FLEXIBLE, task);
+	if (ctx)
+		ctx_sched_in(ctx, cpuctx, EVENT_FLEXIBLE, task);
+}
+
 /*
  * Cross CPU call to install and enable a performance event
  *
@@ -1533,12 +1545,7 @@ static int  __perf_install_in_context(void *info)
 	/*
 	 * Schedule everything back in
 	 */
-	cpu_ctx_sched_in(cpuctx, EVENT_PINNED, task);
-	if (task_ctx)
-		ctx_sched_in(task_ctx, cpuctx, EVENT_PINNED, task);
-	cpu_ctx_sched_in(cpuctx, EVENT_FLEXIBLE, task);
-	if (task_ctx)
-		ctx_sched_in(task_ctx, cpuctx, EVENT_FLEXIBLE, task);
+	perf_event_sched_in(cpuctx, task_ctx, task);
 
 	perf_pmu_enable(cpuctx->ctx.pmu);
 	perf_ctx_unlock(cpuctx, task_ctx);
@@ -2117,9 +2124,7 @@ static void perf_event_context_sched_in(struct perf_event_context *ctx,
 	 */
 	cpu_ctx_sched_out(cpuctx, EVENT_FLEXIBLE);
 
-	ctx_sched_in(ctx, cpuctx, EVENT_PINNED, task);
-	cpu_ctx_sched_in(cpuctx, EVENT_FLEXIBLE, task);
-	ctx_sched_in(ctx, cpuctx, EVENT_FLEXIBLE, task);
+	perf_event_sched_in(cpuctx, ctx, task);
 
 	cpuctx->task_ctx = ctx;
 
@@ -2357,9 +2362,7 @@ static void perf_rotate_context(struct perf_cpu_context *cpuctx)
 	if (ctx)
 		rotate_ctx(ctx);
 
-	cpu_ctx_sched_in(cpuctx, EVENT_FLEXIBLE, current);
-	if (ctx)
-		ctx_sched_in(ctx, cpuctx, EVENT_FLEXIBLE, current);
+	perf_event_sched_in(cpuctx, ctx, current);
 
 done:
 	if (remove)
