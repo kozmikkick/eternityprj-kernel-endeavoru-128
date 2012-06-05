@@ -7118,7 +7118,8 @@ static void __free_domain_allocs(struct s_data *d, enum s_alloc what,
 {
 	switch (what) {
 	case sa_rootdomain:
-		free_rootdomain(&(d->rd->rcu)); /* fall through */
+		if (!atomic_read(&d->rd->refcount))
+		free_rootdomain(&d->rd->rcu); /* fall through */
 	case sa_sd:
 		free_percpu(d->sd); /* fall through */
 	case sa_tmpmask:
@@ -7316,7 +7317,7 @@ static int __build_sched_domains(const struct cpumask *cpu_map,
 	enum s_alloc alloc_state = sa_none;
 	struct s_data d;
 	struct sched_domain *sd, *tmp;
-	int i;
+	int i, ret = -ENOMEM;
 #ifdef CONFIG_NUMA
 	d.sd_allnodes = 0;
 #endif
@@ -7364,12 +7365,10 @@ static int __build_sched_domains(const struct cpumask *cpu_map,
 	}
 	rcu_read_unlock();
 
-	__free_domain_allocs(&d, sa_tmpmask, cpu_map);
-	return 0;
-
+	ret = 0;
 error:
 	__free_domain_allocs(&d, alloc_state, cpu_map);
-	return -ENOMEM;
+	return ret;
 }
 
 static int build_sched_domains(const struct cpumask *cpu_map)
