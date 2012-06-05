@@ -105,7 +105,7 @@ static struct pm_qos_object network_throughput_pm_qos = {
 
 static BLOCKING_NOTIFIER_HEAD(min_online_cpus_notifier);
 static struct pm_qos_object min_online_cpus_pm_qos = {
-	.requests = PLIST_HEAD_INIT(min_online_cpus_pm_qos.requests, pm_qos_lock),
+	.requests = PLIST_HEAD_INIT(min_online_cpus_pm_qos.requests),
 	.notifiers = &min_online_cpus_notifier,
 	.name = "min_online_cpus",
 	.target_value = PM_QOS_MIN_ONLINE_CPUS_DEFAULT_VALUE,
@@ -116,7 +116,7 @@ static struct pm_qos_object min_online_cpus_pm_qos = {
 
 static BLOCKING_NOTIFIER_HEAD(max_online_cpus_notifier);
 static struct pm_qos_object max_online_cpus_pm_qos = {
-	.requests = PLIST_HEAD_INIT(max_online_cpus_pm_qos.requests, pm_qos_lock),
+	.requests = PLIST_HEAD_INIT(max_online_cpus_pm_qos.requests),
 	.notifiers = &max_online_cpus_notifier,
 	.name = "max_online_cpus",
 	.target_value = PM_QOS_MAX_ONLINE_CPUS_DEFAULT_VALUE,
@@ -127,7 +127,7 @@ static struct pm_qos_object max_online_cpus_pm_qos = {
 
 static BLOCKING_NOTIFIER_HEAD(cpu_freq_min_notifier);
 static struct pm_qos_object cpu_freq_min_pm_qos = {
-	.requests = PLIST_HEAD_INIT(cpu_freq_min_pm_qos.requests, pm_qos_lock),
+	.requests = PLIST_HEAD_INIT(cpu_freq_min_pm_qos.requests),
 	.notifiers = &cpu_freq_min_notifier,
 	.name = "cpu_freq_min",
 	.target_value = PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE,
@@ -138,7 +138,7 @@ static struct pm_qos_object cpu_freq_min_pm_qos = {
 
 static BLOCKING_NOTIFIER_HEAD(cpu_freq_max_notifier);
 static struct pm_qos_object cpu_freq_max_pm_qos = {
-	.requests = PLIST_HEAD_INIT(cpu_freq_max_pm_qos.requests, pm_qos_lock),
+	.requests = PLIST_HEAD_INIT(cpu_freq_max_pm_qos.requests),
 	.notifiers = &cpu_freq_max_notifier,
 	.name = "cpu_freq_max",
 	.target_value = PM_QOS_CPU_FREQ_MAX_DEFAULT_VALUE,

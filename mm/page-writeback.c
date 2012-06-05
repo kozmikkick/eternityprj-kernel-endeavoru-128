@@ -486,6 +486,7 @@ static void balance_dirty_pages(struct address_space *mapping,
 	long nr_reclaimable, bdi_nr_reclaimable;
 	long nr_writeback, bdi_nr_writeback;
 	unsigned long background_thresh;
+	unsigned long nr_dirty;  /* = file_dirty + writeback + unstable_nfs */
 	unsigned long dirty_thresh;
 	unsigned long bdi_thresh;
 	unsigned long pages_written = 0;
@@ -503,7 +504,7 @@ static void balance_dirty_pages(struct address_space *mapping,
 
 		nr_reclaimable = global_page_state(NR_FILE_DIRTY) +
 					global_page_state(NR_UNSTABLE_NFS);
-		nr_writeback = global_page_state(NR_WRITEBACK);
+		nr_dirty = global_page_state(NR_WRITEBACK);
 
 		global_dirty_limits(&background_thresh, &dirty_thresh);
 
@@ -512,7 +513,7 @@ static void balance_dirty_pages(struct address_space *mapping,
 		 * catch-up. This avoids (excessively) small writeouts
 		 * when the bdi limits are ramping up.
 		 */
-		if (nr_reclaimable + nr_writeback <=
+		if (nr_reclaimable + nr_dirty <=
 				(background_thresh + dirty_thresh) / 2)
 			break;
 
@@ -545,7 +546,7 @@ static void balance_dirty_pages(struct address_space *mapping,
 		 */
 		dirty_exceeded =
 			(bdi_nr_reclaimable + bdi_nr_writeback > bdi_thresh)
-			|| (nr_reclaimable + nr_writeback > dirty_thresh);
+			|| (nr_reclaimable + nr_dirty > dirty_thresh);
 
 		if (!dirty_exceeded)
 			break;
@@ -634,6 +635,7 @@ static DEFINE_PER_CPU(int, bdp_ratelimits);
 void balance_dirty_pages_ratelimited_nr(struct address_space *mapping,
 					unsigned long nr_pages_dirtied)
 {
+	struct backing_dev_info *bdi = mapping->backing_dev_info;
 	int ratelimit;
 	int *p;
 
