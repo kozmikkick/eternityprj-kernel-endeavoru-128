@@ -27,11 +27,9 @@
  */
 
 #include <linux/cgroup.h>
-#include <linux/cred.h>
 #include <linux/ctype.h>
 #include <linux/errno.h>
 #include <linux/fs.h>
-#include <linux/init_task.h>
 #include <linux/kernel.h>
 #include <linux/list.h>
 #include <linux/mm.h>
@@ -1519,7 +1517,6 @@ static struct dentry *cgroup_mount(struct file_system_type *fs_type,
 		struct cgroup *root_cgrp = &root->top_cgroup;
 		struct inode *inode;
 		struct cgroupfs_root *existing_root;
-		const struct cred *cred;
 		int i;
 
 		BUG_ON(sb->s_root != NULL);
@@ -1599,9 +1596,7 @@ static struct dentry *cgroup_mount(struct file_system_type *fs_type,
 		BUG_ON(!list_empty(&root_cgrp->children));
 		BUG_ON(root->number_of_cgroups != 1);
 
-		cred = override_creds(&init_cred);
 		cgroup_populate_dir(root_cgrp);
-		revert_creds(cred);
 		mutex_unlock(&cgroup_mutex);
 		mutex_unlock(&inode->i_mutex);
 	} else {
@@ -1705,7 +1700,6 @@ int cgroup_path(const struct cgroup *cgrp, char *buf, int buflen)
 {
 	char *start;
 	struct dentry *dentry = rcu_dereference_check(cgrp->dentry,
-						      rcu_read_lock_held() ||
 						      cgroup_lock_is_held());
 
 	if (!dentry || cgrp == dummytop) {
@@ -1731,7 +1725,6 @@ int cgroup_path(const struct cgroup *cgrp, char *buf, int buflen)
 			break;
 
 		dentry = rcu_dereference_check(cgrp->dentry,
-					       rcu_read_lock_held() ||
 					       cgroup_lock_is_held());
 		if (!cgrp->parent)
 			continue;
@@ -1892,38 +1885,82 @@ EXPORT_SYMBOL_GPL(cgroup_attach_task_all);
  * Attach task with pid 'pid' to cgroup 'cgrp'. Call with cgroup_mutex
  * held. May take task_lock of task
  */
-static int attach_task_by_pid(struct cgroup *cgrp, u64 pid)
+static int attach_task_by_pid(struct cgroup *cgrp, u64 pid, bool threadgroup)
 {
 	struct task_struct *tsk;
+	const struct cred *cred = current_cred(), *tcred;
 	int ret;
+
+	if (!cgroup_lock_live_group(cgrp))
+		return -ENODEV;
 
 	if (pid) {
 		rcu_read_lock();
 		tsk = find_task_by_vpid(pid);
-		if (!tsk || tsk->flags & PF_EXITING) {
+		if (!tsk) {
 			rcu_read_unlock();
+			cgroup_unlock();
 			return -ESRCH;
+		}
+		if (threadgroup) {
+			/*
+			 * RCU protects this access, since tsk was found in the
+			 * tid map. a race with de_thread may cause group_leader
+			 * to stop being the leader, but cgroup_attach_proc will
+			 * detect it later.
+			 */
+			tsk = tsk->group_leader;
+		} else if (tsk->flags & PF_EXITING) {
+			/* optimization for the single-task-only case */
+			rcu_read_unlock();
+			cgroup_unlock();
+			return -ESRCH;
+		}
+
+		/*
+		 * even if we're attaching all tasks in the thread group, we
+		 * only need to check permissions on one of them.
+		 */
+		tcred = __task_cred(tsk);
+		if (cred->euid &&
+		    cred->euid != tcred->uid &&
+		    cred->euid != tcred->suid) {
+			/*
+			 * if the default permission check fails, give each
+			 * cgroup a chance to extend the permission check
+			 */
+			ret = cgroup_allow_attach(cgrp, tsk);
+			if (ret) {
+				rcu_read_unlock();
+				cgroup_unlock();
+				return ret;
+			}
 		}
 		get_task_struct(tsk);
 		rcu_read_unlock();
 	} else {
-		tsk = current;
+		if (threadgroup)
+			tsk = current->group_leader;
+		else
+			tsk = current;
 		get_task_struct(tsk);
 	}
 
-	ret = cgroup_attach_task(cgrp, tsk);
+	if (threadgroup) {
+		threadgroup_fork_write_lock(tsk);
+		ret = cgroup_attach_proc(cgrp, tsk);
+		threadgroup_fork_write_unlock(tsk);
+	} else {
+		ret = cgroup_attach_task(cgrp, tsk);
+	}
 	put_task_struct(tsk);
+	cgroup_unlock();
 	return ret;
 }
 
 static int cgroup_tasks_write(struct cgroup *cgrp, struct cftype *cft, u64 pid)
 {
-	int ret;
-	if (!cgroup_lock_live_group(cgrp))
-		return -ENODEV;
-	ret = attach_task_by_pid(cgrp, pid);
-	cgroup_unlock();
-	return ret;
+	return attach_task_by_pid(cgrp, pid, false);
 }
 
 /**
@@ -2219,6 +2256,24 @@ static struct dentry *cgroup_lookup(struct inode *dir, struct dentry *dentry, st
 		return ERR_PTR(-ENAMETOOLONG);
 	d_add(dentry, NULL);
 	return NULL;
+}
+
+static int cgroup_allow_attach(struct cgroup *cgrp, struct task_struct *tsk)
+{
+	struct cgroup_subsys *ss;
+	int ret;
+
+	for_each_subsys(cgrp->root, ss) {
+		if (ss->allow_attach) {
+			ret = ss->allow_attach(cgrp, tsk);
+			if (ret)
+				return ret;
+		} else {
+			return -EACCES;
+		}
+	}
+
+	return 0;
 }
 
 /*
@@ -4481,8 +4536,7 @@ unsigned short css_id(struct cgroup_subsys_state *css)
 	 * on this or this is under rcu_read_lock(). Once css->id is allocated,
 	 * it's unchanged until freed.
 	 */
-	cssid = rcu_dereference_check(css->id,
-			rcu_read_lock_held() || atomic_read(&css->refcnt));
+	cssid = rcu_dereference_check(css->id, atomic_read(&css->refcnt));
 
 	if (cssid)
 		return cssid->id;
@@ -4494,8 +4548,7 @@ unsigned short css_depth(struct cgroup_subsys_state *css)
 {
 	struct css_id *cssid;
 
-	cssid = rcu_dereference_check(css->id,
-			rcu_read_lock_held() || atomic_read(&css->refcnt));
+	cssid = rcu_dereference_check(css->id, atomic_read(&css->refcnt));
 
 	if (cssid)
 		return cssid->depth;
