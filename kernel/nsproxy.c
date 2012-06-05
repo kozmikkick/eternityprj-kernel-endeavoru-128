@@ -229,10 +229,8 @@ void exit_task_namespaces(struct task_struct *p)
 	switch_task_namespaces(p, NULL);
 }
 
-static int __init nsproxy_cache_init(void)
+int __init nsproxy_cache_init(void)
 {
 	nsproxy_cachep = KMEM_CACHE(nsproxy, SLAB_PANIC);
 	return 0;
 }
-
-module_init(nsproxy_cache_init);
