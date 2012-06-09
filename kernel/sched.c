@@ -7825,17 +7825,10 @@ int in_sched_functions(unsigned long addr)
 		&& addr < (unsigned long)__sched_text_end);
 }
 
-static void init_cfs_rq(struct cfs_rq *cfs_rq, struct rq *rq)
+static void init_cfs_rq(struct cfs_rq *cfs_rq)
 {
 	cfs_rq->tasks_timeline = RB_ROOT;
 	INIT_LIST_HEAD(&cfs_rq->tasks);
-#ifdef CONFIG_FAIR_GROUP_SCHED
-	cfs_rq->rq = rq;
-	/* allow initial update_cfs_load() to truncate */
-#ifdef CONFIG_SMP
-	cfs_rq->load_stamp = 1;
-#endif
-#endif
 	cfs_rq->min_vruntime = (u64)(-(1LL << 20));
 #ifndef CONFIG_64BIT
 	cfs_rq->min_vruntime_copy = cfs_rq->min_vruntime;
@@ -7855,13 +7848,9 @@ static void init_rt_rq(struct rt_rq *rt_rq, struct rq *rq)
 	/* delimiter for bitsearch: */
 	__set_bit(MAX_RT_PRIO, array->bitmap);
 
-#if defined CONFIG_SMP || defined CONFIG_RT_GROUP_SCHED
+#if defined CONFIG_SMP
 	rt_rq->highest_prio.curr = MAX_RT_PRIO;
-#ifdef CONFIG_SMP
 	rt_rq->highest_prio.next = MAX_RT_PRIO;
-#endif
-#endif
-#ifdef CONFIG_SMP
 	rt_rq->rt_nr_migratory = 0;
 	rt_rq->overloaded = 0;
 	plist_head_init(&rt_rq->pushable_tasks);
@@ -7871,11 +7860,6 @@ static void init_rt_rq(struct rt_rq *rt_rq, struct rq *rq)
 	rt_rq->rt_throttled = 0;
 	rt_rq->rt_runtime = 0;
 	raw_spin_lock_init(&rt_rq->rt_runtime_lock);
-
-#ifdef CONFIG_RT_GROUP_SCHED
-	rt_rq->rt_nr_boosted = 0;
-	rt_rq->rq = rq;
-#endif
 }
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
@@ -7884,11 +7868,17 @@ static void init_tg_cfs_entry(struct task_group *tg, struct cfs_rq *cfs_rq,
 				struct sched_entity *parent)
 {
 	struct rq *rq = cpu_rq(cpu);
-	tg->cfs_rq[cpu] = cfs_rq;
-	init_cfs_rq(cfs_rq, rq);
-	cfs_rq->tg = tg;
 
+	cfs_rq->tg = tg;
+	cfs_rq->rq = rq;
+#ifdef CONFIG_SMP
+	/* allow initial update_cfs_load() to truncate */
+	cfs_rq->load_stamp = 1;
+#endif
+
+	tg->cfs_rq[cpu] = cfs_rq;
 	tg->se[cpu] = se;
+
 	/* se could be NULL for root_task_group */
 	if (!se)
 		return;
@@ -7911,12 +7901,14 @@ static void init_tg_rt_entry(struct task_group *tg, struct rt_rq *rt_rq,
 {
 	struct rq *rq = cpu_rq(cpu);
 
-	tg->rt_rq[cpu] = rt_rq;
-	init_rt_rq(rt_rq, rq);
+	rt_rq->highest_prio.curr = MAX_RT_PRIO;
+	rt_rq->rt_nr_boosted = 0;
+	rt_rq->rq = rq;
 	rt_rq->tg = tg;
-	rt_rq->rt_runtime = tg->rt_bandwidth.rt_runtime;
 
+	tg->rt_rq[cpu] = rt_rq;
 	tg->rt_se[cpu] = rt_se;
+
 	if (!rt_se)
 		return;
 
@@ -7998,7 +7990,7 @@ void __init sched_init(void)
 		rq->nr_running = 0;
 		rq->calc_load_active = 0;
 		rq->calc_load_update = jiffies + LOAD_FREQ;
-		init_cfs_rq(&rq->cfs, rq);
+		init_cfs_rq(&rq->cfs);
 		init_rt_rq(&rq->rt, rq);
 #ifdef CONFIG_FAIR_GROUP_SCHED
 		root_task_group.shares = root_task_group_load;
@@ -8313,6 +8305,7 @@ int alloc_fair_sched_group(struct task_group *tg, struct task_group *parent)
 		if (!se)
 			goto err_free_rq;
 
+		init_cfs_rq(cfs_rq);
 		init_tg_cfs_entry(tg, cfs_rq, se, i, parent->se[i]);
 	}
 
@@ -8404,6 +8397,8 @@ int alloc_rt_sched_group(struct task_group *tg, struct task_group *parent)
 		if (!rt_se)
 			goto err_free_rq;
 
+		init_rt_rq(rt_rq, cpu_rq(i));
+		rt_rq->rt_runtime = tg->rt_bandwidth.rt_runtime;
 		init_tg_rt_entry(tg, rt_rq, rt_se, i, parent->rt_se[i]);
 	}
 
