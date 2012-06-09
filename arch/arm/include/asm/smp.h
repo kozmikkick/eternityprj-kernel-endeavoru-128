@@ -87,6 +87,7 @@ extern int __cpu_logical_map[NR_CPUS];
  */
 struct secondary_data {
 	unsigned long pgdir;
+	unsigned long swapper_pg_dir;
 	void *stack;
 };
 extern struct secondary_data secondary_data;
