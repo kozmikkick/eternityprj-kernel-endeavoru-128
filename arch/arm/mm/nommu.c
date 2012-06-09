@@ -39,7 +39,7 @@ void __init paging_init(struct machine_desc *mdesc)
 /*
  * We don't need to do anything here for nommu machines.
  */
-void setup_mm_for_reboot(char mode)
+void setup_mm_for_reboot(void)
 {
 }
 
