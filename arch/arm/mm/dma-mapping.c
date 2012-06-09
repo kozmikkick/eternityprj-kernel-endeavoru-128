@@ -122,7 +122,7 @@ static void __dma_free_buffer(struct page *page, size_t size)
 
 
 #define CONSISTENT_OFFSET(x)	(((unsigned long)(x) - consistent_base) >> PAGE_SHIFT)
-#define CONSISTENT_PTE_INDEX(x) (((unsigned long)(x) - CONSISTENT_BASE) >> PMD_SHIFT)
+#define CONSISTENT_PTE_INDEX(x) (((unsigned long)(x) - consistent_base) >> PMD_SHIFT)
 #define NUM_CONSISTENT_PTES (CONSISTENT_DMA_SIZE >> PMD_SHIFT)
 
 /*
@@ -355,6 +355,8 @@ __dma_alloc(struct device *dev, size_t size, dma_addr_t *handle, gfp_t gfp,
 
 	if (addr)
 		*handle = pfn_to_dma(dev, page_to_pfn(page));
+	else
+		__dma_free_buffer(page, size);
 
 	return addr;
 }
