@@ -317,6 +317,7 @@ struct cfs_rq {
 
 	u64 exec_clock;
 	u64 min_vruntime;
+	u64 min_vruntime_copy;
 
 	struct rb_root tasks_timeline;
 	struct rb_node *rb_leftmost;
