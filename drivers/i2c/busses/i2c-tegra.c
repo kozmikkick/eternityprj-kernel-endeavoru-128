@@ -477,8 +477,10 @@ static irqreturn_t tegra_i2c_isr(int irq, void *dev_id)
 	status = i2c_readl(i2c_dev, I2C_INT_STATUS);
 
 	if (status == 0) {
-		dev_warn(i2c_dev->dev, "unknown interrupt Add 0x%02x\n",
-						i2c_dev->msg_add);
+		dev_warn(i2c_dev->dev, "irq status 0 %08x %08x %08x\n",
+			 i2c_readl(i2c_dev, I2C_PACKET_TRANSFER_STATUS),
+			 i2c_readl(i2c_dev, I2C_STATUS),
+			 i2c_readl(i2c_dev, I2C_CNFG));
 		i2c_dev->msg_err |= I2C_ERR_UNKNOWN_INTERRUPT;
 
 		if (!i2c_dev->irq_disabled) {
@@ -486,6 +488,7 @@ static irqreturn_t tegra_i2c_isr(int irq, void *dev_id)
 			i2c_dev->irq_disabled = 1;
 		}
 
+		complete(&i2c_dev->msg_complete);
 		goto err;
 	}
 
