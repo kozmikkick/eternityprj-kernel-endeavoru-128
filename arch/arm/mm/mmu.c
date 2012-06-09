@@ -799,7 +799,7 @@ early_param("vmalloc", early_vmalloc);
 
 phys_addr_t lowmem_limit;
 
-static void __init sanity_check_meminfo(void)
+void __init sanity_check_meminfo(void)
 {
 	int i, j, highmem = 0;
 
@@ -1089,8 +1089,9 @@ void __init paging_init(struct machine_desc *mdesc)
 {
 	void *zero_page;
 
+	memblock_set_current_limit(lowmem_limit);
+
 	build_mem_type_table();
-	sanity_check_meminfo();
 	prepare_page_table();
 	map_lowmem();
 	devicemaps_init(mdesc);
