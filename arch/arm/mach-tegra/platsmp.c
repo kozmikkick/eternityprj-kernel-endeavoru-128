@@ -261,6 +261,8 @@ void __init smp_init_cpus(void)
 	for (i = 0; i < ncores; i++)
 		cpu_set(i, cpu_possible_map);
 
+	set_smp_cross_call(gic_raise_softirq);
+
 	/* If only one CPU is possible, platform_smp_prepare_cpus() will
 	   never get called. We must therefore initialize the reset handler
 	   here. If there is more than one CPU, we must wait until after
