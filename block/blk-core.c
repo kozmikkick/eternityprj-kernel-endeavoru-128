@@ -1153,7 +1153,6 @@ static bool bio_attempt_front_merge(struct request_queue *q,
 				    struct request *req, struct bio *bio)
 {
 	const int ff = bio->bi_rw & REQ_FAILFAST_MASK;
-	sector_t sector;
 
 	/*
 	 * Debug stuff, kill later
@@ -1170,8 +1169,6 @@ static bool bio_attempt_front_merge(struct request_queue *q,
 
 	if ((req->cmd_flags & REQ_FAILFAST_MASK) != ff)
 		blk_rq_set_mixed_merge(req);
-
-	sector = bio->bi_sector;
 
 	bio->bi_next = req->bio;
 	req->bio = bio;
