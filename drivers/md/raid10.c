@@ -22,6 +22,7 @@
 #include <linux/delay.h>
 #include <linux/blkdev.h>
 #include <linux/seq_file.h>
+#include <linux/ratelimit.h>
 #include "md.h"
 #include "raid10.h"
 #include "raid0.h"
@@ -276,10 +277,11 @@ static void raid10_end_read_request(struct bio *bio, int error)
 		 * oops, read error:
 		 */
 		char b[BDEVNAME_SIZE];
-		if (printk_ratelimit())
-			printk(KERN_ERR "md/raid10:%s: %s: rescheduling sector %llu\n",
-			       mdname(conf->mddev),
-			       bdevname(conf->mirrors[dev].rdev->bdev,b), (unsigned long long)r10_bio->sector);
+		printk_ratelimited(KERN_ERR
+				   "md/raid10:%s: %s: rescheduling sector %llu\n",
+				   mdname(conf->mddev),
+				   bdevname(conf->mirrors[dev].rdev->bdev, b),
+				   (unsigned long long)r10_bio->sector);
 		reschedule_retry(r10_bio);
 	}
 
@@ -1694,12 +1696,13 @@ static void raid10d(mddev_t *mddev)
 				const unsigned long do_sync = (r10_bio->master_bio->bi_rw & REQ_SYNC);
 				bio_put(bio);
 				rdev = conf->mirrors[mirror].rdev;
-				if (printk_ratelimit())
-					printk(KERN_ERR "md/raid10:%s: %s: redirecting sector %llu to"
-					       " another mirror\n",
-					       mdname(mddev),
-					       bdevname(rdev->bdev,b),
-					       (unsigned long long)r10_bio->sector);
+				printk_ratelimited(
+					KERN_ERR
+					"md/raid10:%s: %s: redirecting"
+					"sector %llu to another mirror\n",
+					mdname(mddev),
+					bdevname(rdev->bdev, b),
+					(unsigned long long)r10_bio->sector);
 				bio = bio_clone_mddev(r10_bio->master_bio,
 						      GFP_NOIO, mddev);
 				r10_bio->devs[r10_bio->read_slot].bio = bio;
