@@ -23,7 +23,7 @@
 
 #include <linux/device.h>
 #include <linux/uio.h>
-#include <bug.h>
+#include <linux/bug.h>
 #include <linux/dma-mapping.h>
 
 /**
