@@ -3006,12 +3006,9 @@ static void handle_stripe5(struct stripe_head *sh)
 {
 	raid5_conf_t *conf = sh->raid_conf;
 	int disks = sh->disks, i;
-	struct bio *return_bi = NULL;
 	struct stripe_head_state s;
 	struct r5dev *dev;
-	mdk_rdev_t *blocked_rdev = NULL;
 	int prexor;
-	int dec_preread_active = 0;
 
 	memset(&s, 0, sizeof(s));
 	pr_debug("handling stripe %llu, state=%#lx cnt=%d, pd_idx=%d check:%d "
@@ -3061,9 +3058,9 @@ static void handle_stripe5(struct stripe_head *sh)
 		if (dev->written)
 			s.written++;
 		rdev = rcu_dereference(conf->disks[i].rdev);
-		if (blocked_rdev == NULL &&
+		if (s.blocked_rdev == NULL &&
 		    rdev && unlikely(test_bit(Blocked, &rdev->flags))) {
-			blocked_rdev = rdev;
+			s.blocked_rdev = rdev;
 			atomic_inc(&rdev->nr_pending);
 		}
 		clear_bit(R5_Insync, &dev->flags);
@@ -3091,15 +3088,15 @@ static void handle_stripe5(struct stripe_head *sh)
 	spin_unlock_irq(&conf->device_lock);
 	rcu_read_unlock();
 
-	if (unlikely(blocked_rdev)) {
+	if (unlikely(s.blocked_rdev)) {
 		if (s.syncing || s.expanding || s.expanded ||
 		    s.to_write || s.written) {
 			set_bit(STRIPE_HANDLE, &sh->state);
 			goto unlock;
 		}
 		/* There is nothing for the blocked_rdev to block */
-		rdev_dec_pending(blocked_rdev, conf->mddev);
-		blocked_rdev = NULL;
+		rdev_dec_pending(s.blocked_rdev, conf->mddev);
+		s.blocked_rdev = NULL;
 	}
 
 	if (s.to_fill && !test_bit(STRIPE_BIOFILL_RUN, &sh->state)) {
@@ -3115,7 +3112,7 @@ static void handle_stripe5(struct stripe_head *sh)
 	 * need to be failed
 	 */
 	if (s.failed > 1 && s.to_read+s.to_write+s.written)
-		handle_failed_stripe(conf, sh, &s, disks, &return_bi);
+		handle_failed_stripe(conf, sh, &s, disks, &s.return_bi);
 	if (s.failed > 1 && s.syncing) {
 		md_done_sync(conf->mddev, STRIPE_SECTORS,0);
 		clear_bit(STRIPE_SYNCING, &sh->state);
@@ -3131,7 +3128,7 @@ static void handle_stripe5(struct stripe_head *sh)
 	       !test_bit(R5_LOCKED, &dev->flags) &&
 	       test_bit(R5_UPTODATE, &dev->flags)) ||
 	       (s.failed == 1 && s.failed_num[0] == sh->pd_idx)))
-		handle_stripe_clean_event(conf, sh, disks, &return_bi);
+		handle_stripe_clean_event(conf, sh, disks, &s.return_bi);
 
 	/* Now we might consider reading some blocks, either to check/generate
 	 * parity, or to satisfy requests
@@ -3169,7 +3166,7 @@ static void handle_stripe5(struct stripe_head *sh)
 			}
 		}
 		if (test_and_clear_bit(STRIPE_PREREAD_ACTIVE, &sh->state))
-			dec_preread_active = 1;
+			s.dec_preread_active = 1;
 	}
 
 	/* Now to consider new write requests and what else, if anything
@@ -3267,15 +3264,15 @@ static void handle_stripe5(struct stripe_head *sh)
  unlock:
 
 	/* wait for this device to become unblocked */
-	if (unlikely(blocked_rdev))
-		md_wait_for_blocked_rdev(blocked_rdev, conf->mddev);
+	if (unlikely(s.blocked_rdev))
+		md_wait_for_blocked_rdev(s.blocked_rdev, conf->mddev);
 
 	if (s.ops_request)
 		raid_run_ops(sh, s.ops_request);
 
 	ops_run_io(sh, &s);
 
-	if (dec_preread_active) {
+	if (s.dec_preread_active) {
 		/* We delay this until after ops_run_io so that if make_request
 		 * is waiting on a flush, it won't continue until the writes
 		 * have actually been submitted.
@@ -3285,19 +3282,16 @@ static void handle_stripe5(struct stripe_head *sh)
 		    IO_THRESHOLD)
 			md_wakeup_thread(conf->mddev->thread);
 	}
-	return_io(return_bi);
+	return_io(s.return_bi);
 }
 
 static void handle_stripe6(struct stripe_head *sh)
 {
 	raid5_conf_t *conf = sh->raid_conf;
 	int disks = sh->disks;
-	struct bio *return_bi = NULL;
 	int i, pd_idx = sh->pd_idx, qd_idx = sh->qd_idx;
 	struct stripe_head_state s;
 	struct r5dev *dev, *pdev, *qdev;
-	mdk_rdev_t *blocked_rdev = NULL;
-	int dec_preread_active = 0;
 
 	pr_debug("handling stripe %llu, state=%#lx cnt=%d, "
 		"pd_idx=%d, qd_idx=%d\n, check:%d, reconstruct:%d\n",
@@ -3348,9 +3342,9 @@ static void handle_stripe6(struct stripe_head *sh)
 		if (dev->written)
 			s.written++;
 		rdev = rcu_dereference(conf->disks[i].rdev);
-		if (blocked_rdev == NULL &&
+		if (s.blocked_rdev == NULL &&
 		    rdev && unlikely(test_bit(Blocked, &rdev->flags))) {
-			blocked_rdev = rdev;
+			s.blocked_rdev = rdev;
 			atomic_inc(&rdev->nr_pending);
 		}
 		clear_bit(R5_Insync, &dev->flags);
@@ -3379,15 +3373,15 @@ static void handle_stripe6(struct stripe_head *sh)
 	spin_unlock_irq(&conf->device_lock);
 	rcu_read_unlock();
 
-	if (unlikely(blocked_rdev)) {
+	if (unlikely(s.blocked_rdev)) {
 		if (s.syncing || s.expanding || s.expanded ||
 		    s.to_write || s.written) {
 			set_bit(STRIPE_HANDLE, &sh->state);
 			goto unlock;
 		}
 		/* There is nothing for the blocked_rdev to block */
-		rdev_dec_pending(blocked_rdev, conf->mddev);
-		blocked_rdev = NULL;
+		rdev_dec_pending(s.blocked_rdev, conf->mddev);
+		s.blocked_rdev = NULL;
 	}
 
 	if (s.to_fill && !test_bit(STRIPE_BIOFILL_RUN, &sh->state)) {
@@ -3403,7 +3397,7 @@ static void handle_stripe6(struct stripe_head *sh)
 	 * might need to be failed
 	 */
 	if (s.failed > 2 && s.to_read+s.to_write+s.written)
-		handle_failed_stripe(conf, sh, &s, disks, &return_bi);
+		handle_failed_stripe(conf, sh, &s, disks, &s.return_bi);
 	if (s.failed > 2 && s.syncing) {
 		md_done_sync(conf->mddev, STRIPE_SECTORS,0);
 		clear_bit(STRIPE_SYNCING, &sh->state);
@@ -3428,7 +3422,7 @@ static void handle_stripe6(struct stripe_head *sh)
 	    (s.q_failed || ((test_bit(R5_Insync, &qdev->flags)
 			     && !test_bit(R5_LOCKED, &qdev->flags)
 			     && test_bit(R5_UPTODATE, &qdev->flags)))))
-		handle_stripe_clean_event(conf, sh, disks, &return_bi);
+		handle_stripe_clean_event(conf, sh, disks, &s.return_bi);
 
 	/* Now we might consider reading some blocks, either to check/generate
 	 * parity, or to satisfy requests
@@ -3464,7 +3458,7 @@ static void handle_stripe6(struct stripe_head *sh)
 			}
 		}
 		if (test_and_clear_bit(STRIPE_PREREAD_ACTIVE, &sh->state))
-			dec_preread_active = 1;
+			s.dec_preread_active = 1;
 	}
 
 	/* Now to consider new write requests and what else, if anything
@@ -3564,8 +3558,8 @@ static void handle_stripe6(struct stripe_head *sh)
  unlock:
 
 	/* wait for this device to become unblocked */
-	if (unlikely(blocked_rdev))
-		md_wait_for_blocked_rdev(blocked_rdev, conf->mddev);
+	if (unlikely(s.blocked_rdev))
+		md_wait_for_blocked_rdev(s.blocked_rdev, conf->mddev);
 
 	if (s.ops_request)
 		raid_run_ops(sh, s.ops_request);
@@ -3573,7 +3567,7 @@ static void handle_stripe6(struct stripe_head *sh)
 	ops_run_io(sh, &s);
 
 
-	if (dec_preread_active) {
+	if (s.dec_preread_active) {
 		/* We delay this until after ops_run_io so that if make_request
 		 * is waiting on a flush, it won't continue until the writes
 		 * have actually been submitted.
@@ -3584,7 +3578,7 @@ static void handle_stripe6(struct stripe_head *sh)
 			md_wakeup_thread(conf->mddev->thread);
 	}
 
-	return_io(return_bi);
+	return_io(s.return_bi);
 }
 
 static void handle_stripe(struct stripe_head *sh)
