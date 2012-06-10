@@ -132,4 +132,6 @@ struct r1bio_s {
  */
 #define	R1BIO_Returned 6
 
+extern int md_raid1_congested(mddev_t *mddev, int bits);
+
 #endif
