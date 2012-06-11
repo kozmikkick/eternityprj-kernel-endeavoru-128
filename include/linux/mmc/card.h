@@ -46,6 +46,7 @@ struct mmc_ext_csd {
 	u8			rev;
 	u8			erase_group_def;
 	u8			sec_feature_support;
+	u8			bootconfig;
 	u8			rel_sectors;
 	u8			rel_param;
 	u8			part_conf;

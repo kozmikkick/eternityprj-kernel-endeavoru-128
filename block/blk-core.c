@@ -1553,6 +1553,7 @@ static inline void __generic_make_request(struct bio *bio)
 	      !blk_queue_secdiscard(q)))) {
 		err = -EOPNOTSUPP;
 		goto end_io;
+	}
 
 	if (blk_throtl_bio(q, &bio))
 		goto end_io;
