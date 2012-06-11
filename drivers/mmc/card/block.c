@@ -261,13 +261,11 @@ static u32 mmc_sd_num_wr_blocks(struct mmc_card *card)
 	__be32 *blocks;
 
 	struct mmc_request mrq;
-	struct mmc_command cmd;
+	struct mmc_command cmd = {0};
 	struct mmc_data data;
 	unsigned int timeout_us;
 
 	struct scatterlist sg;
-
-	memset(&cmd, 0, sizeof(struct mmc_command));
 
 	cmd.opcode = MMC_APP_CMD;
 	cmd.arg = card->rca << 16;
@@ -329,10 +327,9 @@ static u32 mmc_sd_num_wr_blocks(struct mmc_card *card)
 
 static u32 get_card_status(struct mmc_card *card, struct request *req)
 {
-	struct mmc_command cmd;
+	struct mmc_command cmd = {0};
 	int err;
 
-	memset(&cmd, 0, sizeof(struct mmc_command));
 	cmd.opcode = MMC_SEND_STATUS;
 	if (!mmc_host_is_spi(card->host))
 		cmd.arg = card->rca << 16;
@@ -468,7 +465,7 @@ static inline int mmc_apply_rel_rw(struct mmc_blk_request *brq,
 				   struct request *req)
 {
 	int err;
-	struct mmc_command set_count;
+	struct mmc_command set_count = {0};
 
 	if (!(card->ext_csd.rel_param & EXT_CSD_WR_REL_PARAM_EN)) {
 		/* Legacy mode imposes restrictions on transfers. */
@@ -481,7 +478,6 @@ static inline int mmc_apply_rel_rw(struct mmc_blk_request *brq,
 			brq->data.blocks = 1;
 	}
 
-	memset(&set_count, 0, sizeof(struct mmc_command));
 	set_count.opcode = MMC_SET_BLOCK_COUNT;
 	set_count.arg = brq->data.blocks | (1 << 31);
 	set_count.flags = MMC_RSP_R1 | MMC_CMD_AC;
@@ -516,7 +512,7 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *req)
 	}
 
 	do {
-		struct mmc_command cmd;
+		struct mmc_command cmd = {0};
 		u32 readcmd, writecmd, status = 0;
 
 		memset(&brq, 0, sizeof(struct mmc_blk_request));
