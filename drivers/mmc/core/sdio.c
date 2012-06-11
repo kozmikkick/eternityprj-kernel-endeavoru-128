@@ -989,7 +989,6 @@ static int mmc_sdio_power_restore(struct mmc_host *host)
 
 	mmc_claim_host(host);
 
-	/* HTC_WIFI_START */	
 	/*
 	 * Reset the card by performing the same steps that are taken by
 	 * mmc_rescan_try_freq() and mmc_attach_sdio() during a "normal" probe.
@@ -1024,16 +1023,13 @@ static int mmc_sdio_power_restore(struct mmc_host *host)
 		ret = -EINVAL;
 		goto out;
 	}
-	/* HTC_WIFI_END */	
 	
 	ret = mmc_sdio_init_card(host, host->ocr, host->card,
 				mmc_card_keep_power(host));
 	if (!ret && host->sdio_irqs)
 		mmc_signal_sdio_irq(host);
 
-/* HTC_WIFI_START */
 out:
-/* HTC_WIFI_END */	
 	mmc_release_host(host);
 
 	return ret;
