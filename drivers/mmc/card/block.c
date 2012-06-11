@@ -260,7 +260,7 @@ static u32 mmc_sd_num_wr_blocks(struct mmc_card *card)
 	u32 result;
 	__be32 *blocks;
 
-	struct mmc_request mrq;
+	struct mmc_request mrq = {0};
 	struct mmc_command cmd = {0};
 	struct mmc_data data = {0};
 	unsigned int timeout_us;
@@ -300,8 +300,6 @@ static u32 mmc_sd_num_wr_blocks(struct mmc_card *card)
 	data.flags = MMC_DATA_READ;
 	data.sg = &sg;
 	data.sg_len = 1;
-
-	memset(&mrq, 0, sizeof(struct mmc_request));
 
 	mrq.cmd = &cmd;
 	mrq.data = &data;
