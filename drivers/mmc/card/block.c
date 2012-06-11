@@ -735,7 +735,7 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *req)
 			/* SPI multiblock writes terminate using a special
 			 * token, not a STOP_TRANSMISSION request.
 			 */
-			if ((!mmc_host_is_spi(card->host) ||
+			if (!mmc_host_is_spi(card->host) ||
 			    rq_data_dir(req) == READ)
 				brq.mrq.stop = &brq.stop;
 			readcmd = MMC_READ_MULTIPLE_BLOCK;
@@ -1215,11 +1215,11 @@ static const struct mmc_fixup blk_fixups[] =
 	 *
 	 * N.B. This doesn't affect SD cards.
 	 */
-	MMC_FIXUP("MMC08G", 0x11, CID_OEMID_ANY, add_quirk_mmc,
+	MMC_FIXUP("MMC08G", 0x11, CID_OEMID_ANY, add_quirk,
 		  MMC_QUIRK_BLK_NO_CMD23),
-	MMC_FIXUP("MMC16G", 0x11, CID_OEMID_ANY, add_quirk_mmc,
+	MMC_FIXUP("MMC16G", 0x11, CID_OEMID_ANY, add_quirk,
 		  MMC_QUIRK_BLK_NO_CMD23),
-	MMC_FIXUP("MMC32G", 0x11, CID_OEMID_ANY, add_quirk_mmc,
+	MMC_FIXUP("MMC32G", 0x11, CID_OEMID_ANY, add_quirk,
 		  MMC_QUIRK_BLK_NO_CMD23),
 	END_FIXUP
 };

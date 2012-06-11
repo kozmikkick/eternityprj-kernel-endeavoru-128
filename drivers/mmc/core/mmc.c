@@ -923,7 +923,7 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 			 */
 			if (ddr == EXT_CSD_CARD_TYPE_DDR_1_2V) {
 				err = mmc_set_signal_voltage(host,
-					MMC_SIGNAL_VOLTAGE_120);
+					MMC_SIGNAL_VOLTAGE_120, 0);
 				if (err)
 					goto err;
 			}
