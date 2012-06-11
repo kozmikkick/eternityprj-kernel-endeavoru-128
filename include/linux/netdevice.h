@@ -35,7 +35,6 @@
 #include <linux/timer.h>
 #include <linux/bug.h>
 #include <linux/delay.h>
-#include <linux/mm.h>
 #include <linux/atomic.h>
 #include <asm/cache.h>
 #include <asm/byteorder.h>
