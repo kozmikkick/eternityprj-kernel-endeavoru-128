@@ -30,6 +30,7 @@ struct mmc_csd {
 	unsigned short		cmdclass;
 	unsigned short		tacc_clks;
 	unsigned int		tacc_ns;
+	unsigned int		c_size;
 	unsigned int		r2w_factor;
 	unsigned int		max_dtr;
 	unsigned int		erase_size;		/* In sectors */
@@ -169,6 +170,7 @@ struct mmc_card {
 #define MMC_STATE_DOING_BKOPS	(1 << 5)	/* Card doing bkops */
 #define MMC_STATE_NEED_BKOPS	(1 << 6)	/* Card needs to do bkops */
 #define MMC_STATE_ULTRAHIGHSPEED (1 << 7)	/* Card is in UHS mode */
+#define MMC_CARD_SDXC		(1<<8)		/* card is SDXC */
 
 	unsigned int		quirks; 	/* card quirks */
 #define MMC_QUIRK_LENIENT_FN0	(1<<0)		/* allow SDIO FN0 writes outside of the VS CCCR range */
@@ -309,6 +311,7 @@ static inline void __maybe_unused remove_quirk(struct mmc_card *card, int data)
 #define mmc_card_doing_bkops(c) ((c)->state & MMC_STATE_DOING_BKOPS)
 #define mmc_card_need_bkops(c) ((c)->state & MMC_STATE_NEED_BKOPS)
 #define mmc_card_uhs(c)		((c)->state & MMC_STATE_ULTRAHIGHSPEED)
+#define mmc_card_ext_capacity(c) ((c)->state & MMC_CARD_SDXC)
 #define mmc_sd_card_uhs(c)	((c)->state & MMC_STATE_ULTRAHIGHSPEED)
 
 #define mmc_card_set_present(c)	((c)->state |= MMC_STATE_PRESENT)
@@ -319,6 +322,7 @@ static inline void __maybe_unused remove_quirk(struct mmc_card *card, int data)
 #define mmc_card_set_doing_bkops(c) ((c)->state |= MMC_STATE_DOING_BKOPS)
 #define mmc_card_set_need_bkops(c) ((c)->state |= MMC_STATE_NEED_BKOPS)
 #define mmc_card_set_uhs(c) ((c)->state |= MMC_STATE_ULTRAHIGHSPEED)
+#define mmc_card_set_ext_capacity(c) ((c)->state |= MMC_CARD_SDXC)
 #define mmc_sd_card_set_uhs(c) ((c)->state |= MMC_STATE_ULTRAHIGHSPEED)
 
 #define mmc_card_clr_doing_bkops(c) ((c)->state &= ~MMC_STATE_DOING_BKOPS)
