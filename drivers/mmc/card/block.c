@@ -548,8 +548,6 @@ static int mmc_blk_issue_discard_rq(struct mmc_queue *mq, struct request *req)
 	unsigned int from, nr, arg;
 	int err = 0;
 
-	mmc_claim_host(card->host);
-
 	if (!mmc_can_erase(card)) {
 		err = -EOPNOTSUPP;
 		goto out;
@@ -580,8 +578,6 @@ out:
 	__blk_end_request(req, err, blk_rq_bytes(req));
 	spin_unlock_irq(&md->lock);
 
-	mmc_release_host(card->host);
-
 	return err ? 0 : 1;
 }
 
@@ -592,8 +588,6 @@ static int mmc_blk_issue_secdiscard_rq(struct mmc_queue *mq,
 	struct mmc_card *card = md->queue.card;
 	unsigned int from, nr, arg;
 	int err = 0;
-
-	mmc_claim_host(card->host);
 
 	if (!mmc_can_secure_erase_trim(card)) {
 		err = -EOPNOTSUPP;
@@ -632,8 +626,6 @@ out:
 	spin_lock_irq(&md->lock);
 	__blk_end_request(req, err, blk_rq_bytes(req));
 	spin_unlock_irq(&md->lock);
-
-	mmc_release_host(card->host);
 
 	return err ? 0 : 1;
 }
@@ -704,7 +696,6 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *req)
 		(rq_data_dir(req) == WRITE) &&
 		REL_WRITES_SUPPORTED(card);
 
-	mmc_claim_host(card->host);
 	ret = mmc_blk_part_switch(card, md);
 	if (ret) {
 		ret = 0;
@@ -905,8 +896,6 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *req)
 		mmc_card_set_need_bkops(card);
 
 out:
-	mmc_release_host(card->host);
-
 	return 1;
 
  cmd_err:
@@ -933,8 +922,6 @@ out:
 		spin_unlock_irq(&md->lock);
 	}
 
-	mmc_release_host(card->host);
-
 	spin_lock_irq(&md->lock);
 	while (ret)
 		ret = __blk_end_request(req, -EIO, blk_rq_cur_bytes(req));
@@ -948,7 +935,7 @@ mmc_blk_set_blksize(struct mmc_blk_data *md, struct mmc_card *card);
 
 static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 {
-#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	int ret;
 	struct mmc_blk_data *md = mq->data;
 	struct mmc_card *card = md->queue.card;
 
@@ -956,22 +943,26 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 		mmc_resume_bus(card->host);
 		mmc_blk_set_blksize(md, card);
 	}
-#endif
+
+	mmc_claim_host(card->host);
 
 	if (req->cmd_flags & REQ_DISCARD) {
 		if (req->cmd_flags & REQ_SECURE)
-			return mmc_blk_issue_secdiscard_rq(mq, req);
+			ret = mmc_blk_issue_secdiscard_rq(mq, req);
 		else
-			return mmc_blk_issue_discard_rq(mq, req);
+			ret = mmc_blk_issue_discard_rq(mq, req);
 	} else if (req->cmd_flags & REQ_FLUSH) {
-		return mmc_blk_issue_flush(mq, req);
+		ret = mmc_blk_issue_flush(mq, req);
 	} else {
 		/* Abort any current bk ops of eMMC card by issuing HPI */
 		if (mmc_card_mmc(mq->card) && mmc_card_doing_bkops(mq->card))
 			mmc_interrupt_hpi(mq->card);
 
-		return mmc_blk_issue_rw_rq(mq, req);
+		ret =  mmc_blk_issue_rw_rq(mq, req);
 	}
+
+	mmc_release_host(card->host);
+	return ret;
 }
 
 static inline int mmc_blk_readonly(struct mmc_card *card)
