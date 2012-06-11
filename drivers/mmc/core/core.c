@@ -1780,7 +1780,7 @@ void mmc_rescan(struct work_struct *work)
 			extend_wakelock = true;
 			break;
 		}
-		if (freqs[i] < host->f_min)
+		if (freqs[i] <= host->f_min)
 			break;
 	}
 	mmc_release_host(host);
