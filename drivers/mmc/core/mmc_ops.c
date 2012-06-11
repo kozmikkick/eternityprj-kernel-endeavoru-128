@@ -396,7 +396,8 @@ int mmc_spi_set_crc(struct mmc_host *host, int use_crc)
  *
  *	Modifies the EXT_CSD register for selected card.
  */
-int mmc_switch(struct mmc_card *card, u8 set, u8 index, u8 value)
+int mmc_switch(struct mmc_card *card, u8 set, u8 index, u8 value,
+	      unsigned int timeout_ms)
 {
 	int err;
 	struct mmc_command cmd;
@@ -447,8 +448,6 @@ int mmc_switch(struct mmc_card *card, u8 set, u8 index, u8 value)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mmc_switch);
-
-EXPORT_SYMBOL(mmc_switch);
 
 int mmc_send_status(struct mmc_card *card, u32 *status)
 {

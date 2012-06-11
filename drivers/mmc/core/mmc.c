@@ -586,7 +586,7 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 	if (card->cid.manfid == 0x45) {
 		if (card->ext_csd.sectors > 33554432) { /* the storage size larger than 16GB */
 			if (card->ext_csd.max_enh_size_mult < 0xEC) {
-				err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL, EXT_CSD_POWER_CLASS, 4); 
+				err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL, EXT_CSD_POWER_CLASS, 4, 0); 
 				if (err && err != -EBADMSG)
 					goto free_card;
 
@@ -643,7 +643,7 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 			mmc_hostname(card->host));
 
 		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
-			EXT_CSD_PARTITION_CFG, 0x48);
+			EXT_CSD_PARTITION_CFG, 0x48, 0);
 
 		if (err && err != -EBADMSG) {
 			printk(KERN_ERR "%s: switch command to set EXT_CSD_PARTITION_CONFIG failed\n",
@@ -692,7 +692,7 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 	 */
 	if (card->ext_csd.hpi && (card->host->caps & MMC_CAP_BKOPS)) {
 		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
-			EXT_CSD_HPI_MGMT, 1);
+			EXT_CSD_HPI_MGMT, 1, 0);
 		if (err && err != -EBADMSG)
 			goto free_card;
 		if (err) {
@@ -709,7 +709,7 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 	 */
 	if (card->ext_csd.bk_ops && (card->host->caps & MMC_CAP_BKOPS)) {
 		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
-			EXT_CSD_BKOPS_EN, 1);
+			EXT_CSD_BKOPS_EN, 1, 0);
 		if (err && err != -EBADMSG)
 			goto free_card;
 		if (err) {

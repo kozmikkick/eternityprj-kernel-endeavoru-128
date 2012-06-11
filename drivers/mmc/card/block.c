@@ -373,7 +373,7 @@ static int mmc_blk_issue_discard_rq(struct mmc_queue *mq, struct request *req)
 				 INAND_CMD38_ARG_EXT_CSD,
 				 arg == MMC_TRIM_ARG ?
 				 INAND_CMD38_ARG_TRIM :
-				 INAND_CMD38_ARG_ERASE);
+				 INAND_CMD38_ARG_ERASE, 0);
 		if (err)
 			goto out;
 	}
@@ -416,7 +416,7 @@ static int mmc_blk_issue_secdiscard_rq(struct mmc_queue *mq,
 				 INAND_CMD38_ARG_EXT_CSD,
 				 arg == MMC_SECURE_TRIM1_ARG ?
 				 INAND_CMD38_ARG_SECTRIM1 :
-				 INAND_CMD38_ARG_SECERASE);
+				 INAND_CMD38_ARG_SECERASE, 0);
 		if (err)
 			goto out;
 	}
@@ -425,7 +425,7 @@ static int mmc_blk_issue_secdiscard_rq(struct mmc_queue *mq,
 		if (card->quirks & MMC_QUIRK_INAND_CMD38) {
 			err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 					 INAND_CMD38_ARG_EXT_CSD,
-					 INAND_CMD38_ARG_SECTRIM2);
+					 INAND_CMD38_ARG_SECTRIM2, 0);
 			if (err)
 				goto out;
 		}
