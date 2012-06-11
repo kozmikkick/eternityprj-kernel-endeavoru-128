@@ -1,7 +1,8 @@
 /*
- *  This file contains work-arounds for many known sdio hardware
- *  bugs.
+ *  This file contains work-arounds for many known SD/MMC
+ *  and SDIO hardware bugs.
  *
+ *  Copyright (c) 2011 Andrei Warkentin <andreiw@motorola.com>
  *  Copyright (c) 2011 Pierre Tardy <tardyp@gmail.com>
  *  Inspired from pci fixup code:
  *  Copyright (c) 1999 Martin Mares <mj@ucw.cz>
@@ -43,8 +44,7 @@ static const struct mmc_fixup mmc_fixup_methods[] = {
 	END_FIXUP
 };
 
-void mmc_fixup_device(struct mmc_card *card,
-		      const struct mmc_fixup *table)
+void mmc_fixup_device(struct mmc_card *card, const struct mmc_fixup *table)
 {
 	const struct mmc_fixup *f;
 	u64 rev = cid_rev_card(card);
