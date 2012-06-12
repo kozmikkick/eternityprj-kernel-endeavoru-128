@@ -431,10 +431,14 @@ __irq_usr:
 	usr_entry
 	kuser_cmpxchg_check
 
+#ifdef CONFIG_IRQSOFF_TRACER
+	bl	trace_hardirqs_off
+#endif
+
 	irq_handler
 	get_thread_info tsk
 	mov	why, #0
-	b	ret_to_user
+	b	ret_to_user_from_irq
  UNWIND(.fnend		)
 ENDPROC(__irq_usr)
 
