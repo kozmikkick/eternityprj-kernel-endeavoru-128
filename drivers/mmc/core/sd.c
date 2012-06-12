@@ -469,7 +469,7 @@ static int sd_select_driver_type(struct mmc_card *card, u8 *status)
 	return 0;
 }
 
-static void sd_set_bus_speed_mode(struct mmc_card *card)
+static void sd_update_bus_speed_mode(struct mmc_card *card)
 {
 	/*
 	 * If the host doesn't support any of the UHS-I modes, fallback on

@@ -992,6 +992,18 @@ out_restore_irqs:
 EXPORT_SYMBOL(printk);
 EXPORT_SYMBOL(vprintk);
 
+void stfupk(const char *fmt, va_list args)
+{
+/* EternityProject: Temporary function
+ * to STFU the hTC WiFi driver compiled
+ * with all the damn debugging features.
+ *
+ * This will be removed after creating a
+ * proper WiFi driver for the HTC One X.
+ */
+}
+EXPORT_SYMBOL(stfupk);
+
 #else
 
 static void call_console_drivers(unsigned start, unsigned end)
