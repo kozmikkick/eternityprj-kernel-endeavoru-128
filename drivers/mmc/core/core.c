@@ -750,15 +750,17 @@ static inline void mmc_set_ios(struct mmc_host *host)
  */
 void mmc_set_chip_select(struct mmc_host *host, int mode)
 {
+	mmc_host_clk_hold(host);
 	host->ios.chip_select = mode;
 	mmc_set_ios(host);
+	mmc_host_clk_release(host);
 }
 
 /*
  * Sets the host clock to the highest possible frequency that
  * is below "hz".
  */
-void mmc_set_clock(struct mmc_host *host, unsigned int hz)
+static void __mmc_set_clock(struct mmc_host *host, unsigned int hz)
 {
 	WARN_ON(hz < host->f_min);
 
@@ -767,6 +769,13 @@ void mmc_set_clock(struct mmc_host *host, unsigned int hz)
 
 	host->ios.clock = hz;
 	mmc_set_ios(host);
+}
+
+void mmc_set_clock(struct mmc_host *host, unsigned int hz)
+{
+	mmc_host_clk_hold(host);
+	__mmc_set_clock(host, hz);
+	mmc_host_clk_release(host);
 }
 
 #ifdef CONFIG_MMC_CLKGATE
@@ -801,7 +810,7 @@ void mmc_ungate_clock(struct mmc_host *host)
 	if (host->clk_old) {
 		BUG_ON(host->ios.clock);
 		/* This call will also set host->clk_gated to false */
-		mmc_set_clock(host, host->clk_old);
+		__mmc_set_clock(host, host->clk_old);
 	}
 }
 
@@ -829,8 +838,10 @@ void mmc_set_ungated(struct mmc_host *host)
  */
 void mmc_set_bus_mode(struct mmc_host *host, unsigned int mode)
 {
+	mmc_host_clk_hold(host);
 	host->ios.bus_mode = mode;
 	mmc_set_ios(host);
+	mmc_host_clk_release(host);
 }
 
 /*
@@ -838,8 +849,10 @@ void mmc_set_bus_mode(struct mmc_host *host, unsigned int mode)
  */
 void mmc_set_bus_width(struct mmc_host *host, unsigned int width)
 {
+	mmc_host_clk_hold(host);
 	host->ios.bus_width = width;
 	mmc_set_ios(host);
+	mmc_host_clk_release(host);
 }
 
 /**
@@ -1037,8 +1050,10 @@ u32 mmc_select_voltage(struct mmc_host *host, u32 ocr)
 
 		ocr &= 3 << bit;
 
+		mmc_host_clk_hold(host);
 		host->ios.vdd = bit;
 		mmc_set_ios(host);
+		mmc_host_clk_release(host);
 	} else {
 		pr_warning("%s: host doesn't support card's voltages\n",
 				mmc_hostname(host));
@@ -1085,8 +1100,10 @@ int mmc_set_signal_voltage(struct mmc_host *host, int signal_voltage, bool cmd11
  */
 void mmc_set_timing(struct mmc_host *host, unsigned int timing)
 {
+	mmc_host_clk_hold(host);
 	host->ios.timing = timing;
 	mmc_set_ios(host);
+	mmc_host_clk_release(host);
 }
 
 /*
@@ -1094,8 +1111,10 @@ void mmc_set_timing(struct mmc_host *host, unsigned int timing)
  */
 void mmc_set_driver_type(struct mmc_host *host, unsigned int drv_type)
 {
+	mmc_host_clk_hold(host);
 	host->ios.drv_type = drv_type;
 	mmc_set_ios(host);
+	mmc_host_clk_release(host);
 }
 
 /*
@@ -1112,6 +1131,8 @@ void mmc_set_driver_type(struct mmc_host *host, unsigned int drv_type)
 static void mmc_power_up(struct mmc_host *host)
 {
 	int bit;
+
+	mmc_host_clk_hold(host);
 
 	/* If ocr is set, we use it */
 	if (host->ocr)
@@ -1148,10 +1169,14 @@ static void mmc_power_up(struct mmc_host *host)
 	 * time required to reach a stable voltage.
 	 */
 	mmc_delay(10);
+
+	mmc_host_clk_release(host);
 }
 
 static void mmc_power_off(struct mmc_host *host)
 {
+	mmc_host_clk_hold(host);
+
 	host->ios.clock = 0;
 	host->ios.vdd = 0;
 
@@ -1169,6 +1194,8 @@ static void mmc_power_off(struct mmc_host *host)
 	host->ios.bus_width = MMC_BUS_WIDTH_1;
 	host->ios.timing = MMC_TIMING_LEGACY;
 	mmc_set_ios(host);
+
+	mmc_host_clk_release(host);
 }
 
 /*
