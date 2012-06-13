@@ -1417,12 +1417,12 @@ void cpufreq_save_governor(void)
 				strlen(ONDEMAND_GOVERNOR)) == 0) {
 		cpufreq_read_governor_param(ONDEMAND_GOVERNOR, UP_THRESHOLD,
 					od_saved_up_threshold);
-		cpufreq_read_governor_param(ONDEMAND_GOVERNOR, SAMPRATE,
+/*		cpufreq_read_governor_param(ONDEMAND_GOVERNOR, SAMPRATE,
 					od_saved_sampling_rate);
 		cpufreq_read_governor_param(ONDEMAND_GOVERNOR, SAMPRATE_MIN,
 					od_saved_sampling_rate_min);
 		cpufreq_read_governor_param(ONDEMAND_GOVERNOR, SAMPDN_FACTOR,
-					od_saved_sampling_down_factor);
+					od_saved_sampling_down_factor); */
 	} else {
 	    printk("Tegra PM: Cannot save your governor parameters!!");
 	}
@@ -1449,10 +1449,10 @@ void cpufreq_restore_governor(void)
 				"scaling_max_freq", "1500000");
 		set_governor_param(ONDEMAND_GOVERNOR, UP_THRESHOLD,
 					od_saved_up_threshold);
-		set_governor_param(ONDEMAND_GOVERNOR, SAMPRATE,
+/*		set_governor_param(ONDEMAND_GOVERNOR, SAMPRATE,
 					od_saved_sampling_rate);
 		set_governor_param(ONDEMAND_GOVERNOR, SAMPDN_FACTOR,
-					od_saved_sampling_down_factor);
+					od_saved_sampling_down_factor); */
 	} else if (strncmp(cpufreq_gov_default,INTERACTIVE_GOVERNOR,
 				strlen(INTERACTIVE_GOVERNOR)) == 0) {
 		set_governor_param(INTERACTIVE_GOVERNOR, BOOST_FACTOR,
