@@ -1,0 +1,1358 @@
+37ba7aa slub: Not necessary to check for empty slab on load_freelist
+ea3ef55 slub: fast release on full slab
+0b011ef slub: Add statistics for the case that the current slab does  not match the node
+7d59025  slub: Get rid of the another_slab label
+83b37ff slub: Avoid disabling interrupts in free slowpath
+f6e9bbb slub: Disable interrupts in free_debug processing
+e4094c8 slub: Invert locking and avoid slab lock
+5b164d3 slub: Rework allocator fastpaths
+a339109 slub: Pass kmem_cache struct to lock and freeze slab
+0503d5d slub: explicit list_lock taking
+2a17cf2 slub: Add cmpxchg_double_slab()
+0683b4b slub: Move page->frozen handling near where the  page->freelist handling occurs
+6910009 Avoid duplicate _count variables in page_struct
+eb38e50 mm: Rearrange struct page
+bd16914 EternityProject: Temporairily eliminate some restoring in mach-tegra/common.c
+ffaeafc EternityProject: Save some CPU cycles at PM exit.
+e65d554 Fix compilation
+2ff2243 slub: Do not use frozen page flag but a bit in the page  counters
+d9a57db slub: Push irq disable into allocate_slab()
+46b151a slub: always align cpu_slab to honor cmpxchg_double  requirement
+0b6c898 slub: remove no-longer used 'unlock_out' label
+4f4d12d slub: Fix double bit unlock in debug mode
+536332d  slub: Remove node check in slab_free
+5896c87 slub: avoid label inside conditional
+7b47b81 slub: Avoid warning for !CONFIG_SLUB_DEBUG
+132ad73 slub: Remove CONFIG_CMPXCHG_LOCAL ifdeffery
+909643e slub: Move debug handlign in __slab_free
+6b9eee1 slub: Move node determination out of hotpath
+0712d1e slub: Eliminate repeated use of c->page through a new page  variable
+c5536df slub: get_map() function to establish map of free objects in  a slab
+de4ca7c slub: Use NUMA_NO_NODE in get_partial
+8f4df44 slub: Fix a typo in config name
+0b78554 mm: don't access vm_flags as 'int'
+a464d36 mm: do not define PFN_SECTION_SHIFT if !CONFIG_SPARSEMEM
+e0664d5 mm: enable set_page_section() only if CONFIG_SPARSEMEM and !CONFIG_SPARSEMEM_VMEMMAP
+ae1dca5 x86,mm: make pagefault killable
+332d3f6 zram: remove the second argument of k[un]map_atomic()
+10470ba Step 2: remove the second argument of k[un]map_atomic()
+d8df150 drm: remove the second argument of k[un]map_atomic()
+73e8374 edac: remove the second argument of k[un]map_atomic()
+c504743 crypto: remove the second argument of k[un]map_atomic()
+3ed483b block: remove the second argument of k[un]map_atomic()
+f12f0d3 ata: remove the second argument of k[un]map_atomic()
+14aa7ea mips: remove the second argument of k[un]map_atomic()
+729b457 arm: remove the second argument of k[un]map_atomic()
+6959394 ecryptfs: remove the second argument of k[un]map_atomic()
+0bcc4e3  mmc: remove the second argument of k[un]map_atomic()
+3dc1eda lib: remove the second argument of k[un]map_atomic()
+27bb919 crypto: remove the second argument of k[un]map_atomic()
+8096ab7 ARM: 7406/1: hotplug: copy the affinity mask when forcefully  migrating IRQs
+c80949b ARM: 6952/1: fix lockdep warning of 'unannotated irqs-off'
+fe8eb77 EternityProject: Add stfupk for STFU the damn WiFi driver
+92cec15 mmc: sd: UHS-I bus speed should be set last in UHS initialization
+a8caa81 mmc: core: use non-reentrant workqueue for clock gating
+173db3a mmc: core: prevent aggressive clock gating racing with ios  updates
+fc12caf mmc: rename mmc_host_clk_{ungate|gate} to  mmc_host_clk_{hold|release}
+b6f0112 mmc: core: use defined R1_STATE_PRG macro for card status
+15350e2 mmc: core: Detect eMMC v4.5 ext_csd entries
+500293c notifiers: pm: move pm notifiers into suspend.h
+07880d8 mmc: print debug messages for runtime PM actions
+457ccfa mmc: fix runtime PM with -ENOSYS suspend case
+2923c5a mmc: queue: let host controllers specify maximum discard  timeout
+f826cba mmc: CMD23: Not supported on BOARD_ENDEAVORU
+6667dc7 mmc: 20110713
+ff6cc45 mmc: 20110624
+7e4d116 ARM: 6894/1: mmci: trigger card detect IRQs on falling and  rising edges
+049b6b0 ARM: OMAP4: MMC: no regulator off during probe for eMMC
+b74e0ac mmc: Use device platform_data to retrieve tmio_mmc platform  bits
+0a4ec75 ARM: 6832/1: mmci: support for ST-Ericsson db8500v2
+b86bd72 mmc: sdhci: Auto-CMD23 fixes.
+857b421 mmc: sdhci: Auto-CMD23 support.
+a1d252f mmc: sdhci: Implement MMC_CAP_CMD23 for SDHCI.
+586f5be mmc: Add new VUB300 USB-to-SD/SDIO/MMC driver
+0c1edbb mmc: sdhci-pxa: Add quirks for DMA/ADMA to match h/w
+2be9376 mmc: sdhci-pxa: add platform code for UHS signaling
+b4de3f8 mmc: dw_mmc: fixed wrong regulator_enable in suspend/resume
+f6689f3 mmc: tmio: runtime suspend the controller, where possible
+fbf9283 mmc: sdhi: support up to 3 interrupt sources
+68b5163 mmc: sdhi: print physical base address and clock rate
+24a3328 mmc: sdhi: no need for special interrupt flags
+df1515c mmc: tmio/sdhi: break out interrupt request/free
+f85c545 mmc: protect the tmio_mmc driver against a theoretical race
+98b68a1 mmc: add runtime and system power-management support to the  MMCIF driver
+969b184 mmc: Add runtime and system-wide PM to the TMIO MMC driver
+8eebdcd mmc: sh_mmcif: protect against a theoretical race
+26e3cb8 mmc: sdhci: add support for programmable clock mode
+9b0a671 mmc: sdhci: Fix read-only detection with JMicron 388 chip
+78c06ea mmc: sdhci: Fix SDHCI_QUIRK_TIMEOUT_USES_SDCLK
+5d7aa47 mmc: core: Use CMD23 for multiblock transfers when we can
+0f5eef3 mmc: sdhci: work around broken dma boundary behavior
+156cc53 mmc: sdhci: R1B command handling + MMC_CAP_ERASE
+5850605 mmc: sdhci-pci: Fix checkpatch.pl errors
+1e04237 mmc: mmc_test: minor clean up, use t = &test.area everywhere
+1409ff7 mmc: card: fix potential null dereference of 'idata'
+d5cc626 mmc: block: init force_ro sysfs attribute
+7890106 mmc: Ensure hardware partitions don't mess with mmcblk  device naming.
+b834465 mmc: card: Fix use of uninitialized data in  mmc_blk_issue_rw_rq.
+cf3190f mmc: card: block.c cleanup for host claim/release
+e3ea61a mmc: remove redundant irq disabling+
+9e27bb4 mmc: core: eMMC bus width may not work on all platforms
+39c5358 mmc: core: Block CMD23 support for UHS104/SDXC cards.
+5edd703 mmc: core: duplicated trial with same freq in  mmc_rescan_try_freq()
+ca4873c mmc: core: eMMC signal voltage does not use CMD11
+8c4a714 mmc: core: clear MMC_PM_KEEP_POWER flag on resume
+a2f69b7 mmc: sdio: optimized SDIO IRQ handling for single irq
+fa99d42 mmc: sdhci: enable preset value after uhs initialization
+a78fa53 mmc: sd: report correct speed and capacity of uhs cards
+32b65ee mmc: sd: set current limit for uhs cards
+073b9c0 mmc: core: Add mmc CMD+ACMD passthrough ioctl
+e04d402 mmc: initialize struct mmc_request at declaration time
+d0df9c6 mmc: initialize struct mmc_data at declaration time
+ce015b8 mmc: initialize struct mmc_command at declaration time
+de0b663 mmc: core: Fix use of uninitialized data in  mmc_send_if_cond.
+c4914fb mmc: core: Fix use of uninitialized data in mmc_cmd_app.
+5eebb37 Fix compilation
+4d2fb46 mmc: MMC boot partitions support.
+3773d4e mmc: core: Allow setting CMD timeout for CMD6 (SWITCH).
+7206a2f mmc: core: Rename erase_timeout to cmd_timeout_ms.
+c438375 mmc: quirks: Fix hTC's UGLY -- UGLY -- UGLY and DAMN UGLY 'fixes'
+9854f2d mmc: quirks: wl1271 is MMC_QUIRK_DISABLE_CD mmc: core: fix memory leak in mmc_add_host
+271ebba mmc: add MMC_QUIRK_DISABLE_CD
+8621f4f mmc: quirks: wl1271 is MMC_QUIRK_NONSTD_FUNC_IF
+432d8b7 /* SDIO card has nonstd function interfaces */
+48fe385 mmc: do not switch to 1-bit mode if not required
+cc3ffd3 mmc: mmc_card_keep_power cleanups
+839d327 mmc: Ensure linux starts in eMMC user partition
+b12cd01 block: add GENHD_FL_NO_PART_SCAN
+2dd5b00 block: Remove extra discard_alignment from hd_struct.
+53f776d block: remove support for bio remapping from ->make_request
+f60c04d md/raid10: handle further errors during fix_read_error  better.
+3e8ddea md/raid10: Handle read errors during recovery better.
+4770901 md/raid10: simplify read error handling during recovery.
+5c0b2ef md/raid10: record bad blocks due to write errors during  resync/recovery.
+d97e70e  md/raid10:  attempt to fix read errors during resync/check
+1fe5e02 md/raid10:  Handle write errors by updating badblock log.
+53fdbe4  md/raid10: clear bad-block record when write succeeds.
+d023159 md/raid10: avoid writing to known bad blocks on known bad  drives.
+afee52a md/raid10: avoid reading known bad blocks during  resync/recovery.
+cb641ca md/raid10 - avoid reading from known bad blocks - part 3
+ae1fd57 md/raid10: avoid reading from known bad blocks - part 2
+eee0fe8  md/raid10: avoid reading from known bad blocks - part 1
+c300895 md/raid10: Split handle_read_error out from raid10d.
+4d251e7 md/raid10: simplify/reindent some loops.
+c5aa2cc md/raid10: move rdev->corrected_errors counting
+151cfd0 md/raid10: Improve decision on whether to fail a device with  a read error.
+cd2156a md/raid10: Make use of new recovery_disabled handling
+6266168 md/raid10: share pages between read and write bio's during  recovery
+b4af232  md/raid10: factor out common bio handling code
+e43f2e0 md/raid10: get rid of duplicated conditional expression
+909da71 md/raid10:  reformat some loops with less indenting.
+6420fba md/raid10: remove unused variable.
+6eab170 md/raid10: make more use of 'slot' in raid10d.
+d28b413  md/raid10: some tidying up in fix_read_error
+0c29d49 md: simplify raid10 read_balance
+d0ed148 md/raid5: Avoid BUG caused by multiple failures.
+eb6662f  md/raid5: move rdev->corrected_errors counting
+32fe4e4 md/raid5: finalise new merged handle_stripe.
+b1516e0 md/raid5: move some more common code into handle_stripe
+95ee530 md/raid5: move more common code into handle_stripe
+53db93b md/raid5: unite handle_stripe_dirtying5 and  handle_stripe_dirtying6
+f511156 md/raid5: unite fetch_block5 and fetch_block6
+1806dc8 md/raid5: rearrange a test in fetch_block6.
+4854b53 md/raid5: move more code into common handle_stripe
+8347adf md/raid5: Move code for finishing a reconstruction into  handle_stripe.
+3129532 md/raid5: Remove stripe_head_state arg from  handle_stripe_expansion.
+e8be8aa md/raid5: move stripe_head_state and more code into  handle_stripe.
+0f242f2 md/raid5:  add some more fields to stripe_head_state
+e20b851 md/raid5: unify stripe_head_state and r6_state
+b87bdb4 md/raid5: move common code into handle_stripe
+6574bcc md/raid5: replace sh->lock with an 'active' flag.
+fba8520 md/raid5: Protect some more code with ->device_lock.
+05fb921 md/raid5: Remove use of sh->lock in sync_request
+410551f md/raid5: get rid of duplicated call to bio_data_dir()
+a18f5f8 md/raid5: use kmem_cache_zalloc()
+d271a21 md/raid5: remove unusual use of bio_iovec_idx()
+4f932af  MD: raid5 do not set fullsync
+e37ad42 md: make error_handler functions more uniform and correct.
+b242147 md/multipath: discard ->working_disks in favour of  ->degraded
+6cea599 md, raid5: Fix spelling error in comment ('Ofcourse' --> 'Of  course').
+80b67c6 md: add 'write_error' flag to component devices.
+dceef68 md/raid1: avoid reading from known bad blocks.
+c987775 md: don't allow arrays to contain devices with bad blocks.
+0504add MD: raid1 s/sysfs_notify_dirent/sysfs_notify_dirent_safe
+03bfd7e md/raid1: move rdev->corrected_errors counting
+a59f89e md/raid: use printk_ratelimited instead of printk_ratelimit
+e99d882  MD: raid1 changes to allow use by device mapper
+ef618ca md/raid1: improve handling of pages allocated for  write-behind.
+031fd3a md/raid1: try fix_sync_read_error before process_checks.
+6e4b15a md/raid1: tidy up new functions: process_checks and  fix_sync_read_error.
+7c32efa md/raid1: split out two sub-functions from  sync_request_write
+27699ce  md/raid1: clean up read_balance.
+c83cf3b md: Disable bad blocks and v0.90 metadata.
+5a7342d  md: load/store badblock list from v1.x metadata
+4e0db37 md/bad-block-log: add sysfs interface for accessing  bad-block-log.
+e3ba118 md: beginnings of bad block management.
+9db176a md: remove suspicious size_of()
+1608254 MD: generate an event when array sync is complete
+f724900 md: get rid of unnecessary casts on page_address()
+3b1cac1 md: change managed of recovery_disabled.
+434c368 md: remove ro check in md_check_recovery()
+376b7ff md: introduce link/unlink_rdev() helpers
+e603c5b fs: seq_file - add event counter to simplify poll() support
+fd48a63 md: Using poll  /proc/mdstat can monitor the events of  adding a spare disks
+852f591 MD: add sync_super to mddev_t struct
+45f2bd5 MD: move thread wakeups into resume
+281a806 MD: no sync IO while suspended
+086cb9f MD: no integrity register if no gendisk
+2b753c6 md: allow resync_start to be set while an array is active.
+d0b07cb md: reject a re-add request that cannot be honoured.
+4a13362 Staging: zram: Fix kunmapping order
+85f55be Staging: zram: Replace mutex lock by a R/W semaphore
+83aa995 Staging: zram: allow partial page operations
+4e4cff8 Staging: zram: Refactor zram_read/write() functions
+e42c47d Staging: zram: Remove useless offset calculation in  handle_uncompressed_page()
+fbd67e3 block: rename __make_request() to blk_queue_bio()
+c48272c block: export __make_request
+cb43859 loop: always allow userspace partitions and optionally  support automatic scanning
+884b3b8 loop: add discard support for loop devices
+1a1bffd loop: fix deadlock when sysfs and LOOP_CLR_FD race against  each other
+effebbe loop: add BLK_DEV_LOOP_MIN_COUNT=%i to allow distros 0  pre-allocated loop devices
+8e5598a loop: add management interface for on-demand device  allocation
+2fde2a3 loop: replace linked list of allocated devices with an idr  index
+9071e1a loop: export module parameters
+3801081 fs: remove the second argument of k[un]map_atomic()
+0a42b44 block: Remove the control of complete cpu from bio.
+6581442 block: fix flush machinery for stacking drivers with  differring flush flags
+bca6596 fail_make_request: cleanup should_fail_request
+d8df332 block: strict rq_affinity
+9028377 [SCSI] fix crash in scsi_dispatch_cmd()
+3e2769e block: avoid building too big plug list
+18435ea block: remove unused variable in bio_attempt_front_merge()
+b119b1b coredump: remove VM_ALWAYSDUMP flag
+9092fb2 mm, counters: fold __sync_task_rss_stat() into sync_mm_rss()
+b758271 mm, counters: remove task argument to sync_mm_rss() and  __sync_task_rss_stat()
+44bfc04 mm: make get_mm_counter static-inline
+80520ef mm: thp: fix pmd_bad() triggering in code paths holding  mmap_sem read mode
+3654981 proc: clear_refs: do not clear reserved pages
+be5ba0d /proc/self/numa_maps: restore huge tag for hugetlb vmas
+26aa6a0 teach /proc//numa_maps about transparent hugepages
+a9c2796 break out numa_maps gather_pte_stats() checks
+66ed7d8 proc: fix pagemap_read() error case
+a5687ad fs/proc: convert to kstrtoX()
+753abd8 proc: allocate storage for numa_maps statistics once
+c0e6880 mm: proc: move show_numa_map() to fs/proc/task_mmu.c
+193aa9b VM: make zap_page_range() callers that act on a single VMA  use separate helper
+11341c9 VM: make unmap_vmas() return void
+3b0a8aa VM: make zap_page_range() return void
+9b2607b VM: can't go through the inner loop in unmap_vmas() more  than once...
+fe64cae VM: unmap_page_range() can return void
+0349e13 mm: remove the second argument of k[un]map_atomic()
+390c5e2 highmem: kill all __kmap_atomic() [swarren@nvidia.com:  highmem: Fix ARM build break due to __kmap_atomic rename]
+24dbae7 include/linux/highmem.h: remove the second argument of  k[un]map_atomic()
+2a3fd6d highmem: mark k[un]map_atomic() with two arguments as  deprecated
+f4313db BUG: headers with BUG/BUG_ON etc. need linux/bug.h
+969a25e mm: fix rss count leakage during migration
+1f32817 mm: thp: tail page refcounting fix
+a30f759 mm/futex: fix futex writes on archs with SW tracking of  dirty & young
+7c88c79 mm: preallocate page before lock_page() at filemap COW+
+2a42d76 mm/memory.c: remove ZAP_BLOCK_SIZE
+606acd5 mm: __tlb_remove_page() check the correct batch
+0c51e5c mm: fix wrong kunmap_atomic() pointer
+0f1e981 mm/memory.c: fix kernel-doc notation
+10ca9d7 mm: finish mmu_gather rework
+0b7726b sched: Don't call task_group() too many times in  set_task_rq()
+d7cbf5f sched, trivial: Initialize root cgroup's sibling list
+86cdccb sched: Use jump labels to reduce overhead when bandwidth  control is inactive
+541aa2c sched: Set the command name of the idle tasks in SMP kernels
+3feb0ef sched: Document wait_for_completion_*() return values
+2786000 ARM: 7182/1: ARM cpu topology: fix warning
+2f93290 ARM: remove mc146818rtc.h from time.c
+60da567 ARM: export rtc_lock for nvram driver
+c913dca Revert "ARM: mm: proc-v7: Use the new processor struct macros"
+a0aa1ae ARM: Fix build errors caused by adding generic macros
+89bb947 ARM: mm: proc-macros: Add generic proc/cache/tlb struct  definition macros
+5bad0ad ARM: proc: add definition of cpu_reset for ARMv6 cores
+d9bdc25 ARM: proc: add proc info for Cortex-A15MP using classic page  tables
+6b4414a ARM: proc: add Cortex-A5 proc info
+0d3bd1a ARM: proc: convert v7 proc infos into a common macro
+29d07cd ARM: mm: proc-v7: Use the new processor struct macros
+b9d903b ARM: pm: proc-v7: fix missing struct processor pointers for  suspend code
+79ebf46 ARM: add generic ioremap optimization by reusing static  mappings
+6fac120 ARM: simplify __iounmap() when dealing with section based  mapping
+d5b6488 mm: add vm_area_add_early()
+1c631d2 mm: break out page allocation warning code
+4c69976 mm/compaction: reverse the change that forbade sync migraton  with __GFP_NO_KSWAPD
+b97b4a4 mm, mem-hotplug: recalculate lowmem_reserve when memory  hotplug occurs
+8010547 mm, mem-hotplug: fix section mismatch.  setup_per_zone_inactive_ratio() should be __meminit.
+d9b06a3 mm: remove unused zone_idx variable from  set_migratetype_isolate
+6e77cd3 mm: avoid null pointer access in vm_struct via  /proc/vmallocinfo
+190726f  mm: sync vmalloc address space page tables in  alloc_vm_area()
+48813e6 mm: fix wrong vmap address calculations with odd NR_CPUS  values
+1341872 vmalloc,rcu: Convert call_rcu(rcu_free_vb) to kfree_rcu()
+4ac3ca4 vmalloc,rcu: Convert call_rcu(rcu_free_va) to kfree_rcu()
+4586f78 mm: print vmalloc() state after allocation failures
+390ad93 mm/vmalloc: remove guard page from between vmap blocks
+b2e039b vmalloc: remove vmalloc_sync_all() from alloc_vm_area()
+5a0fd1b ARM: move iotable mappings within the vmalloc region
+1fdc3b5 ARM: move initialization of the high_memory variable earlier
+3faa3e8 ARM: move memory layout sanity checking before meminfo  initialization
+adfa3a0 mm: now that all old mmu_gather code is gone, remove the  storage
+11de62e ARM: LPAE: Page table maintenance for the 3-level format
+5dfe3dc ARM: LPAE: Introduce the 3-level page table format  definitions
+cb3abcc ARM: pgtable: Fix compiler warning in ioremap.c introduced  by nopud
+c24e07f ARM: 7129/1: Add __arm_ioremap_exec for mapping external  memory as MT_MEMORY
+9609bbd ARM: add dma coherent region reporting via procfs
+fa6727e ARM: 7172/1: dma: Drop GFP_COMP for DMA memory allocations
+1f53c1a ARM: dma-mapping: free allocated page if unable to map
+455b663 ARM: 7059/1: LPAE: Use PMD_(SHIFT|SIZE|MASK) instead of  PGDIR_*
+91663ae arm/dt: Make __vet_atags also accept a dtb image
+c35e9c2 ARM: Remove support for macro CONSISTENT_DMA_SIZE
+1668b54 ARM: Add init_consistent_dma_size()
+de612ac ARM: dma: replace ISA_DMA_THRESHOLD with a variable
+1d46aab ARM: initrd: disable initrds outside of memory
+8e04bd0 ARM: 6951/1: include .bss in memory layout information
+7414054 ARM: 6913/1: sparsemem: allow pfn_valid to be overridden  when using SPARSEMEM
+74e0a34 arch, mm: filter disallowed nodes from arch specific  show_mem functions
+a22b2bc arm/dt: probe for platforms via the device tree
+46c38dc arm/dt: consolidate atags setup into setup_machine_atags
+575e104  arm/dt: Allow CONFIG_OF on ARM
+eb13087 ARM: 6993/1: platsmp: Allow secondary cpu hotplug with  maxcpus=1
+88d1a2e ARM: SMP: wait for CPU to be marked active
+403e51d ARM: 6942/1: mm: make TTBR1 always point to swapper_pg_dir  on ARMv6/7
+e7ec9c6 ARM: consolidate SMP cross call implementation
+e02261c ARM: CPU hotplug: ensure we migrate all IRQs off a downed CPU
+3e8cdcd ARM: CPU hotplug: pass in proper affinity mask on IRQ  migration
+605a533 ARM: introduce handle_IRQ() not to dump exception stack
+7da2c7b ARM: reset: implement soft_restart for jumping to a physical  address
+513a263 nohz: Remove tick_nohz_idle_enter_norcu() /  tick_nohz_idle_exit_norcu()
+ca83aeb nohz: Allow rcu extended quiescent state handling seperately  from tick stop
+0e23c9f nohz: Separate out irq exit and idle loop dyntick logic
+41e73aa  ARM: restart: only perform setup for restart when  soft-restarting
+f55f156 ARM: restart: remove argument to setup_mm_for_reboot()
+4061f7a ARM: restart: move reboot failure handing into  machine_restart()
+84fa21c ARM: 7161/1: errata: no automatic store buffer drain
+a358605 sched: Return unused runtime on group dequeue
+ef3bcb8 sched: Add exports tracking cfs bandwidth control statistics
+bafce25 sched: Migrate throttled tasks on HOTPLUG
+a91bbc2 sched: Prevent interactions with throttled entities
+6ea604b sched: Allow for positional tg_tree walks
+f29f2b8 sched: Add support for unthrottling group entities
+1463fe8 sched: Add support for throttling group entities
+9eadb87 sched: Expire invalid runtime
+f3b62c4 sched: Add a timer to handle CFS bandwidth refresh
+9100d45 sched: Accumulate per-cfs_rq cpu usage and charge against  bandwidth
+4041345 sched: Validate CFS quota hierarchies
+2b83db7 sched: Introduce primitives to account for CFS bandwidth  tracking
+256013b sched: Remove noop in lowest_flag_domain()
+c529051 sched: Kill WAKEUP_PREEMPT
+7ac5db8 sched: Implement hierarchical task accounting for SCHED_OTHER
+5db1987 sched: fix broken SCHED_RESET_ON_FORK handling
+df4b609 sched: Remove rq->avg_load_per_task
+fe26429 sched: Separate group-scheduling code more clearly MIME-Version: 1.0
+9bd95b8 ched: Reorder root_domain to remove 64 bit alignment  padding
+38997b8 sched: Do not attempt to destroy uninitialized rt_bandwidth
+7bf4c3e i2c: Update the FSF address
+fdf3d19 i2c: Allow i2c_add_numbered_adapter() to assign a bus id
+deea3ff i2c-core: Comment says "transmitted" but means "received"
+abd50bf i2c: Fix device name for 10-bit slave address
+53ba396  i2c: tegra: recover from spurious interrupt storm
+c4a207e i2c: tegra: Enable new slave mode.
+fe80acc Fix a compilation issue
+6490290 sched: Fix 32bit race
+0e70b20 KVM guest: Steal time accounting
+e9d839d sched, cgroups: Fix MIN_SHARES on 64-bit boxen
+9a47338 [PREVIOUS COMMIT] sched: Generalize sleep inside spinlock detection
+f50bd1c sched: Isolate preempt counting in its own config option
+4b0068c sched: Isolate preempt counting in its own config option
+e3bf9ca sched: Introduce SCHED_POWER_SCALE to scale cpu_power  calculations
+8122e40 sched: Fix and optimise calculation of the weight-inverse
+6d42a36 ....and if I say that I don't remember what's this commit? Sorry >.<
+983086e oom: avoid killing kthreads if they assume the oom killed  thread's mm
+5a7d1c8 oom: thaw threads if oom killed thread is frozen before  deferring
+e8b2362 writeback: per task dirty rate limit
+0a7cf72 move RLIMIT_NPROC check from set_user() to  do_execve_common()
+a7a6e69 kernel/fork.c: fix a few coding style issues
+471be4b make sure that nsproxy_cache is initialized early enough
+d634f5d ptrace: mv send-SIGSTOP from do_fork() to ptrace_init_task()
+502c925 fixlet: Remove fs_excl from struct task.
+2b2c433 plist: Remove the need to supply locks to plist heads
+a8caa3a ptrace: kill clone/exec tracehooks
+0e71e5f mm: nommu: sort mm->mmap list properly
+e4884cc mmap: avoid merging cloned VMAs
+754f4f0 mmap: avoid unnecessary anon_vma lock
+2f320da mmap: add alignment for some variables
+96d0694 sched: Get rid of lock_depth
+500e80f sched: Remove nodemask allocation
+3f065b0 sched: Simplify NODE/ALLNODES domain creation
+e52aa62 sched: Simplify the free path some
+5093bdc sched: Dynamically allocate sched_domain/sched_group  data-structures
+dc4fde7 sched: Simplify sched_groups_power initialization
+df1e16d cgroup_freezer: update freezer_can_attach
+0679539 sched: Simplify finding the lowest sched_domain
+43b40b1 sched: Simplify sched_group creation
+dcc6fd7  sched: Clean up some ALLNODES code
+672f0a9 sched: Change NODE sched_domain group creation
+6d242fa sched: Simplify build_sched_groups()
+3d57bc5 sched: Simplify ->cpu_power initialization
+945c4e3 sched: Remove obsolete arch_ prefixes
+4a6bb90 cgroup: introduce cgroup_taskset and use it in  subsys->can_attach(), cancel_attach() and attach()
+0c55576 cgroup: Fix missing header compilation
+b5a5536 flex_array: avoid divisions when accessing elements
+b789fd6 flex_array: allow 0 length elements
+7591a1b cgroups: use flex_array in attach_proc
+42dbbbf cgroup: always lock threadgroup during migration
+61509c0 threadgroup: rename signal->threadgroup_fork_lock to  ->group_rwsem
+e34c81e cgroup: add cgroup_root_mutex
+729a249 memcg: replace ss->id_lock with a rwlock
+8418be9 cgroups: don't attach task to subsystem if migration failed
+5bfae6e cgroups: read-write lock CLONE_THREAD forking per  threadgroup
+9558504 cgroups: make procs file writable
+241d27a locking, sched, cgroups: Annotate release_list_lock as raw
+a578056 consolidate BINPRM_FLAGS_ENFORCE_NONDUMP handling
+d0ed487 kill file_permission() completely
+093572a rcu: treewide: Do not use rcu_read_lock_held when calling  rcu_dereference_check
+f38839e cgroupfs: use init_cred when populating new cgroupfs mount
+b7308a7 sched: Avoid going ahead if ->cpus_allowed is not changed
+2bb744f sched, rt: Update rq clock when unthrottling if an otherwise idle CPU
+85e5cbc sched: Shorten the construction of the span cpu mask of sched domain
+f49f593 perf: Fix broken interrupt rate throttling
+160a16a perf: Call perf_cgroup_event_time() directly
+bf77590 perf: Don't call release_callchain_buffers() if allocation  fails
+7abfc39 misc latin1 to utf8 conversions
+069626f perf: Extend the mmap control page with time (TSC) fields
+9adea03 perf, x86: Provide means for disabling userspace RDPMC
+94b6bdd perf: Fix mmap_page::offset computation
+580391a perf, arch: Rework perf_event_index()
+d33593e perf: Update the mmap control page on mmap()
+50173e5 perf events: Fix ring_buffer_wakeup() brown paperbag bug
+b6e9d73 events: Make events use the new is_idle_task() API
+823b2c2 Oops! Damnit! :P
+487aed0 perf: Do no try to schedule task events if there are none
+158e124 perf, core: Rate limit perf_sched_events jump_label patching
+f42fd68  perf: Fix enable_on_exec for sibling events
+18c73f8  perf: Remove superfluous arguments
+6b5580e perf: Avoid a useless pmu_disable() in the perf-tick
+eb9491f perf: Fix loss of notification with multi-event
+6771ef8 events: Don't divide events if it has field period
+b7ea4d5 perf: Carve out callchain functionality
+4d7a4d8 perf: Do not set task_ctx pointer in cpuctx if there are no  events in the context
+a0abaa7 oprofile, x86: Reimplement nmi timer mode using perf event
+3e2b63e oprofile: Remove exit function for timer mode
+240f665 oprofile: Fix crash when unloading module (hr timer mode)
+9125a4d oprofile: Use linux/mutex.h
+b633298 Revert perf: Add PM notifiers to fix CPU hotplug races
+aff2ed2 mm: distinguish between mlocked and pinned pages
+afbb1b1 perf_event: Fix broken calc_timer_values()
+b8755f4 perf events: Fix slow and broken cgroup context switch code
+9eaf978 perf: provide PMU when initing events
+b71ac52 perf: Add PM notifiers to fix CPU hotplug races
+40cbb22 perf: Remove perf_event_attr::type check
+8e7f84a perf: export perf_event_refresh() to modules
+f1f9455 perf: Add context field to perf_event
+a3b00a8 perf, x86: Add hw_watchdog_set_attr() in a sake of  nmi-watchdog on P4
+019e04d watchdog: Fix non-standard prototype of  get_softlockup_thresh()
+9fd4082 watchdog: Change the default timeout and configure nmi  watchdog period based on watchdog_thresh
+fa54348 watchdog: Disable watchdog when thresh is zero
+3565902 watchdog: Only disable/enable watchdog if neccessary
+8df0409 watchdog: Fix rounding bug in get_sample_period()
+ac403c8 perf: Remove the perf_output_begin(.sample) argument
+0916949 perf: Remove the nmi parameter from the swevent and overflow  interface
+5bbc5e7 events: Ensure that timers are updated without requiring  read() call
+951bffe events: Move lockless timer calculation into helper function
+5b5cbf0 events: Add note to update_event_times comment about holding  ctx->lock
+8bd1c0d perf_events: Fix perf buffer watermark setting
+f72aca9 perf, core: Fix initial task_ctx/event installation
+bdeed63 perf, cgroups: Fix up for new API
+329500c perf: De-schedule a task context when removing the last
+3010983 perf: Change close() semantics for group events
+b711ae2 perf: Collect the schedule-in rules in one function
+f26617c perf: Change and simplify ctx::is_active semantics
+1307fab perf: Simplify and fix __perf_install_in_context()
+65f6075 perf: Remove task_ctx_sched_in()
+6886419 perf: Optimize event scheduling locking
+609190b perf: Clean up 'ctx' reference counting
+baadbd7 perf: Optimize ctx_sched_out()
+2e830fe perf: Fix SIGIO handling
+a43aed6 perf events: Clean up definitions and initializers, update  copyrights
+a43eaed Oops.
+ae5d292 perf: Split up buffer handling from core code
+ec535fd Move hw_breakpoint and perf_event to events/
+1020117 perf: Start the restructuring
+4e07eb9 jump label: Introduce static_branch() interface
+9fbe8d1 kernel/configs.c: include MODULE_*() when  CONFIG_IKCONFIG_PROC=n
+a767803 capabilities: delete unused cap_set_full
+d4f0367 capabilities: do not drop CAP_SETPCAP from the initial task
+2c019a7 audit: acquire creds selectively to reduce atomic op  overhead
+545f4b9 audit_tree,rcu: Convert call_rcu(__put_tree) to kfree_rcu()
+a02ad2a async: uninitialized warning corrections
+a9b3e25 async: Fixed an include coding style issue
+4f2b013 Fix some warnings - Code cleanup
+9de7c44 driver-core/cpu: Expose hotpluggability to the rest of the kernel
+80fc778 ARM: mm: Use CONFIG_CPA
+6858d56 ARM: 7076/1: LPAE: Add (pte|pmd)val_t type definitions as  u32
+0a79f3e ARM: 7077/1: LPAE: Use a mask for physical addresses in page  table entries
+cf81e8c ARM: 7075/1: LPAE: Factor out 2-level page table definitions into separate files
+ad1e469 ARM: mm: Add strongly ordered descriptor support.
+e397f94 cgroup,rcu: convert call_rcu(free_cgroup_rcu) to kfree_rcu()
+d75eaec cgroup,rcu: convert call_rcu(__free_css_id_cb) to  kfree_rcu()
+2a34641 cpusets: avoid looping when storing to mems_allowed if one  node remains set
+b3086e9 cpusets: randomize node rotor used in  cpuset_mem_spread_node()
+ce448b3 cgroup: remove the ns_cgroup
+29829a3 cgroups: add per-thread subsystem callbacks
+2699129 cpu: Export cpu_up()
+5c59c38 CPU: Add right qualifiers for alloc_frozen_cpus() and  cpu_hotplug_pm_sync_init()
+5868180 PM / Sleep: Fix race between CPU hotplug and freezer
+33c92e3 kmsg_dump: don't run on non-error paths by default
+7959984 printk/tracing: Add console output tracing
+e71c159 module_param: make bool parameters really bool (core code)
+78b4920 printk: fix unnecessary module_param_name.
+04cbe66 printk: avoid double lock acquire
+f452521 printk, lockdep: Switch to tracked irq ops
+403d767 printk, lockdep: Remove superfluous preempt_disable()
+cdc9389 printk, lockdep: Disable lock debugging on zap_locks()
+1c408f9 printk: remove bounds checking for log_prefix
+94d5470 printk: fix bounds checking for log_prefix
+6d7c6f8 printk: add console_suspend module parameter
+8547b36 printk: add module parameter ignore_loglevel to control  ignore_loglevel
+4288596 locking, printk: Annotate logbuf_lock as raw
+00be7b8 kernel/printk: do not turn off bootconsole in  printk_late_init() if keep_bootcon
+d3cb7e3 cap_syslog: don't use WARN_ONCE for CAP_SYS_ADMIN  deprecation warning
+851d0cb memblock: Kill MEMBLOCK_ERROR
+7f5aca2 printk: Fix console_sem vs logbuf_lock unlock race
+b113eb3 printk: Release console_sem after logbuf_lock
+f15116e smp: add func to IPI cpus based on parameter func
+473d6d0 smp: introduce a generic on_each_cpu_mask() function
+c6d19e5 Tune ondemand
+bd16da5 EternityProject: tegra_vibrator: printks, go away.
+4e9cde7 Revert "tegra: wdt: Add KEEPALIVE function to WDT driver"
+94cdf65 Revert "tegra: watchdog: add enable/disable ioctl"
+ecaedef Revert "Fix compilation of tegra_wdt.c"
+a3f12b9 Fix compilation of tegra_wdt.c
+4c1daf8 mm, mem-hotplug: update pcp->stat_threshold when memory hotplug occur
+bf44a6b memblock/nobootmem: remove unneeded code from alloc_bootmem_node_high()
+c339539 mm: remove check_huge_range()
+2579c73 mm: make gather_stats() type-safe and remove forward declaration
+4c02194 mm: remove MPOL_MF_STATS
+5a4051b mm: use walk_page_range() instead of custom page table walking code
+685bec6 mm: export get_vma_policy()
+a25563b oom: fix integer overflow of points in oom_badness
+767d8ee oom: remove references to old badness() function
+977910b power: tps80031: charger: Fix the charging current bits calculation
+1ce1590 rtc: tps80031: Fixing POR month comparison
+c0cd3fc rtc: tps6591x: Fixing month register program error
+b1bd0a2 tegra: watchdog: add enable/disable ioctl
+ba9ce2d tegra: wdt: Add KEEPALIVE function to WDT driver
+39927da crypto: tegra-se: Check for valid reqeusted buffer size
+6034be0 Remove other debugging printks
+1b3d41e Cleanup
+d862652 EternityProject: Clean debugging
+2558bc9 gpio: gpiolib: Support for open source/emitter gpios
+72c9cef gpio: gpiolib: Support for open drain/collector gpios
+bc1ccbb ARM: 7052/1: gpio/tegra: Remove use of irq_to_gpio
+4a06a58  ARM: 7053/1: gpio/tegra: Implement gpio_chip.to_irq
+9ee1f34 gpio: tegra: add stub set_debounce callback
+7de8506 gpio: tps65910: Use correct offset for gpio initialization
+b15c8e8 gpio/pca953x: Deprecate meaningless device-tree bindings
+99e36f0 gpio/pca953x: Remove dynamic platform data pointer
+49f0e0d gpio/pca953x: Fix IRQ support.
+8b024d9 gpio/74x164: fix clash with gpiolib namespace
+9b0f3e7 gpio/mxc: fix a bug with gpio_get_value calling
+86045bc gpio/vr41xx: Convert use of struct resource to resource_size(ptr)
+30e578b treewide: Convert uses of struct resource to resource_size(ptr)
+1a599ae gpio/nomadik: fix sleepmode for elder Nomadik
+3979732 gpio/ep93xx: Remove superfluous debug pr_info statement
+b98b5fa gpio/ep93xx: convert to platform_driver and use basic_mmio_gpio library
+c01b59e gpio/pca953x: Fix warning of enabled interrupts in handler
+ecb5aef gpio/pca953x: Interrupt pin is active-low
+9f4cad6 gpio/pca953x: Fix IRQ support.
+b8fb93c  gpio/ep93xx: fix pr_fmt output
+15224a6 gpio/exynos4: Fix incorrect mapping of gpio pull-up macro to register setting
+6d204ac gpio/mxs: convert gpio-mxs to use generic irq chip
+3b94c62 gpio/mxs: remove irq_high related implementation
+42459ab gpio/mxs: convert gpio-mxs to use basic_mmio_gpio library
+5dd444e gpio/mxc: convert gpio-mxc to use generic irq chip
+d85d8cd GPIO: OMAP: add locking around calls to _set_gpio_triggering
+fcc232e GPIO: OMAP: fix setting IRQWAKEN bits for OMAP4
+24e5aa4 GPIO: OMAP: fix section mismatch warnings
+7e5183e gpio: reorganize drivers
+6b86e80 gpio/pca953x.c: Interrupt pin is active-low
+70b0be7 gpio/ep93xx: move driver to drivers/gpio
+9bcd8e3 gpio/mxc: convert gpio-mxc to use basic_mmio_gpio library
+a86be74 gpio/mxc: Change gpio-mxc into an upstanding gpio driver
+4440bc8 gpio/mxc: Move Freescale MXC gpio driver to drivers/gpio
+855ab59 gpio/mxs: Change gpio-mxs into an upstanding gpio driver
+596c2ac gpio/mxs: Move Freescale mxs gpio driver to drivers/gpio
+46466d5 gpio/samsung: make Kconfig options def_bool
+831c26b gpio/74x164: remove unnecessary defines and prototype
+fbbe370 gpio: Fix gpio-exynos4 build fails in mainline
+23fbe85 arm gpio drivers: make them 'depends on ARM'
+03dad5c gpio/pch_gpio: Support new device ML7223
+f343d74 gpio: make gpio_{request,free}_array gpio array parameter const
+0351759 GPIO: OMAP: move to drivers/gpio
+98543fb gpio: Move the s5pc100 GPIO to drivers/gpio
+d4e9dd2 gpio: Move the s5pv210 GPIO to drivers/gpio
+3ff924a gpio: Move the exynos4 GPIO to drivers/gpio
+118b822 gpio: Move to Samsung common GPIO library to drivers/gpio
+fbb3d72 gpio/nomadik: add function to read GPIO pull down status
+e7c4f18 gpio/nomadik: show all pins in debug
+f36306e gpio: move Nomadik GPIO driver to drivers/gpio
+bb3aafd gpio: move U300 GPIO driver to drivers/gpio
+4a10e5c langwell_gpio: add runtime pm support
+8699887 gpio/pca953x: Add support for pca9574 and pca9575 devices
+893f364 gpio/cs5535: Show explicit dependency between gpio_cs5535 and mfd_cs5535
+ea8b3cd mfd: Use mfd cell platform_data for janz cells platform bits
+95338c8 mfd: Use mfd cell platform_data for rdc321x cells platform bits
+111b30a mfd: Use mfd cell platform_data for timberdale cells platform bits
+357b5ed drivers/gpio/ml_ioh_gpio.c needs slab.h
+c93e122 drivers/gpio/vx855_gpio.c needs slab.h
+c3ec9f4 basic_mmio_gpio: split into a gpio library and platform device
+14486d8 gpio: remove some legacy comments in build files
+ffb945e gpio: add trace events for setting direction and value
+6ac4911 gpio/pca953x: Use handle_simple_irq instead of handle_edge_irq
+3a5a780 gpiolib: export gpiochip_find
+c26fbcd gpio: remove redundant Kconfig depends on GPIOLIB
+81462ca basic_mmio_gpio: convert to non-__raw* accessors
+b6cad69 basic_mmio_gpio: support direction registers
+fe10095 basic_mmio_gpio: support different input/output registers
+6f07157 basic_mmio_gpio: detect output method at probe time
+8ee4f24 basic_mmio_gpio: request register regions
+09fcf69 basic_mmio_gpio: allow overriding number of gpio
+712450f basic_mmio_gpio: convert to platform_{get,set}_drvdata()
+de8c84a basic_mmio_gpio: remove runtime width/endianness evaluation
+8f8d395 treewide: cleanup continuations and remove logging message whitespace
+814652b treewide: remove extra semicolons
+f6e9479 ram_console: set CON_ANYTIME console flag
+684ee59 [FIXME] [TEMPORARY] Ugly hacks for USB Host on HTC One X
+c9071bc regulator: tps80031: Correct voltage selection logics
+87bec65 mmc: Reliable write support.
+33209b0 ARM: GIC: Convert GIC library to use the IO relaxed operations
+3306a2a ARM: 7061/1: gic: convert logical CPU numbers into physical  numbers
+1201444 ARM: entry: re-allocate registers in irq entry assembly  macros
+beb12cc ARM: fix rcu stalls on SMP platforms
+757634d [PATCH 5/10] Fix warnings
+3e1141d [PATCH 4/10] Fix warnings
+7df6462 [PATCH 3/10] Fix warnings
+e5557b0 [PATCH 2/10] Fix warnings
+831cd0c [PATCH 1/10] Fix warnings
+a52984e [PATCH 0/10] Fix warnings
+f2c432e superblock: move pin_sb_for_writeback() to fs/super.c
+516ee0f superblock: introduce per-sb cache shrinker infrastructure
+82bfc13 new helper: iterate_supers_type()
+b709c2d inode: move to per-sb LRU locks
+ab7a7bc inode: Make unused inode LRU per superblock
+f8370ca inode: convert inode_stat.nr_unused to per-cpu counters
+9f2df86 kill useless checks for sb->s_op == NULL
+bf9c31a get rid of pointless checks for dentry->sb == NULL
+b83ed59 make d_splice_alias(ERR_PTR(err), dentry) = ERR_PTR(err)
+45ebfb7 ufs should use d_splice_alias()
+964d65d Make ->d_sb assign-once and always non-NULL
+a920fc1 fs: add a DCACHE_NEED_LOOKUP flag for d_flags
+5847929 video: tegra: nvmap: optimize uc & wc allocations.
+a0631fb iommu: tegra/gart: use correct gart_device
+e7d5e3e iommu: tegra/gart: Fix with mainline IOMMU API change
+e99e646 iommu: tegra/smmu: Fix with mainline IOMMU API change
+34b578c iommu/tegra: gart: Disabled as default in Kconfig
+0cb3fe0 ARM: IOMMU: Tegra20: Add iommu_ops for GART driver. -- IOMMU: Update Makefile and Kconfig
+6e559af iommu: Export intel_iommu_enabled to signal when iommu is in use
+d74983a iommu: Initialize domain->handler in iommu_domain_alloc()
+bc53be2 iommu/amd: Update to Linux3.1 version
+78dedeb iommu/amd: Put IOMMUv2 capable devices in pt_domain
+2372601 iommu/amd: Add iommuv2 flag to struct amd_iommu
+e084941 iommu/amd: Enable GT mode when supported by IOMMU
+a109874 iommu/amd: Setup PPR log when supported by IOMMU
+d51b0c0 iommu/amd: Get the maximum number of PASIDs supported
+9961997 iommu/amd: Convert dev_table_entry to u64
+850f526 iommu/omap: be verbose when omap_iommu_iova_to_phys fails
+b899c8e intr_remapping: Fix section mismatch in ir_dev_scope_init()
+78b1526 intel-iommu: Fix section mismatch in dmar_parse_rmrr_atsr_dev()
+aac18e6 iommu/omap: eliminate the public omap_find_iommu_device() method
+9307c5d iommu: Add option to group multi-function devices
+058493d iommu/amd: Implement iommu_device_group
+8f02675 iommu/intel: Implement iommu_device_group
+9ffab83 iommu: Add iommu_device_group callback and iommu_group sysfs entry
+25d9c90 iommu/core: remove the temporary pgsize settings
+882b0ed iommu/intel: announce supported page sizes
+fb81357 iommu/amd: announce supported page sizes
+18e6750 iommu/msm: announce supported page sizes
+1cd1e83 iommu/omap: announce supported page sizes
+b37766f iommu/core: split mapping to page sizes as supported by the hardware
+4e98675 iommu/core: stop converting bytes to page order back and forth
+15d0956 iommu: omap: Fix compile failure
+e6a2b57 iommu/core: Remove global iommu_ops and register_iommu
+dd34d6f iommu/msm: Use bus_set_iommu instead of register_iommu
+d527d91 iommu/omap: Use bus_set_iommu instead of register_iommu
+9b617fd iommu/vt-d: Use bus_set_iommu instead of register_iommu
+dae5df3 iommu/amd: Use bus_set_iommu instead of register_iommu
+bf0b2c0 iommu/core: Use bus->iommu_ops in the iommu-api
+f660a63 iommu/core: Convert iommu_found to iommu_present
+a95e521 iommu/core: Add bus_type parameter to iommu_domain_alloc
+02059d6 Driver core: Add iommu_ops to bus_type
+67a737e iommu/omap: always provide iommu debug code
+3f9ca6b iommu/core: let drivers know if an iommu fault handler isn't installed
+17607c8 iommu/core: export iommu_set_fault_handler()
+dfa8ff3 iommu: Rename the DMAR and INTR_REMAP config options
+19787fc iommu: Cleanup ifdefs in detect_intel_iommu()
+f144878 iommu: No need to set dmar_disabled in check_zero_address()
+3499c22 iommu: Move IOMMU specific code to intel-iommu.c
+82b6655 intr_remap: Call dmar_dev_scope_init() explicitly
+8aefd5c x86, x2apic: Enable the bios request for x2apic optout
+1950770 iommu/omap: Migrate to the generic fault report mechanism
+347b1f8 iommu/core: Add fault reporting mechanism
+eca73c7 locking, x86, iommu: Annotate qi->q_lock as raw
+9739f0b locking, x86, iommu: Annotate irq_2_ir_lock as raw
+046021e locking, x86, iommu: Annotate iommu->register_lock as raw
+9aa830a Fix the latest genalloc.h patch on misleading usage of gen_pool_alloc_size
+32f3e63 lib: genalloc: Add API to allocate at specified addr.
+29d441c lib, Make gen_pool memory allocator lockless
+69f0c6e lib/genalloc.c: add support for specifying the physical address
+1cb62d6 arm: tegra: Fix compiler warning
+b33abaf tegra: avp: enable AVP and moduleloader
+0c78bfb arm: config: EternityProject-endeavoru: Enable AVP and Mediaserver
+086ea86 tegra_mediaserver: Adding kernel media driver
+ed59807 Allow AVP to have multiple clients.
+882738a media: video: tegra: avp: make avp_svc have separate debug mask
+ee2cb2c media: tegra: avp: fix a mutex leak on an err path in lib load
+000c4d5 media: video: tegra: add avp port transport info to debug dump
+0c00a5b media: video: tegra: wait for remote ack on disconnect
+58a3f61 media: video: tegra: add support for the AVP media offload engine
+95bd585 gpu: ion: Fix with mainline IOMMU API change
+7834e1d HACK: gpu: ion: tegra: Implement nvmap_alloc_iovm.
+269c68c HACK: gpu: ion: Add api to remap dma address.
+af1dd29 HACK: gpu: ion: Add support to remap dma address.
+e88fe6c gpu: ion: Remove unnecessary error handling
+8778a72 gpu: ion: Replace vmalloc() with vzalloc()
+a72e4f6 gpu: ion: Remove residual empty line
+51a0702 gpu: ion: Fix incorrect BUG_ON()
+4a2666e gpu: ion: Add one empty line for readability
+e1e3a4b gpu: ion: Remove unnecessary header inclusions
+62f84da gpu: ion: tegra: Fixes to tegra ion.
+660986e gpu: ion: Update print format in Ion.
+f45a66d gpu: ion: tegra: Ignore unsupported heap with printing warning
+9521291 gpu: ion: Add IOMMU heap allocator with IOMMU API
+c179c59 gpu: ion: tegra: add tegra custom ioctl handling.
+df7e7fd gpu: ion: Add api to get client from file id.
+9693f89 gpu: ion: move ion priv data structs and methods to ion_priv.h
+253d979 gpu: ion: Fix ion handle and buffer ref counting issue.
+fad0532 arm: tegra: endeavoru: Add Ion device and its resources.
+8dde007 Revert "video: tegra: host: Move device data to nvhost_device"
+3545f8b Revert "Fix compilation issues and delete hTC's customized shitty parameters"
+7f44922 usb: otg: tegra: code clean up
+d5b19e6 tegra: usb: otg: Clear the otg interrupt in suspend
+c44fa79 iommu/core: Use PAGE_SIZE instead of hard-coded value
+4bb7c38 iommu/core: use the existing IS_ALIGNED macro
+d0cbf53 iommu/msm: ->unmap() should return order of unmapped page
+c2b9a2c iommu/omap: ->unmap() should return order of unmapped page
+7c18505 iommu/omap: cleanup: remove a redundant statement
+4ffdf1b iommu/omap-iovmm: support non page-aligned buffers in iommu_vmap
+d60803a iommu: omap: add Kconfig OMAP dependency
+f881585 omap: iommu: Fix up mutex->spin_lock conversion of iommu_lock
+cc80a0e omap: iommu: omapify 'struct iommu' and exposed API
+7bcdf2b omap: iovmm: remove unused functionality
+d870bd2 omap: iommu: PREFETCH_IOTLB cleanup
+8fb015a omap: iommu: stop exporting local functions
+d74bea5 omap: iommu/iovmm: move to dedicated iommu folder
+74defb6 Finish iommu reimplementation
+f5f219d arm: IOMMU: Tegra30: Add iommu_ops for SMMU driver
+3bd54ba iommu/amd: Fix wrong shift direction
+46368b6 x86, intel-iommu: Update to 1019
+580d059 x86, iommu: Mark DMAR IRQ as non-threaded
+3ab8090 iommu/amd: Don't take domain->lock recursively
+b33681d iommu/amd: Make sure iommu->need_sync contains correct value
+c6ca7d3 iommu/amd: Don't use MSI address range for DMA addresses
+a73a7a1 iommu/amd: Move missing parts to drivers/iommu
+1919320 iommu: Move iommu Kconfig entries to submenu
+9c07c53 x86/ia64: intel-iommu: move to drivers/iommu/
+2b54340 x86: amd_iommu: move to drivers/iommu/
+ea67c09 msm: iommu: move to drivers/iommu/
+dbf7b46 drivers: iommu: move to a dedicated folder
+df8d4b2 Revert "Merge branch 'eprj_tegra_video' of git://secure.eternityproject.eu/endeavoru/endeavoru-128.git"
+7258348 Revert "tegra: i2c: Added high speed support"
+281a7ed i2c: tegra: Add connection name in clk_get_sys
+2baa41b tegra: i2c: do not flush fifo if msg length is 0
+cc2c556 tegra: i2c: Added high speed support
+3a4b7f8 tegra: i2c: mutex-protect access to is_suspended
+83ebb99 Merge branch 'eprj_tegra_video' of git://secure.eternityproject.eu/endeavoru/endeavoru-128.git
+8895ec1 Fix compilation issues and delete hTC's customized shitty parameters
+0fee37f video: tegra: host: Move device data to nvhost_device
+ed04f47 arm: tegra: nvmap: Prepare nvmap apis to support Ion
+e573230 video: tegra: host: Disable nvmap struct dereferencing.
+38c2f7a video: tegra: host: Use nvmap handle conversion macro.
+d6ce8f9 timers: Add rb_init_node() to allow for stack allocated rb nodes
+0f9c6cc ion: minor clean up
+f048de3 gpu: ion: Validate handles passed via the kernel api
+8341ae9 gpu: ion: Fix deferencing ERR_PTR
+84fbf88 gpu: ion: Fix possible memory leak
+94f396c gpu: ion: Remove redunant code from ion_open
+7de0698 gpu: ion: Fix bug in ion client destroy
+f79e663 gpu: ion: Fix bug in ion_client_create
+9fa3baf gpu: ion: Remove incorrect error message
+64cafb4 gpu: ion: Fix bug in ion_buffer_add
+26b58eb gpu: ion: Several fixes
+cee635e gpu: ion: Add ION Memory Manager
+63f05e2 EternityProject: Fix CPU Scaling
+06fce35 Revert "ARM: tegra: clock: Entry for spi-sclk clock control"
+684dbfb ARM: tegra: power: Fix LP2 timers suspend/resume
+e7c90d4 arm : tegra: clocks: Add PERIPH_ON_APB flag for apbif clock
+18d6539 ARM: tegra: clock: Update parameterized cluster switch
+6472650 ARM: tegra3: dvfs: Changed max values of clocks
+2248196 ARM: tegra: clock: Entry for spi-sclk clock control
+37c8cc3 tegra: pcie: Remove unnecessary clock operations
+8d28e42 *CHECKME* ARM: tegra: power: Boost CPU rate before device resume
+6b9a1a2 ARM: tegra: pm: only identity map lowmem area
+134c46b ARM: tegra: Clean kernel and I/O mappings upon LP2
+3f387a7 arm: tegra: power: disable SUSPEND_LP2 mode selection
+5e0c9db ARM: tegra: Add support for passing arguments to bootloader.
+8bd8823 ARM: tegra: power: Fix Tegra2 power timer rate
+ee03f6b ARM: tegra: clock: Update secondary pll dividers resume
+230e59e ARM: tegra: Clean up CACHE_L2X0 conditionals and includes
+7c34d82 ARM: tegra: power: Set awake system CPU rate floor
+d1ee77b arm: tegra: power: disable SUSPEND_NONE mode selection
+f628181 arm: tegra: Fix setting CPU_RESETTABLE_SOON flag
+875958b ARM: tegra: power: Fix warnings when PM_SLEEP is not selected
+31704d5 ARM: tegra: power: Notify clock event in CPU mode switch
+8c5f1f9 ARM: tegra: pinmux: Correct the offset of padcfg reg.
+5ab6847 arm: tegra: la: change default LA for 2D
+1dfb329 arm: tegra: la: Fix the register offset for G2_1
+72882c3 ARM: tegra: iovmm: Use all capital letters for MACRO
+da452d3 ARM: tegra: iovmm: Use round_{up,down} instead of homebrews
+86e12eb ARM: tegra: io.h: fix coding style
+15e6774 serial: tegra: Define correct port type
+b16e6ba tty: serial: tegra: Fix dma/cpu coherency issues
+30dce65 serial: tegra: dequeue dma req using tegra_dma_dequeue_req()
+b7469f8 spi: tegra: Fix CS status properly in spi setup
+99dbad3 arm: tegra: Enable speculative line fill in SCU.
+2ac0d36 ARM: tegra: fix compilation with binutils >= 2.21
+b995ccd ARM: tegra: Do not unlock CoreSight register access
+cfeae43 ARM: tegra: Co-locate all GIC functions
+33debed ARM: tegra: fuse: Implement caching of fuse sku_id
+c49890c arm: tegra: power: Add AP33 Battery EDP table
+d00d08d arm: tegra: power: Updated EDP table to latest spec
+9a2415e arm: tegra: power: Enhance debug EDP table
+99ee62f ARM: tegra: dma: Return ERROR_STOPPED if dma stopped.
+b711e78 ARM: tegra: dma: Check request size before enqueuing requests
+7df0478 ARM: tegra: dma: Coding style and general cleanups
+6ad010d ARM: tegra: dma: Fix multiple time request deletion
+ed4af27 ARM: tegra: dma: Implement clock gating on suspend/resume
+ce123a6 ARM: tegra: dma: Use correct clock device for resetting dma.
+8dfa5fc ARM: tegra: dma: Initialize isr handler when it is allocated
+c9ed787 ARM: tegra: dma: cleanups in isr handlers
+431981d ARM: tegra: dma: Call callback from main isr
+044b74f ARM: tegra: dma: define global dma address only once
+b4165da ARM: tegra: dma: Pause dma before configuring dma for next transfer
+0118874 ARM: tegra: dma: Calculate transferred count based on req size
+a59135d ARM: tegra: dma: Clear dma interrupt status with lock held
+6bb9d60 ARM: tegra: dma: code cleanups and run checkpatch
+1441eeb ARM: tegra: dma: Remove duplicate function tegra_dma_dequeue()
+b443b8c arm: tegra: dma: read transfer count without stopping dma.
+543603c DTV: dma: fixed dma burst size issue DTV xmit
+2fe0027 ARM: tegra: dvfs: Add alternative dvfs frequency limits
+04dc23c arm: tegra: Add display and nvmap devices
+a53403b ARM: tegra: power: Report LP3 state if LP2 is not allowed
+6fe94a1 ARM: tegra: power: Don't enter LP2 if not in NOHZ mode
+b8e4093 ARM: tegra: power: Power off multiple CPUs on-line
+d4c9bdf ARM: tegra: power: Add external LP2 wake timers on secondary CPUs
+3c44851 ARM: tegra: power: Don't over-sleep LP2 on secondary CPUs
+cda8814 ARM: tegra: power: Separate lp2 latency for secondary CPUs
+a745c55 ARM: tegra: power: Separate lp2 latency for G/LP CPU modes
+36d101f ARM: tegra: power: Re-factor Tegra3 secondary CPU LP2 entry
+d2da212 ARM: tegra: dvfs: Add chip sku override
+871de4e ARM: tegra: clock: Expand PLL usage restriction mechanism
+538567c ARM: tegra: clock: Check usage policy when set cansleep
+9a99eab ARM: tegra: clock: Expand shared bus debugfs entries
+50988f0 ARM: tegra: clocks: Consolidate input frequency measurements
+d646169 ARM: tegra: Add board infos in /proc for board-endeavoru
+f49d048 ARM: tegra: Add board informations functions
+43c5acf crypto: tegra-aes: dual-core support
+6c88947 ARM: tegra: hardware arbitration semaphore support
+2a5d1c6 "Clean XMM Radio driver and make the code more readable."
+505e002  user namespace: usb: make usb urbs user namespace aware (v2)
+2df9658 usb/core/devio.c: Check for printer class specific request
+1a0d945 USB: pid_ns: ensure pid is not freed during  kill_pid_info_as_uid
+17fb325 signals: sys_ssetmask/sys_rt_sigsuspend should use  set_current_blocked()
+f7dd3d9 ptrace: fix ptrace_signal() && STOP_DEQUEUED interaction
+504f6b1 signal: align __lock_task_sighand() irq disabling and RCU
+18e0583 ptrace: kill real_parent_is_ptracer() in in favor of  ptrace_reparented()
+b2f441d do not change dead_task->exit_signal
+f2c8a77 __ptrace_detach: avoid task_detached(), check  do_notify_parent()
+c39025a make do_notify_parent() return bool
+193ddb3 ptrace: kill trivial tracehooks
+70c8585 ptrace: kill task_ptrace()
+74ad760 job control: reorganize wait_task_stopped()
+4abbdc4 ptrace: implement PTRACE_LISTEN
+305c4b5 ptrace: implement PTRACE_INTERRUPT
+c5dc98b ptrace: ptrace_check_attach(): rename @kill to @ignore_state  and add comments
+6e2665b ptrace: implement TRAP_NOTIFY and use it for group stop  events
+7227329 ptrace: implement PTRACE_SEIZE
+8caf57e job control: introduce JOBCTL_TRAP_STOP and use it for group  stop trap
+e73991b signal.c: fix kernel-doc notation
+e8c3ecc signal: remove three noop tracehooks
+2413e4e ptrace: use bit_waitqueue for TRAPPING instead of  wait_chldexit
+8022e76 job control: introduce task_set_jobctl_pending()
+67ef97d job control: make task_clear_jobctl_pending() clear TRAPPING  automatically
+3bc9670 job control: introduce JOBCTL_PENDING_MASK and  task_clear_jobctl_pending()
+b7e2c43 coredump: add support for exe_file in core name
+6685875 mm: mmu_gather rework
+ae2b119 exec: document acct_arg_size()
+ef345a2 exec: unify do_execve/compat_do_execve code
+7a1c9b3 exec: introduce struct user_arg_ptr
+687e82e exec: introduce get_user_arg_ptr() helper
+8fd9525 ptrace: relocate set_current_state(TASK_TRACED) in  ptrace_stop()
+2ccbc0e Update ptrace, psignal. Eliminate some hTC shit.
+626eb6c cpuidle: Consistent spelling of cpuidle_idle_call()
+6aa552d cpuidle: stop depending on pm_idle
+c74e85c cpuidle: replace xen access to x86 pm_idle and default_idle
+15b894c cpuidle: create bootparam 'cpuidle.off=1'
+c7e4870 signal: sys_pause() should check signal_pending()
+50ffcfa signal: add task_participate_group* functions
+d74cb7c signal: sys_sigprocmask() needs retarget_shared_pending()
+778b42e Remove unneeded clkdev headers
+87b49e3 signal: rename signandsets() to sigandnsets()
+fd3a352 signal: do_sigtimedwait() needs retarget_shared_pending()
+c7fb729 signal: introduce do_sigtimedwait() to factor out  compat/native code
+7124ec2 signal: sys_rt_sigtimedwait: simplify the timeout logic
+e74cd78 signal: cleanup sys_rt_sigprocmask()
+2ae1969 signal: sigprocmask() should do retarget_shared_pending()
+fa1f62e signal: retarget_shared_pending: optimize  while_each_thread() loop
+59589ea signal: retarget_shared_pending: consider shared/unblocked  signals only
+1f167cb signal: introduce retarget_shared_pending()
+dbbe159 ARM: use set_current_blocked() and block_sigmask()
+095c8cc ARM: 7306/1: vfp: flush thread hwstate before restoring  context from sigframe
+da5d591 clk: make CONFIG_COMMON_CLK invisible
+90a0de1 clk: basic clock hardware types
+2367c8d clk: introduce the common clock framework
+9b85d26 clk: add helper functions clk_prepare_enable and  clk_disable_unprepare
+fac5abe clk: provide prepare/unprepare functions
+1a0e0aa clk: add config option HAVE_CLK_PREPARE into Kconfig
+3863e22 ARM: Consolidate the clkdev header files
+02409c2 Voltage Control fixes by richardtrip
+ff72ac5 fat: Convert fat_fs_error to use %pV
+833453b fat: use new setup() for ->dir_ops too
+ec24490 atomic: Update comments in atomic.h
+8145338 atomic: cleanup asm-generic atomic*.h inclusion
+a319020 atomic: move atomic_add_unless to generic code
+0c21226 atomic: use <linux/atomic.h>
+4d8c1c8 lockless get_write_access/deny_write_access
+4e1aaff atomic: Add atomic_or()
+869f337 ext4: Create helper function for EXT4_IO_END_UNWRITTEN and i_aiodio_unwritten
+307891c ext4: trace punch_hole correctly in ext4_ext_map_blocks
+daecbe1 ext4: clean up AGGRESSIVE_TEST code
+c6e730e ext4: move variables to their scope
+9cc0c5f ext4: optimize memmmove lengths in extent/index insertions
+26dbadc ext4: optimize ext4_ext_convert_to_initialized()
+2801b02 ext4: don't check io->flag when setting EXT4_STATE_DIO_UNWRITTEN inode state
+5368fce ext4: remove messy logic from ext4_ext_rm_leaf
+33056e5 ext4: cleanup ext4_ext_grow_indepth code
+aa296cc ext4: quiet sparse noise about plain integer as NULL pointer
+ec6191c ext4: avoid stamping on other memories in ext4_ext_insert_index()
+79ac473 ext4: use le32_to_cpu for ext4_extent_idx.ei_block in ext4_ext_search_left()
+372cdfe ext4: fix the comment describing ext4_ext_search_right()
+37ca4ee ext4: fix quota accounting during migration
+ccf7cb0 ext4: update EOFBLOCKS flag on fallocate properly
+81ce4ee ext4: remove the obsolete/broken EXT4_IOC_WAIT_FOR_READONLY ioctl
+24f0c50 ext4: attempt to fix race in bigalloc code path
+09597b7 ext4: add some tracepoints in ext4/extents.c
+6590e8c Fix compilation
+554126c Remove hTC useless things (thanks TripNRaVer)
+a93c0f7 fat: remove i_alloc_sem abuse
+4193233 ext4: refactor duplicated block placement code
+a8b1caa Fix typo
+540a3cd  ext4: rename ext4_has_free_blocks() to ext4_has_free_clusters()
+92f0e82 ext4: rename ext4_claim_free_blocks() to ext4_claim_free_clusters()
+e462bfe ext4: Fix bigalloc quota accounting and i_blocks value
+86d2d1c ext4: convert s_{dirty,free}blocks_counter to s_{dirty,free}clusters_counter
+7a00629 ext4: add ext4-specific kludge to avoid an oops after the disk disappears
+eeac9cd ext4: use kzalloc in ext4_kzalloc()
+7459b15 ext4: use ext4_kvzalloc()/ext4_kvmalloc() for s_group_desc and s_group_info
+b15e672 ext4: ignore a stripe width of 1
+b713dae ext4: add tracepoint for ext4_journal_start
+6ffc950 ext4: ensure f_bfree returned by ext4_statfs() is non-negative
+dff539f ext4: don't show mount options in /proc/mounts if there is no journal
+8984e23 ext4: fix the mount option init_itable=n to work as expected for n=0
+fa09d58 ext4: Remove unnecessary wait_event ext4_run_lazyinit_thread()
+b0fd4f7 ext4: don't warn about mnt_count if it has been disabled
+fcbf90c ext4: remove redundant #ifdef in super.c
+80dffd4 ext4: remove redundant check for first_not_zeroed in ext4_register_li_request
+63899a4 ext4: check for ext[23] file system features when mounting as ext[23]
+83c5cf8 ext4: teach ext4_ext_truncate() about the bigalloc feature
+2c7e159 ext4: teach ext4_ext_map_blocks() about the bigalloc feature
+4b88cbb ext4: fix fsx truncate failure
+6da3529  jbd2: add debugging information to jbd2_journal_dirty_metadata()
+e8442a4 ext4: fix 2nd xfstests 127 punch hole failure
+5cdc8e5 ext4: fix xfstests 75, 112, 127 punch hole failure
+d7b5811 ext4: Fix overflow caused by missing cast in ext4_fallocate()
+c7e72d1 ext4: add action of moving index in ext4_ext_rm_idx for Punch Hole
+972f925 ext4: correct comment for ext4_ext_check_cache
+3444d66 ext4: correct the debug message in ext4_ext_insert_extent
+0cce755 ext4: remove unused argument in ext4_ext_next_leaf_block
+7178f89 ext4: avoid eh_entries overflow before insert extent_idx
+bccc088 ext4: avoid wasted extent cache lookup if !PUNCH_OUT_EXT
+1e71792 ext4: remove unneeded parameter to ext4_ext_remove_space()
+eb7b6b3 ext4: punch hole optimizations: skip un-needed extent lookup
+c88c4fe ext4: avoid unneeded ext4_ext_next_leaf_block() while inserting extents
+0436d18 ext4: remove redundant goto in ext4_ext_insert_extent()
+e7e8bac ext4: free allocated and pre-allocated blocks when check_eofblocks_fl fails
+2dccdae ext4: fix incorrect error msg in ext4_ext_insert_index
+83ebbc6 ext4: use FIEMAP_EXTENT_LAST flag for last extent in fiemap
+08caccc ext4: Fix max file size and logical block counting of extent format file
+a1b4159 ext4: teach ext4_ext_split to calculate extents efficiently
+b10170a ext4: add 'punch hole' flag to ext4_map_blocks()
+d5c8414 ext4: punch out extents
+6b60db9 ext4: fix ext4_ext_fiemap_cb() to handle blocks before request range correctly
+0b1b029 ext4: fix unbalanced up_write() in ext4_ext_truncate() error path
+e6805c3 ext4: count hits/misses of extent cache and expose in sysfs
+f8cc101 ext4: make ext4_split_extent() handle error correctly
+d4e766f ext4: ext4_ext_convert_to_initialized bug found in extended FSX testing
+fafcd76 ext4: reimplement convert and split_unwritten
+7f53866 ext4: add ext4_split_extent_at() and ext4_split_extent()
+66c8b94 ext4: add a function merging extents right and left
+0ea25d9 ext4: only call ext4_jbd2_file_inode when an inode has been extended
+83b4228 ext4: enforce bigalloc restrictions (e.g., no online resizing, etc.)
+5e90963 ext4: fix partial page writes
+22ffc13 fake direct I/O mode for data=journal
+06dfb62 ext4: functions should not be declared extern
+49c70da ext4: remove deprecated oldalloc
+ebb34d6 ext4: rename ext4_free_blocks_after_init() to ext4_free_clusters_after_init()
+6c3fb6d ext4: Rename ext4_free_blks_{count,set}() to refer to clusters
+62f3d7f ext4: use the correct error exit path in ext4_init_inode_table()
+42e532a ext4: convert the free_blocks field in s_flex_groups to be free_clusters
+a0ad50f ext4: teach ext4_free_blocks() about bigalloc and clusters
+dd8db2a ext4: read-only support for bigalloc file systems
+1d0de37 ext4: improve handling of conflicting mount options
+ec720a8 ext4: Add new ext4_discard_partial_page_buffers routines
+b2719ea ext2,ext3,ext4: don't inherit APPEND_FL or IMMUTABLE_FL for new inodes
+6bfebf0 ext4: remove i_mutex lock in ext4_evict_inode to fix lockdep complaining
+ca90aad ext4: Resolve the hang of direct i/o read in handling EXT4_IO_END_UNWRITTEN.
+e191986 ext4: call ext4_ioend_wait and ext4_flush_completed_IO in ext4_evict_inode
+abfbbe5 ext4: Fix ext4_should_writeback_data() for no-journal mode
+9d5c186 ext4: fix data corruption in inodes with journalled data
+a58a0ae fs: move inode_dio_done to the end_io handler
+961960d fs: simplify the blockdev_direct_IO prototype
+e88e290 fs: move inode_dio_wait calls into ->setattr
+3e40915 ext4: introduce ext4_kvmalloc(), ext4_kzalloc(), and ext4_kvfree()
+b9de592 ext4: let setup_new_group_blocks() set multiple bits at a time
+af61dae ext4: let ext4_group_add_blocks() return an error code
+8d08679 ext4: rename ext4_add_groupblocks() to ext4_group_add_blocks()
+aba0f82 ext4: prevent parallel resizers by atomic bit ops
+d256950 fs: push i_mutex and filemap_write_and_wait down into ->fsync() handlers
+86d9074 ext4: Speed up FITRIM by recording flags in ext4_group_info
+d099db0 ext4: Add new ext4 trim tracepoints
+1f26232 ext4: speed up group trim with the right free block count
+766bee3 ext4: fix trim length underflow with small trim length
+eb2815a  ext4: quiet 'unused variables' compile warnings
+7d6c1e4 ext4: correct comments for ext4_free_blocks()
+cd401bc xt4: protect bb_first_free in ext4_trim_all_free() with  group lock
+3476e7c ext4: only load buddy bitmap in ext4_trim_fs() when it is needed
+a483966 ext4: remove alloc_semp
+9d55149 ext4: teach ext4_mb_init_cache() to skip uptodate buddy caches
+e621a31 ext4: synchronize ext4_mb_init_group() with buddy page lock
+e548a5c ext4: implement ext4_add_groupblocks() by freeing blocks
+a19b602 ext4: remove unneeded ext4_journal_get_undo_access
+512fc31 ext4: move ext4_add_groupblocks() to mballoc.c
+e312924 ext4: ignore errors when issuing discards
+fabb881 ext4: fix i_blocks/quota accounting when extent insertion fails
+2426eeb ext4: do not normalize block requests from fallocate()
+c9092e4 ext4: reserve inodes and feature code for 'quota' feature
+8867a60 ext4: convert block group-relative offsets to use clusters
+b8c46ea ext4: split out ext4_free_blocks_after_init()
+571e3bc ext4: factor out block group accounting into functions
+9e5e37e ext4: add support for multiple mount protection
+66ca6a2 fs: block_page_mkwrite should wait for writeback to finish
+86241a1 vfs: Block mmapped writes while the fs is frozen
+b069d08 vfs: Create __block_page_mkwrite() helper passing error  values back
+20bdb6a ext4: Rewrite ext4_page_mkwrite() to use generic helpers
+7ba8464 ext4: move common truncate functions to header file
+ba2aa43 ext4: move __ext4_check_blockref to block_validity.c
+f3c46ac ext4: rename ext4_indirect_* funcs to ext4_ind_*
+237c444 ext4: split ext4_ind_truncate from ext4_truncate
+90545df ext4: fixed tracepoints cleanup
+f75892d ext4: Convert ext4 to new truncate calling convention
+743a856 ext4: enable 'punch hole' functionality
+ba4ee9a ext4: add new function ext4_block_zero_page_range()
+9a95e9d ext4: use truncate_setsize() unconditionally
+579b286 ext4: wait for writeback to complete while making pages  writable
+994a7a1 ext4: clean up some wait_on_page_writeback calls
+5cc8fd9 ext4: use s_inodes_per_block directly in  __ext4_get_inode_loc
+281f14b lockdep, mutex: provide mutex_lock_nest_lock
+aa01303 thp: add tlb_remove_pmd_tlb_entry
+dcf1821 mm: uninline large generic tlb.h functions
+aef255d ARM: 7302/1: Add TLB flushing for both entries in a PMD
+bb10131 ARM: LPAE: Invalidate the TLB before freeing the PMD
+e9dd6c9 ARM: pgtable: switch to use pgtable-nopud.h
+30ae5d5 Add new compiler bug stop - Update tlb.h
+1e9f6b7 bug: consolidate BUILD_BUG_ON with other bug code
+f6299d1 xen: cleancache shim to Xen Transcendent Memory
+4852d4e ocfs2: add cleancache support
+9741f39 ext4: add cleancache support
+2561f77 btrfs: add cleancache support
+62f626b ext3: add cleancache support
+03317ed fs: add field to superblock to support cleancache
+5286b1c mm/fs: cleancache documentation
+42e5f86 mm: move enum vm_event_item into a standalone header file
+c89674e Fix updates to vmscan
+497ec63 Update .gitignore
+a7f8f7f mremap: enforce rmap src/dst vma ordering in case of  vma_merge() succeeding in copy_vma()
+5f3111b ksm: fix the comment of try_to_unmap_one()
+5c9dd3d fs: kill i_alloc_sem
+1101003 mm: fix assertion mapping->nrpages == 0 in end_writeback()
+c88bc4e tmpfs: take control of its truncate_range
+cd64120 mm: move shmem prototypes to shmem_fs.h
+eb920e2 tmpfs: implement generic xattr support
+02397e3 mm: move vmtruncate_range to truncate.c
+17b6eba more conservative S_NOSEC handling
+fe2e963 [PATCH] Cache xattr security drop check for write v2
+9808d29 mm: Wait for writeback when grabbing pages to begin a write
+f217dfd memcg: add the pagefault count into memcg stats
+626252c mm/fs: add hooks to support cleancache
+639e7cd readahead: trigger mmap sequential readahead on PG_readahead
+7073226 readahead: reduce unnecessary mmap_miss increases
+f80b900 readahead: return early when readahead is disabled
+74a0d36 [S390] reference bit testing for unmapped pages
+bdb94e3 mm/memory-failure.c: fix spinlock vs mutex order
+b753975 mm: avoid anon_vma_chain allocation under anon_vma lock
+6b2b4b2 mm: avoid repeated anon_vma lock/unlock sequences in  unlink_anon_vmas()
+fbe264d mm: avoid repeated anon_vma lock/unlock sequences in  anon_vma_clone()
+e0154fa writeback: split inode_wb_list_lock into  bdi_writeback.list_lock
+dfe6400 backing-dev: Kill set but not used var in  bdi_debug_stats_show()
+65b6341 writeback: refill b_io iff empty
+d621601 writeback: the kupdate expire timestamp should be a moving  target
+facfe05 writeback: try more writeback as long as something was  written
+41d7c35 writeback: introduce writeback_control.inodes_written
+4e9004e writeback: update dirtied_when for synced inode to prevent  livelock
+1c6155c writeback: introduce .tagged_writepages for the WB_SYNC_NONE  sync stage
+07a92f8 fs: pass exact type of data dirties to ->dirty_inode
+7a49641 mm, rmap: Add yet more comments to  page_get_anon_vma/page_lock_anon_vma
+973c548 mm: fix page_lock_anon_vma leaving mutex locked
+e8bb593 mm: fix kernel BUG at mm/rmap.c:1017!
+e8ad4bb mm: optimize page_lock_anon_vma() fast-path
+37a4fac mm: convert anon_vma->lock to a mutex
+d66d343 mm: use refcounts for page_lock_anon_vma()
+9d36d0f mm: improve page_lock_anon_vma() comment
+5e8140d mm: revert page_lock_anon_vma() lock annotation
+f41f967 mm: Convert i_mmap_lock to a mutex
+31abb47 mm: Remove i_mmap_lock lockbreak
+ab3c426 mm: extended batches for generic mmu_gather
+a8512df mm: move the RCU page-table freeing into generic code
+68919dd  mm: mmu_gather rework
+a2a480e mm: make expand_downwards() symmetrical with  expand_upwards()
+2ca003a sched: Remove unused parameters from sched_fork() and  wake_up_new_task()
+1d3ff7f Revert "mm: Convert i_mmap_lock to a mutex"
+c2b4deb mm: Convert i_mmap_lock to a mutex
+0570c25 [S390] merge page_test_dirty and page_clear_dirty
+6d29081 readahead: readahead page allocations are OK to fail
+8b9dcfe thp: add HPAGE_PMD_* definitions for  '!CONFIG_TRANSPARENT_HUGEPAGE'
+2df58c7 percpu: use bitmap_clear
+79991b9 percpu: fix chunk range calculation
+a8bdf03 kmemleak: Fix the kmemleak tracking of the percpu areas with  '!SMP'
+71e9392 percpu: use KERN_CONT in pcpu_dump_alloc_info()
+ad51666 percpu: fix per_cpu_ptr_to_phys() handling of  non-page-aligned addresses
+4c4a594 kmemleak: Handle percpu memory allocation
+e78bc0f percpu: explain why per_cpu_ptr_to_phys() is more  complicated than necessary
+f54a45a percpu: rename pcpu_mem_alloc to pcpu_mem_zalloc
+7b43b35 percpu: Cast away printk format warning
+4cc5c86 percpu: Always align percpu output section to PAGE_SIZE
+2e2b2a6 ALSA: workaround: change the timing of alsa_sound_last_init()
+ce1b9dc Add userspace voltage control (thanks richardtrip!)
+fe18023 Merge branch 'init' of git://secure.eternityproject.eu/endeavoru-3.4
+6461295 Completed the RCU update - Cleanups - Stabilization
+0afedec Ehm, cleanup
+78b6e06 [1/2] Update EXT4
+660bb30 ioprio: grab rcu_read_lock in sys_ioprio_{set,get}()
+ebcb738 ioprio: rcu_read_lock/unlock protect find_task_by_vpid call  (V2)
+aaa0b88 What the hell....
+876e212 ioprio: fix RCU locking around task dereference
+5b2babc Fix a damn mess
+488ac86 rcu: Restore checks for blocking in RCU read-side critical sections
+d11b475 rcu: Permit call_rcu() from CPU_DYING notifiers
+512e931 rcu: Stop spurious warnings from synchronize_sched_expedited
+1b23793 rcu: Add RCU_NONIDLE() for idle-loop RCU read-side critical sections
+2f776f7 rcu: Allow nesting of rcu_idle_enter() and rcu_idle_exit()
+afc8e57 rcu: Call out dangers of expedited RCU primitives
+0f5434f rcu: Rework detection of use of RCU by offline CPUs
+5a46933 rcu: Move synchronize_sched_expedited() to rcutree.c
+ec4e899 rcu: Check for illegal use of RCU from offlined CPUs
+1dc71c3 rcu: Print scheduling-clock information on RCU CPU stall-warning messages
+5dd8d97 rcu: Set RCU CPU stall times via sysfs
+147b131 rcu: Remove #ifdef CONFIG_SMP from TREE_RCU
+46b3d7a rcu: Check for idle-loop entry while in RCU read-side critical section
+6a8973f rcu: Clean up straggling rcu_preempt_needs_cpu() name
+3fc1a3f rcu: Remove single-rcu_node optimization in rcu_start_gp()
+2e9bff1 rcu: Don't make callbacks go through second full grace period
+0788656 rcu: Check for callback invocation from offline CPUs
+20f84e7 rcu: Simplify offline processing
+e9eb318 rcu: Avoid waking up CPUs having only kfree_rcu() callbacks
+59a3e62 rcu: Add diagnostic for misaligned rcu_head structures
+9d779a2 rcu: Add lockdep-RCU checks for simple self-deadlock
+4b3b203 rcu_ Augment rcu_batch_end tracing for idle and callback state
+578e3ac rcu: Remove redundant rcu_cpu_stall_suppress declaration
+0e019b9 rcu: Keep invoking callbacks if CPU otherwise idle
+27664e9 rcu: Irq nesting is always 0 on rcu_enter_idle_common
+b7b3834 rcu: Don't check irq nesting from rcu idle entry/exit
+b8c01c0 rcu: Permit dyntick-idle with callbacks pending
+e61f05c rcu: Identify dyntick-idle CPUs on first force_quiescent_state() pass
+8d0070b rcu: Remove dynticks false positives and RCU failures
+5f4527c sched: add is_idle_task() to handle invalidated uses of idle_cpu()
+61a54d1 rcu: Eliminate RCU_FAST_NO_HZ grace-period hang
+c521851 rcu: Make RCU use the new is_idle_task() API
+ee027b7 rcu: Fix idle-task checks
+31f8283 rcu: Allow dyntick-idle mode for CPUs with callbacks
+4fd9f14 rcu: Add more information to the wrong-idle-task complaint
+69f1498 rcu: Deconfuse dynticks entry-exit tracing
+a9fb207 rcu: Detect illegal rcu dereference in extended quiescent state
+efcaffe rcu: Omit self-awaken when setting up expedited grace period
+d0d87c6 rcu: Disable preemption in rcu_is_cpu_idle()
+db01614 rcu: Track idleness independent of idle tasks
+85e1121 rcu: ->signaled better named ->fqs_state
+22e5188 kernel: ksysfs.c is implicitly using stat.h
+9a6c6e4 kernel: Map most files to use export.h instead of module.h
+84622ef Split export.h. New file: module.h
+93dda8d rcu: Move propagation of ->completed from rcu_start_gp() to rcu_report_qs_rsp()
+889d4ea rcu: Remove rcu_needs_cpu_flush() to avoid false quiescent states
+c09f677 rcu: Wire up RCU_BOOST_PRIO for rcutree
+5ee1df8 rcu: Avoid having just-onlined CPU resched itself when RCU is idle
+f3ecac6 rcu: Suppress NMI backtraces when stall ends before dump
+1b0a1f4 rcu: Prohibit grace periods during early boot
+843d4d0 rcu: Prevent early boot set_need_resched() from __rcu_pending()
+eda5680 rcu: Dump local stack if cannot dump all CPUs' stacks
+4933d50 rcu: Make rcu_implicit_dynticks_qs() locals be correct size
+070fce7 rcu: Eliminate in_irq() checks in rcu_enter_nohz()
+4c202df rcu: Simplify quiescent-state accounting
+d9e98ed rcu: Add grace-period, quiescent-state, and call_rcu trace events
+8a60c34 rcu: Update comments to reflect softirqs vs. kthreads
+d4bb895 rcu: Add RCU type to callback-invocation tracing
+bbd0d3f rcu: Put names into TINY_RCU structures under RCU_TRACE
+9be45d0 rcu: Event-trace markers for computing RCU CPU utilization
+5120369 rcu: Add event-tracing for RCU callback invocation
+a1ef092 rcu: Abstract common code for RCU grace-period-wait primitives
+c3f80c9 rcu: Prevent RCU callbacks from executing before scheduler initialized
+8b3077b rcu: Move RCU_BOOST #ifdefs to header file
+646883f rcu: use softirq instead of kthreads except when RCU_BOOST=y
+319a25f rcu: Use softirq to address performance regression
+7a9880a rcu: Simplify curing of load woes
+ba2a1e6 rcu: Cure load woes
+a08644a rcu: Start RCU kthreads in TASK_INTERRUPTIBLE state
+5d84f52 rcu: Remove waitqueue usage for cpu, node, and boost kthreads
+be065f6 rcu: Avoid acquiring rcu_node locks in timer functions
+c4f9ede rcu: Decrease memory-barrier usage based on semi-formal proof
+6587060  rcu: Make rcu_enter_nohz() pay attention to nesting
+5318984 rcu: Don't do reschedule unless in irq
+1907c44 rcu: Remove old memory barriers from rcu_process_callbacks()
+f1b9077 rcu: Add memory barriers
+5d60187 Revert "rcu: Decrease memory-barrier usage based on semi-formal proof"
+56f752f rcu: permit rcu_read_unlock() to be called while holding runqueue locks
+1edfa8b rcu: provide rcu_virt_note_context_switch() function.
+b9b476e rcu: get rid of signed overflow in check_cpu_stall()
+293dae4 rcu: prevent call_rcu() from dividing into rcu core if irqs disabled
+330348f rcu: further lower priority in rcu_yield()
+c271f45 rcu: introduce kfree_rcu()
+cfd59c2 rcu: fix spelling
+dba1c8c rcu: Switch to this_cpu() primitives
+169e671 rcu: Add forward-progress diagnostic for per-cpu kthreads
+eebbbf4 rcu: add grace-period age and more kthread state to tracing
+d336881 rcu: make rcutorture version numbers available through debugfs
+a688153 rcu: Add tracing for RCU's kthread run states.
+8bdf833 rcu: put per-CPU kthread at non-RT priority during CPU hotplug operations
+8ca5345 rcu: Force per-rcu_node kthreads off of the outgoing CPU
+bcad828 rcu: priority boosting for TREE_PREEMPT_RCU
+fc65397 rcu: move TREE_RCU from softirq to kthread
+2d3b745 rcu: merge TREE_PREEPT_RCU blocked_tasks[] lists
+e3cbf3f rcu: Decrease memory-barrier usage based on semi-formal proof
+d103b06 rcu: Remove conditional compilation for RCU CPU stall warnings
+dab593a ARM: 7123/1: smp: Add an IPI handler callable from C code
+81f2eff ARM: pm: avoid writing the auxiliary control register for ARMv7
+c42a42d Correctly implement cpu_v7_reset
+3c01c03 mach-tegra/cpu-tegra3: Set cpu_lp_clk again if it is not set (Thanks showp1984!)
+feed32f ARM RW Semaphores implementation. Raise the maximum readahead buffer.
+27d41d3 ARM: entry: no need to increase preempt count for IRQ handlers
+780cab3 Fix SIO and revert to the 2-phase algprhythm on cpufreq_ondemand
+4cd0329 A message to franciscofranco and the other ones.
+391bd82 Code cleanups from riemervdzee
+7fb7cad dvfs.c: Fix multiple "ISO C90 forbids mixed declarations and code" warnings
+05c148c mach-tegra/gpio.c: Get rid of the "ISO C90 forbids mixed declarations and code" warnings.
+5901a64 Introduce SIO and optimize some functions
+c722a27 OOPS! Revert "USB Fixes"
+70ebaac USB Fixes
+12932ed memcg: Revert "memcg: add memory.vmscan_stat"
+0d67aa5 mm: vmscan: fix force-scanning small targets without swap
+035ed53 vmscan: clear ZONE_CONGESTED for zone with good watermark
+5264163 mm: fix a vmscan warning
+a648dfa mm/vmscan.c: Fix typo in a comment
+d089e5b memcg: add memory.vmscan_stat
+3333890 memcg: fix vmscan count in small memcgs
+d5a8163 memcg: consolidate memory cgroup lru stat functions
+16a56d8 memcg: export memory cgroup's swappiness with mem_cgroup_swappiness()
+e0e05da vmscan: add customisable shrinker batch size
+d7c967a vmscan: reduce wind up shrinker->nr when shrinker can't do work
+edc9e3e vmscan: shrinker->nr updates race and go wrong
+1fe3d1a vmscan: add shrink_slab tracepoints
+d7b0e0f mm: vmscan: do not apply pressure to slab if we are not applying pressure to zone
+a70ecef memcg: fix direct softlimit reclaim to be called in limit path
+17e714c vmscan,memcg: memcg aware swap token
+dd3e25b memcg: rename mem_cgroup_zone_nr_pages() to mem_cgroup_zone_nr_lru_pages()
+4c3f79a memcg: fix get_scan_count() for small targets
+957fb70 memcg: reclaim memory from nodes in round-robin order
+75c559d memcg: add the soft_limit reclaim in global direct reclaim.
+6b513ea memcg: count the soft_limit reclaim in global background reclaim
+6c9f607 vmscan: change shrinker API by passing shrink_control struct
+89c4bf9 vmscan: change shrink_slab() interfaces by passing shrink_control
+e393c6e mm: strictly require elevated page refcount in isolate_lru_page()
+0f27131 sanitize <linux/prefetch.h> usage
+3c6a08c Revert "Introduce real ARM ID Mapping and populate identity map pgd at init time using init.text"
+0975ab2 Revert "Introduce real IDMapping"
+0bd8899 Introduce real IDMapping
+c26c5e4 Introduce real ARM ID Mapping and populate identity map pgd at init time using init.text
+d0ff4fa SMP fixes
+5b31fb8 ARM: 7060/1: smp: populate logical CPU mapping during boot
+240c97d ARM: 7011/1: Add ARM cpu topology definition ARM: 7124/1: smp: Add a localtimer handler callable from C code
+02862ed sched/rt: code cleanup, remove a redundant function call
+ac229d9 mm/vmalloc.c: eliminate extra loop in pcpu_get_vm_areas error path
+0686505 Use the new SHA implementation
+de4f1b7 Wrap accesses to the fd_sets in struct fdtable
+02d0ffe genirq: Adjust irq thread affinity on IRQ_SET_MASK_OK_NOCOPY return value
+d0dc936 crypto: sha512 - Fix byte counter overflow in SHA-512
+b9bf64a cpuidle: refactor out cpuidle_enter_state
+4d17ca0 Some other stability fixes
+f8664a4 ARM Libraries updated to Linux 3.4
+b58f6f6 Cleanup
+6977b54 VFP layer updated to Linux 3.4 version
+c81a659 vsprintf: optimize decimal conversion
+97537ca procfs: add num_to_str() to speed up /proc/stat
+ffff4a3 vsprintf: make %pV handling compatible with kasprintf()
+83e7594 lib/kstrtox: common code between kstrto*() and simple_strto*() functions
+0a2bcec lib: make _tolower() public
+dd3edfd Misc fixes from nVidia etc.
+2914019 Revert "Faster SHA-1 implementation"
+f924105 Replace check_bytes with memchr_inv in SLUB.
+9641d34 lib/string.c: introduce memchr_inv()
+7e0979b ida: make ida_simple_get/put() IRQ safe
+547bae0 lib/idr.c: fix comment for ida_get_new_above()
+dee13ef idr: Fix typo in documentation
+51d2f03 idr: simplified functions for id allocation
+412a83f llist: Remove cpu_relax() usage in cmpxchg loops
+615ec44 llist: Return whether list is empty before adding in llist_add()
+72a70fa llist: Move cpu_relax() to after the cmpxchg()
+ca6a53b llist: Remove the platform-dependent NMI checks
+5156a6b llist: Make some llist functions inline
+f30b738 Add lock-less NULL terminated single list
+fcc03c7 idr: make idr_get_next() good for rcu_read_lock()
+a7fe49a Faster SHA-1 implementation
+d40c33f Update crc32 algorhythm
+b499df4 Optimize memcpy and memmove
+678e984 Optimize memcopy
+c1a1122 android, lowmemorykiller: remove task handoff notifier
+1502ea8 Staging: android: lowmemorykiller: Fix compiler warning
+517df18 staging: android, lowmemorykiller: convert to use oom_score_adj
+ed8a1b5 staging: android/lowmemorykiller: Do not kill kernel threads
+9f5fae2 staging: android/lowmemorykiller: No need for task->signal check
+fa2ddb2 staging: android/lowmemorykiller: Better mm handling
+512b220 staging: android/lowmemorykiller: Don't grab tasklist_lock
+ae11bf9 Staging: android: ram_console: Use resource_size function
+624114c staging: android: ram_console use kmemdup instead of kmalloc
+95862b9 staging: android/ram_console: Don't build on arches w/o ioremap
+bcb68b4 Staging: android: binder: Fix crashes when sharing a binder file between processes
+5b135be Staging: android: binder: Don't call dump_stack in binder_vma_open
+f5a6f73 Fix a stupid useless warning
+0b1e9b7 Staging: android: fixed a space warning in binder.h
+e6ff40e Staging: android: fixed white spaces coding style issue in logger.c
+ad7260f Add V(R) I/O Scheduler
+a2f2bd8 Initial commit
