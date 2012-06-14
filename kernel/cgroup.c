@@ -1761,7 +1761,6 @@ int cgroup_path(const struct cgroup *cgrp, char *buf, int buflen)
 }
 EXPORT_SYMBOL_GPL(cgroup_path);
 
-<<<<<<< HEAD
 /*
  * Control Group taskset
  */
@@ -1784,7 +1783,7 @@ struct cgroup_taskset {
  *
  * @tset iteration is initialized and the first task is returned.
  */
-struct task_struct *cgroup_taskset_first(struct cgroup_taskset *tset)
+/*struct task_struct *cgroup_taskset_first(struct cgroup_taskset *tset)
 {
 	if (tset->tc_array) {
 		tset->idx = 0;
@@ -1795,7 +1794,7 @@ struct task_struct *cgroup_taskset_first(struct cgroup_taskset *tset)
 	}
 }
 EXPORT_SYMBOL_GPL(cgroup_taskset_first);
-
+*/
 /**
  * cgroup_taskset_next - iterate to the next task in taskset
  * @tset: taskset of interest
@@ -1803,7 +1802,7 @@ EXPORT_SYMBOL_GPL(cgroup_taskset_first);
  * Return the next task in @tset.  Iteration must have been initialized
  * with cgroup_taskset_first().
  */
-struct task_struct *cgroup_taskset_next(struct cgroup_taskset *tset)
+/*struct task_struct *cgroup_taskset_next(struct cgroup_taskset *tset)
 {
 	struct task_and_cgroup *tc;
 
@@ -1815,7 +1814,7 @@ struct task_struct *cgroup_taskset_next(struct cgroup_taskset *tset)
 	return tc->task;
 }
 EXPORT_SYMBOL_GPL(cgroup_taskset_next);
-
+*/
 /**
  * cgroup_taskset_cur_cgroup - return the matching cgroup for the current task
  * @tset: taskset of interest
