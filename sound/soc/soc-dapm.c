@@ -1303,13 +1303,19 @@ static const struct file_operations dapm_widget_power_fops = {
 	.llseek = default_llseek,
 };
 
-void snd_soc_dapm_debugfs_init(struct snd_soc_dapm_context *dapm)
+void snd_soc_dapm_debugfs_init(struct snd_soc_dapm_context *dapm,
+	struct dentry *parent)
 {
 	struct snd_soc_dapm_widget *w;
 	struct dentry *d;
 
-	if (!dapm->debugfs_dapm)
+	dapm->debugfs_dapm = debugfs_create_dir("dapm", parent);
+
+	if (!dapm->debugfs_dapm) {
+		printk(KERN_WARNING
+		       "Failed to create DAPM debugfs directory\n");
 		return;
+	}
 
 	list_for_each_entry(w, &dapm->card->widgets, list) {
 		if (!w->name || w->dapm != dapm)
@@ -1325,7 +1331,8 @@ void snd_soc_dapm_debugfs_init(struct snd_soc_dapm_context *dapm)
 	}
 }
 #else
-void snd_soc_dapm_debugfs_init(struct snd_soc_dapm_context *dapm)
+void snd_soc_dapm_debugfs_init(struct snd_soc_dapm_context *dapm,
+	struct dentry *parent)
 {
 }
 #endif
