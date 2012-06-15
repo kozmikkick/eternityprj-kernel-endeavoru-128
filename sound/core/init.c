@@ -564,7 +564,7 @@ void snd_card_set_id(struct snd_card *card, const char *nid)
 	if (card->id[0] != '\0')
 		return;
 	mutex_lock(&snd_card_mutex);
-	snd_card_set_id_no_lock(card, nid);
+	snd_card_set_id_no_lock(card, nid, nid);
 	mutex_unlock(&snd_card_mutex);
 }
 EXPORT_SYMBOL(snd_card_set_id);
@@ -596,22 +596,12 @@ card_id_store_attr(struct device *dev, struct device_attribute *attr,
 	memcpy(buf1, buf, copy);
 	buf1[copy] = '\0';
 	mutex_lock(&snd_card_mutex);
-	if (!snd_info_check_reserved_words(buf1)) {
-	     __exist:
+	if (!card_id_ok(NULL, buf1)) {
 		mutex_unlock(&snd_card_mutex);
 		return -EEXIST;
 	}
-	for (idx = 0; idx < snd_ecards_limit; idx++) {
-		if (snd_cards[idx] && !strcmp(snd_cards[idx]->id, buf1)) {
-			if (card == snd_cards[idx])
-				goto __ok;
-			else
-				goto __exist;
-		}
-	}
 	strcpy(card->id, buf1);
 	snd_info_card_id_change(card);
-__ok:
 	mutex_unlock(&snd_card_mutex);
 
 	return count;
@@ -665,7 +655,18 @@ int snd_card_register(struct snd_card *card)
 		mutex_unlock(&snd_card_mutex);
 		return 0;
 	}
-	snd_card_set_id_no_lock(card, card->id[0] == '\0' ? NULL : card->id);
+	if (*card->id) {
+		/* make a unique id name from the given string */
+		char tmpid[sizeof(card->id)];
+		memcpy(tmpid, card->id, sizeof(card->id));
+		snd_card_set_id_no_lock(card, tmpid, tmpid);
+	} else {
+		/* create an id from either shortname or longname */
+		const char *src;
+		src = *card->shortname ? card->shortname : card->longname;
+		snd_card_set_id_no_lock(card, src,
+					retrieve_id_from_card_name(src));
+	}
 	snd_cards[card->number] = card;
 	mutex_unlock(&snd_card_mutex);
 	init_info_for_card(card);
