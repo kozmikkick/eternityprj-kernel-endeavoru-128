@@ -35,6 +35,7 @@
 #include <mach/iomap.h>
 #include <mach/dc.h>
 #include <mach/fb.h>
+#include <mach/smmu.h>
 #include <mach/hardware.h>
 #include <mach/panel_id.h>
 #include <mach/board_htc.h>
@@ -2675,6 +2676,7 @@ static struct nvhost_device enterprise_disp2_device = {
 };
 #endif
 
+#if defined(CONFIG_TEGRA_NVMAP)
 static struct nvmap_platform_carveout enterprise_carveouts[] = {
 	[0] = NVMAP_HEAP_CARVEOUT_IRAM_INIT,
 	[1] = {
@@ -2698,10 +2700,20 @@ static struct platform_device enterprise_nvmap_device = {
 		.platform_data = &enterprise_nvmap_data,
 	},
 };
+#endif
 
 #if defined(CONFIG_ION_TEGRA)
+
+static struct platform_device tegra_iommu_device = {
+	.name = "tegra_iommu_device",
+	.id = -1,
+	.dev = {
+		.platform_data = (void *)((1 << HWGRP_COUNT) - 1),
+	},
+};
+
 static struct ion_platform_data tegra_ion_data = {
-	.nr = 3,
+	.nr = 4,
 	.heaps = {
 		{
 			.type = ION_HEAP_TYPE_CARVEOUT,
@@ -2724,6 +2736,14 @@ static struct ion_platform_data tegra_ion_data = {
 			.base = 0,
 			.size = 0,
 		},
+		{
+			.type = ION_HEAP_TYPE_IOMMU,
+			.id = TEGRA_ION_HEAP_IOMMU,
+			.name = "iommu",
+			.base = TEGRA_SMMU_BASE,
+			.size = TEGRA_SMMU_SIZE,
+			.priv = &tegra_iommu_device.dev,
+		},
 	},
 };
 
@@ -2737,7 +2757,9 @@ static struct platform_device tegra_ion_device = {
 #endif
 
 static struct platform_device *enterprise_gfx_devices[] __initdata = {
+#if defined(CONFIG_TEGRA_NVMAP)
 	&enterprise_nvmap_device,
+#endif
 #ifdef CONFIG_TEGRA_GRHOST
 	&tegra_grhost_device,
 #endif
@@ -2858,8 +2880,10 @@ int __init enterprise_panel_init(void)
 
 	DISP_INFO_IN();
 
+#if defined(CONFIG_TEGRA_NVAVP)
 	enterprise_carveouts[1].base = tegra_carveout_start;
 	enterprise_carveouts[1].size = tegra_carveout_size;
+#endif
 
 #ifdef CONFIG_ION_TEGRA
 	tegra_ion_data.heaps[0].base = tegra_carveout_start;
