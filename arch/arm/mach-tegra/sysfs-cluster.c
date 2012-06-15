@@ -120,7 +120,7 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 
 /* Active CPU: "G", "LP", "toggle" */
 static struct kobj_attribute cluster_active_attr =
-		__ATTR(active, 0640, sysfscluster_show, sysfscluster_store);
+		__ATTR(active, 0644, sysfscluster_show, sysfscluster_store);
 
 /* Immediate wake-up when performing switch: 0, 1 */
 static struct kobj_attribute cluster_immediate_attr =
