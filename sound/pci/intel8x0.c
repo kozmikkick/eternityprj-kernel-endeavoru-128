@@ -73,9 +73,9 @@ static int index = SNDRV_DEFAULT_IDX1;	/* Index 0-MAX */
 static char *id = SNDRV_DEFAULT_STR1;	/* ID for this card */
 static int ac97_clock;
 static char *ac97_quirk;
-static int buggy_semaphore;
+static bool buggy_semaphore;
 static int buggy_irq = -1; /* auto-check */
-static int xbox;
+static bool xbox;
 static int spdif_aclink = -1;
 
 module_param(index, int, 0444);
@@ -96,7 +96,7 @@ module_param(spdif_aclink, int, 0444);
 MODULE_PARM_DESC(spdif_aclink, "S/PDIF over AC-link.");
 
 /* just for backward compatibility */
-static int enable;
+static bool enable;
 module_param(enable, bool, 0444);
 static int joystick;
 module_param(joystick, int, 0444);

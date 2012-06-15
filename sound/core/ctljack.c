@@ -10,6 +10,7 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/module.h>
 #include <sound/core.h>
 #include <sound/control.h>
 
