@@ -31,7 +31,7 @@
 #include <linux/init.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
-#include <linux/moduleparam.h>
+#include <linux/module.h>
 #include <sound/core.h>
 
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
