@@ -426,7 +426,7 @@ phys_addr_t nvmap_handle_address(struct nvmap_client *c, unsigned long id)
 	ion_phys_addr_t addr;
 	size_t len;
 
-	handle = nvmap_convert_handle_u2k(id);
+	handle = (struct ion_handle *)nvmap_convert_handle_u2k(id);
 	ion_phys(c, handle, &addr, &len);
 	return addr;
 }

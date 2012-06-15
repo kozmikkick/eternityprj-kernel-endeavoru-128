@@ -2704,16 +2704,16 @@ static struct platform_device enterprise_nvmap_device = {
 
 #if defined(CONFIG_ION_TEGRA)
 
-static struct platform_device tegra_iommu_device = {
+/*static struct platform_device tegra_iommu_device = {
 	.name = "tegra_iommu_device",
 	.id = -1,
 	.dev = {
 		.platform_data = (void *)((1 << HWGRP_COUNT) - 1),
 	},
-};
+}; --NOT WORKING -- NOT BOOTING */
 
 static struct ion_platform_data tegra_ion_data = {
-	.nr = 4,
+	.nr = 3,
 	.heaps = {
 		{
 			.type = ION_HEAP_TYPE_CARVEOUT,
@@ -2736,14 +2736,14 @@ static struct ion_platform_data tegra_ion_data = {
 			.base = 0,
 			.size = 0,
 		},
-		{
+/*		{
 			.type = ION_HEAP_TYPE_IOMMU,
 			.id = TEGRA_ION_HEAP_IOMMU,
 			.name = "iommu",
 			.base = TEGRA_SMMU_BASE,
 			.size = TEGRA_SMMU_SIZE,
 			.priv = &tegra_iommu_device.dev,
-		},
+		},*/
 	},
 };
 
@@ -2880,7 +2880,7 @@ int __init enterprise_panel_init(void)
 
 	DISP_INFO_IN();
 
-#if defined(CONFIG_TEGRA_NVAVP)
+#if defined(CONFIG_TEGRA_NVMAP)
 	enterprise_carveouts[1].base = tegra_carveout_start;
 	enterprise_carveouts[1].size = tegra_carveout_size;
 #endif
