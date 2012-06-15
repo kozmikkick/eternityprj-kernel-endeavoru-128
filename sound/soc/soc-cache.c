@@ -685,7 +685,7 @@ static int snd_soc_hw_bulk_write_raw(struct snd_soc_codec *codec, unsigned int r
 		ret = i2c_master_send(codec->control_data, data, len);
 		break;
 	case SND_SOC_SPI:
-		ret = do_spi_write(codec->control_data, data, len);
+		codec->hw_write = (hw_write_t)spi_write;
 		break;
 	default:
 		BUG();
@@ -989,6 +989,7 @@ static int snd_soc_rbtree_cache_sync(struct snd_soc_codec *codec)
 	unsigned int regtmp;
 	unsigned int val;
 	int ret;
+	int i;
 
 	rbtree_ctx = codec->reg_cache;
 	for (node = rb_first(&rbtree_ctx->root); node; node = rb_next(node)) {
