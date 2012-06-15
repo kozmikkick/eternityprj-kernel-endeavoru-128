@@ -1871,6 +1871,10 @@ static void snd_soc_instantiate_card(struct snd_soc_card *card)
 	INIT_WORK(&card->deferred_resume_work, soc_resume_deferred);
 #endif
 
+	if (card->dapm_widgets)
+		snd_soc_dapm_new_controls(&card->dapm, card->dapm_widgets,
+					  card->num_dapm_widgets);
+
 	/* initialise the sound card only once */
 	if (card->probe) {
 		ret = card->probe(card);
@@ -1896,9 +1900,6 @@ static void snd_soc_instantiate_card(struct snd_soc_card *card)
 		}
 	}
 
-	if (card->dapm_widgets)
-		snd_soc_dapm_new_controls(&card->dapm, card->dapm_widgets,
-					  card->num_dapm_widgets);
 	if (card->dapm_routes)
 		snd_soc_dapm_add_routes(&card->dapm, card->dapm_routes,
 					card->num_dapm_routes);
