@@ -186,7 +186,7 @@ struct sta_ampdu_mlme {
  * @PLINK_HOLDING: mesh peer link is being closed or cancelled
  * @PLINK_BLOCKED: all frames transmitted from this mesh plink are discarded
  */
-enum plink_state {
+/*enum plink_state {
 	PLINK_LISTEN,
 	PLINK_OPN_SNT,
 	PLINK_OPN_RCVD,
@@ -194,7 +194,7 @@ enum plink_state {
 	PLINK_ESTAB,
 	PLINK_HOLDING,
 	PLINK_BLOCKED
-};
+};*/
 
 /**
  * struct sta_info - STA information
