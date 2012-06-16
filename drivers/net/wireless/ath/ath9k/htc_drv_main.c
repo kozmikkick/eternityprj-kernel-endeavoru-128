@@ -1694,7 +1694,8 @@ static void ath9k_htc_bss_info_changed(struct ieee80211_hw *hw,
 	mutex_unlock(&priv->mutex);
 }
 
-static u64 ath9k_htc_get_tsf(struct ieee80211_hw *hw)
+static u64 ath9k_htc_get_tsf(struct ieee80211_hw *hw,
+			     struct ieee80211_vif *vif)
 {
 	struct ath9k_htc_priv *priv = hw->priv;
 	u64 tsf;
@@ -1708,7 +1709,8 @@ static u64 ath9k_htc_get_tsf(struct ieee80211_hw *hw)
 	return tsf;
 }
 
-static void ath9k_htc_set_tsf(struct ieee80211_hw *hw, u64 tsf)
+static void ath9k_htc_set_tsf(struct ieee80211_hw *hw,
+			      struct ieee80211_vif *vif, u64 tsf)
 {
 	struct ath9k_htc_priv *priv = hw->priv;
 
@@ -1719,7 +1721,8 @@ static void ath9k_htc_set_tsf(struct ieee80211_hw *hw, u64 tsf)
 	mutex_unlock(&priv->mutex);
 }
 
-static void ath9k_htc_reset_tsf(struct ieee80211_hw *hw)
+static void ath9k_htc_reset_tsf(struct ieee80211_hw *hw,
+				struct ieee80211_vif *vif)
 {
 	struct ath9k_htc_priv *priv = hw->priv;
 

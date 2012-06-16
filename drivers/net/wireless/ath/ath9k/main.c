@@ -2006,7 +2006,7 @@ static void ath9k_bss_info_changed(struct ieee80211_hw *hw,
 	ath9k_ps_restore(sc);
 }
 
-static u64 ath9k_get_tsf(struct ieee80211_hw *hw)
+static u64 ath9k_get_tsf(struct ieee80211_hw *hw, struct ieee80211_vif *vif)
 {
 	struct ath_softc *sc = hw->priv;
 	u64 tsf;
@@ -2020,7 +2020,9 @@ static u64 ath9k_get_tsf(struct ieee80211_hw *hw)
 	return tsf;
 }
 
-static void ath9k_set_tsf(struct ieee80211_hw *hw, u64 tsf)
+static void ath9k_set_tsf(struct ieee80211_hw *hw,
+			  struct ieee80211_vif *vif,
+			  u64 tsf)
 {
 	struct ath_softc *sc = hw->priv;
 
@@ -2031,7 +2033,7 @@ static void ath9k_set_tsf(struct ieee80211_hw *hw, u64 tsf)
 	mutex_unlock(&sc->mutex);
 }
 
-static void ath9k_reset_tsf(struct ieee80211_hw *hw)
+static void ath9k_reset_tsf(struct ieee80211_hw *hw, struct ieee80211_vif *vif)
 {
 	struct ath_softc *sc = hw->priv;
 
