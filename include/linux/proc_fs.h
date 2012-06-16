@@ -173,6 +173,8 @@ extern void proc_net_remove(struct net *net, const char *name);
 extern struct proc_dir_entry *proc_net_mkdir(struct net *net, const char *name,
 	struct proc_dir_entry *parent);
 
+extern struct file *proc_ns_fget(int fd);
+
 #else
 
 #define proc_net_fops_create(net, name, mode, fops)  ({ (void)(mode), NULL; })
@@ -222,6 +224,11 @@ static inline void pid_ns_release_proc(struct pid_namespace *ns)
 {
 }
 
+static inline struct file *proc_ns_fget(int fd)
+{
+	return ERR_PTR(-EINVAL);
+}
+
 #endif /* CONFIG_PROC_FS */
 
 #if !defined(CONFIG_PROC_KCORE)
@@ -232,6 +239,15 @@ kclist_add(struct kcore_list *new, void *addr, size_t size, int type)
 #else
 extern void kclist_add(struct kcore_list *, void *, size_t, int type);
 #endif
+
+struct nsproxy;
+struct proc_ns_operations {
+	const char *name;
+	int type;
+	void *(*get)(struct task_struct *task);
+	void (*put)(void *ns);
+	int (*install)(struct nsproxy *nsproxy, void *ns);
+};
 
 union proc_op {
 	int (*proc_get_link)(struct inode *, struct path *);
@@ -251,6 +267,8 @@ struct proc_inode {
 	struct proc_dir_entry *pde;
 	struct ctl_table_header *sysctl;
 	struct ctl_table *sysctl_entry;
+	void *ns;
+	const struct proc_ns_operations *ns_ops;
 	struct inode vfs_inode;
 };
 
