@@ -786,7 +786,7 @@ static const struct net_device_ops lbs_netdev_ops = {
 	.ndo_start_xmit		= lbs_hard_start_xmit,
 	.ndo_set_mac_address	= lbs_set_mac_address,
 	.ndo_tx_timeout 	= lbs_tx_timeout,
-	.ndo_set_multicast_list = lbs_set_multicast_list,
+	.ndo_set_rx_mode 	= lbs_set_multicast_list,
 	.ndo_change_mtu		= eth_change_mtu,
 	.ndo_validate_addr	= eth_validate_addr,
 };
