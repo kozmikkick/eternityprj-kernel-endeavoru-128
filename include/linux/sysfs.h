@@ -178,9 +178,6 @@ struct sysfs_dirent *sysfs_get(struct sysfs_dirent *sd);
 void sysfs_put(struct sysfs_dirent *sd);
 void sysfs_printk_last_file(void);
 
-/* Called to clear a ns tag when it is no longer valid */
-void sysfs_exit_ns(enum kobj_ns_type type, const void *tag);
-
 int __must_check sysfs_init(void);
 
 #else /* CONFIG_SYSFS */
@@ -336,10 +333,6 @@ static inline struct sysfs_dirent *sysfs_get(struct sysfs_dirent *sd)
 	return NULL;
 }
 static inline void sysfs_put(struct sysfs_dirent *sd)
-{
-}
-
-static inline void sysfs_exit_ns(int type, const void *tag)
 {
 }
 
