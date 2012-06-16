@@ -1570,12 +1570,6 @@ struct net_device *rtnl_create_link(struct net *src_net, struct net *net,
 	dev->rtnl_link_state = RTNL_LINK_INITIALIZING;
 	dev->real_num_tx_queues = real_num_queues;
 
-	if (strchr(dev->name, '%')) {
-		err = dev_alloc_name(dev, dev->name);
-		if (err < 0)
-			goto err_free;
-	}
-
 	if (tb[IFLA_MTU])
 		dev->mtu = nla_get_u32(tb[IFLA_MTU]);
 	if (tb[IFLA_ADDRESS])
@@ -1595,8 +1589,6 @@ struct net_device *rtnl_create_link(struct net *src_net, struct net *net,
 
 	return dev;
 
-err_free:
-	free_netdev(dev);
 err:
 	return ERR_PTR(err);
 }
