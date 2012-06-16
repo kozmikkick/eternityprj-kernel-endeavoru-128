@@ -168,9 +168,6 @@ extern pgd_t swapper_pg_dir[PTRS_PER_PGD];
 #define pmd_none(pmd)		(!pmd_val(pmd))
 #define pmd_present(pmd)	(pmd_val(pmd))
 
-extern spinlock_t pgd_lock;
-extern struct list_head pgd_list;
-
 pte_t *lookup_address(unsigned long address, unsigned int *level);
 enum {
 	PG_LEVEL_NONE,
