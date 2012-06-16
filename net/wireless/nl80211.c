@@ -3402,6 +3402,8 @@ static int nl80211_set_reg(struct sk_buff *skb, struct genl_info *info)
 		num_rules++;
 		if (num_rules > NL80211_MAX_SUPP_REG_RULES)
 			return -EINVAL;
+
+		params.sta_modify_mask |= STATION_PARAM_APPLY_UAPSD;
 	}
 
 	mutex_lock(&cfg80211_mutex);
