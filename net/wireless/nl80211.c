@@ -175,6 +175,7 @@ static const struct nla_policy nl80211_policy[NL80211_ATTR_MAX+1] = {
 	[NL80211_ATTR_KEY_DEFAULT_TYPES] = { .type = NLA_NESTED },
 	[NL80211_ATTR_WOWLAN_TRIGGERS] = { .type = NLA_NESTED },
 	[NL80211_ATTR_STA_PLINK_STATE] = { .type = NLA_U8 },
+	[NL80211_ATTR_SCHED_SCAN_INTERVAL] = { .type = NLA_U32 },
 };
 
 /* policy for the key attributes */
@@ -3371,6 +3372,7 @@ static int nl80211_start_sched_scan(struct sk_buff *skb,
 	struct nlattr *attr;
 	struct wiphy *wiphy;
 	int err, tmp, n_ssids = 0, n_channels, i;
+	u32 interval;
 	enum ieee80211_band band;
 	size_t ie_len;
 
@@ -3383,6 +3385,13 @@ static int nl80211_start_sched_scan(struct sk_buff *skb,
 
 	if (rdev->sched_scan_req)
 		return -EINPROGRESS;
+
+	if (!info->attrs[NL80211_ATTR_SCHED_SCAN_INTERVAL])
+		return -EINVAL;
+
+	interval = nla_get_u32(info->attrs[NL80211_ATTR_SCHED_SCAN_INTERVAL]);
+	if (interval == 0)
+		return -EINVAL;
 
 	wiphy = &rdev->wiphy;
 
@@ -3506,6 +3515,7 @@ static int nl80211_start_sched_scan(struct sk_buff *skb,
 
 	request->dev = dev;
 	request->wiphy = &rdev->wiphy;
+	request->interval = interval;
 
 	err = rdev->ops->sched_scan_start(&rdev->wiphy, dev, request);
 	if (!err) {
