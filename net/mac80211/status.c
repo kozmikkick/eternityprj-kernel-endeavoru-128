@@ -127,6 +127,18 @@ static void ieee80211_handle_filtered_frame(struct ieee80211_local *local,
 	dev_kfree_skb(skb);
 }
 
+static void ieee80211_check_pending_bar(struct sta_info *sta, u8 *addr, u8 tid)
+{
+	struct tid_ampdu_tx *tid_tx;
+
+	tid_tx = rcu_dereference(sta->ampdu_mlme.tid_tx[tid]);
+	if (!tid_tx || !tid_tx->bar_pending)
+		return;
+
+	tid_tx->bar_pending = false;
+	ieee80211_send_bar(&sta->sdata->vif, addr, tid, tid_tx->failed_bar_ssn);
+}
+
 static void ieee80211_frame_acked(struct sta_info *sta, struct sk_buff *skb)
 {
 	struct ieee80211_mgmt *mgmt = (void *) skb->data;
@@ -238,7 +250,7 @@ void ieee80211_tx_status(struct ieee80211_hw *hw, struct sk_buff *skb)
 			tid = qc[0] & 0xf;
 			ssn = ((le16_to_cpu(hdr->seq_ctrl) + 0x10)
 						& IEEE80211_SCTL_SEQ);
-			ieee80211_send_bar(sta->sdata, hdr->addr1,
+			ieee80211_send_bar(&sta->sdata->vif, hdr->addr1,
 					   tid, ssn);
 		}
 
