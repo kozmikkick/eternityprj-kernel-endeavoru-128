@@ -904,10 +904,6 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 
 	local->dynamic_ps_forced_timeout = -1;
 
-	result = sta_info_start(local);
-	if (result < 0)
-		goto fail_sta_info;
-
 	result = ieee80211_wep_init(local);
 	if (result < 0)
 		wiphy_debug(local->hw.wiphy, "Failed to initialize wep: %d\n",
@@ -970,7 +966,6 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 	rtnl_unlock();
 	ieee80211_wep_free(local);
 	sta_info_stop(local);
- fail_sta_info:
 	destroy_workqueue(local->workqueue);
  fail_workqueue:
 	wiphy_unregister(local->hw.wiphy);
