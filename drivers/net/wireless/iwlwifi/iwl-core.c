@@ -1219,8 +1219,9 @@ void iwl_clear_isr_stats(struct iwl_priv *priv)
 	memset(&priv->isr_stats, 0, sizeof(priv->isr_stats));
 }
 
-int iwl_mac_conf_tx(struct ieee80211_hw *hw, u16 queue,
-			   const struct ieee80211_tx_queue_params *params)
+int iwl_mac_conf_tx(struct ieee80211_hw *hw,
+		    struct ieee80211_vif *vif, u16 queue,
+		    const struct ieee80211_tx_queue_params *params)
 {
 	struct iwl_priv *priv = hw->priv;
 	struct iwl_rxon_context *ctx;
