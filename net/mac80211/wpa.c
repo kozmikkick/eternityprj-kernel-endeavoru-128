@@ -86,6 +86,11 @@ ieee80211_rx_h_michael_mic_verify(struct ieee80211_rx_data *rx)
 	struct sk_buff *skb = rx->skb;
 	struct ieee80211_rx_status *status = IEEE80211_SKB_RXCB(skb);
 	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *)skb->data;
+	int queue = rx->queue;
+
+	/* otherwise, TKIP is vulnerable to TID 0 vs. non-QoS replays */
+	if (rx->queue == NUM_RX_DATA_QUEUES - 1)
+		queue = 0;
 
 	/*
 	 * it makes no sense to check for MIC errors on anything other
@@ -148,8 +153,8 @@ ieee80211_rx_h_michael_mic_verify(struct ieee80211_rx_data *rx)
 
 update_iv:
 	/* update IV in key information to be able to detect replays */
-	rx->key->u.tkip.rx[rx->queue].iv32 = rx->tkip_iv32;
-	rx->key->u.tkip.rx[rx->queue].iv16 = rx->tkip_iv16;
+	rx->key->u.tkip.rx[queue].iv32 = rx->tkip_iv32;
+	rx->key->u.tkip.rx[queue].iv16 = rx->tkip_iv16;
 
 	return RX_CONTINUE;
 
@@ -171,6 +176,7 @@ static int tkip_encrypt_skb(struct ieee80211_tx_data *tx, struct sk_buff *skb)
 	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *) skb->data;
 	struct ieee80211_key *key = tx->key;
 	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
+	unsigned long flags;
 	unsigned int hdrlen;
 	int len, tail;
 	u8 *pos;
@@ -198,11 +204,12 @@ static int tkip_encrypt_skb(struct ieee80211_tx_data *tx, struct sk_buff *skb)
 	pos += hdrlen;
 
 	/* Increase IV for the frame */
+	spin_lock_irqsave(&key->u.tkip.txlock, flags);
 	key->u.tkip.tx.iv16++;
 	if (key->u.tkip.tx.iv16 == 0)
 		key->u.tkip.tx.iv32++;
-
-	pos = ieee80211_tkip_add_iv(pos, key, key->u.tkip.tx.iv16);
+	pos = ieee80211_tkip_add_iv(pos, key);
+	spin_unlock_irqrestore(&key->u.tkip.txlock, flags);
 
 	/* hwaccel - with software IV */
 	if (info->control.hw_key)
@@ -211,9 +218,8 @@ static int tkip_encrypt_skb(struct ieee80211_tx_data *tx, struct sk_buff *skb)
 	/* Add room for ICV */
 	skb_put(skb, TKIP_ICV_LEN);
 
-	hdr = (struct ieee80211_hdr *) skb->data;
 	return ieee80211_tkip_encrypt_data(tx->local->wep_tx_tfm,
-					   key, pos, len, hdr->addr2);
+					   key, skb, pos, len);
 }
 
 
