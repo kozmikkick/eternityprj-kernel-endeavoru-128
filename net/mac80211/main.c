@@ -598,7 +598,8 @@ struct ieee80211_hw *ieee80211_alloc_hw(size_t priv_data_len,
 			WIPHY_FLAG_4ADDR_STATION |
 			WIPHY_FLAG_REPORTS_OBSS;
 
-	wiphy->features = NL80211_FEATURE_SK_TX_STATUS;
+	wiphy->features = NL80211_FEATURE_SK_TX_STATUS |
+			  NL80211_FEATURE_HT_IBSS;
 
 	if (!ops->set_key)
 		wiphy->flags |= WIPHY_FLAG_IBSS_RSN;
