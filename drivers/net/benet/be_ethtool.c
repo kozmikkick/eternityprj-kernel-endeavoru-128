@@ -429,14 +429,14 @@ static int be_get_settings(struct net_device *netdev, struct ethtool_cmd *ecmd)
 		}
 
 		/* Save for future use */
-		adapter->link_speed = ecmd->speed;
+		adapter->link_speed = ethtool_cmd_speed(ecmd);
 		adapter->port_type = ecmd->port;
 		adapter->transceiver = ecmd->transceiver;
 		adapter->autoneg = ecmd->autoneg;
 		dma_free_coherent(&adapter->pdev->dev, phy_cmd.size, phy_cmd.va,
 				  phy_cmd.dma);
 	} else {
-		ecmd->speed = adapter->link_speed;
+		ethtool_cmd_speed_set(ecmd, adapter->link_speed);
 		ecmd->port = adapter->port_type;
 		ecmd->transceiver = adapter->transceiver;
 		ecmd->autoneg = adapter->autoneg;
