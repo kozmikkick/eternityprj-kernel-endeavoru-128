@@ -47,6 +47,7 @@
 #include <asm/cacheflush.h>
 #include <asm/cpu_pm.h>
 #include <asm/hardware/gic.h>
+#include <asm/idmap.h>
 #include <asm/localtimer.h>
 #include <asm/pgalloc.h>
 #include <asm/pgtable.h>
