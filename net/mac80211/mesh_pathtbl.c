@@ -211,6 +211,110 @@ void mesh_path_assign_nexthop(struct mesh_path *mpath, struct sta_info *sta)
 	spin_unlock_irqrestore(&mpath->frame_queue.lock, flags);
 }
 
+static void prepare_for_gate(struct sk_buff *skb, char *dst_addr,
+			     struct mesh_path *gate_mpath)
+{
+	struct ieee80211_hdr *hdr;
+	struct ieee80211s_hdr *mshdr;
+	int mesh_hdrlen, hdrlen;
+	char *next_hop;
+
+	hdr = (struct ieee80211_hdr *) skb->data;
+	hdrlen = ieee80211_hdrlen(hdr->frame_control);
+	mshdr = (struct ieee80211s_hdr *) (skb->data + hdrlen);
+
+	if (!(mshdr->flags & MESH_FLAGS_AE)) {
+		/* size of the fixed part of the mesh header */
+		mesh_hdrlen = 6;
+
+		/* make room for the two extended addresses */
+		skb_push(skb, 2 * ETH_ALEN);
+		memmove(skb->data, hdr, hdrlen + mesh_hdrlen);
+
+		hdr = (struct ieee80211_hdr *) skb->data;
+
+		/* we preserve the previous mesh header and only add
+		 * the new addreses */
+		mshdr = (struct ieee80211s_hdr *) (skb->data + hdrlen);
+		mshdr->flags = MESH_FLAGS_AE_A5_A6;
+		memcpy(mshdr->eaddr1, hdr->addr3, ETH_ALEN);
+		memcpy(mshdr->eaddr2, hdr->addr4, ETH_ALEN);
+	}
+
+	/* update next hop */
+	hdr = (struct ieee80211_hdr *) skb->data;
+	rcu_read_lock();
+	next_hop = rcu_dereference(gate_mpath->next_hop)->sta.addr;
+	memcpy(hdr->addr1, next_hop, ETH_ALEN);
+	rcu_read_unlock();
+	memcpy(hdr->addr3, dst_addr, ETH_ALEN);
+}
+
+/**
+ *
+ * mesh_path_move_to_queue - Move or copy frames from one mpath queue to another
+ *
+ * This function is used to transfer or copy frames from an unresolved mpath to
+ * a gate mpath.  The function also adds the Address Extension field and
+ * updates the next hop.
+ *
+ * If a frame already has an Address Extension field, only the next hop and
+ * destination addresses are updated.
+ *
+ * The gate mpath must be an active mpath with a valid mpath->next_hop.
+ *
+ * @mpath: An active mpath the frames will be sent to (i.e. the gate)
+ * @from_mpath: The failed mpath
+ * @copy: When true, copy all the frames to the new mpath queue.  When false,
+ * move them.
+ */
+static void mesh_path_move_to_queue(struct mesh_path *gate_mpath,
+				    struct mesh_path *from_mpath,
+				    bool copy)
+{
+	struct sk_buff *skb, *cp_skb = NULL;
+	struct sk_buff_head gateq, failq;
+	unsigned long flags;
+	int num_skbs;
+
+	BUG_ON(gate_mpath == from_mpath);
+	BUG_ON(!gate_mpath->next_hop);
+
+	__skb_queue_head_init(&gateq);
+	__skb_queue_head_init(&failq);
+
+	spin_lock_irqsave(&from_mpath->frame_queue.lock, flags);
+	skb_queue_splice_init(&from_mpath->frame_queue, &failq);
+	spin_unlock_irqrestore(&from_mpath->frame_queue.lock, flags);
+
+	num_skbs = skb_queue_len(&failq);
+
+	while (num_skbs--) {
+		skb = __skb_dequeue(&failq);
+		if (copy)
+			cp_skb = skb_copy(skb, GFP_ATOMIC);
+
+		prepare_for_gate(skb, gate_mpath->dst, gate_mpath);
+		__skb_queue_tail(&gateq, skb);
+
+		if (copy && cp_skb)
+			__skb_queue_tail(&failq, cp_skb);
+	}
+
+	spin_lock_irqsave(&gate_mpath->frame_queue.lock, flags);
+	skb_queue_splice(&gateq, &gate_mpath->frame_queue);
+	mpath_dbg("Mpath queue for gate %pM has %d frames\n",
+			gate_mpath->dst,
+			skb_queue_len(&gate_mpath->frame_queue));
+	spin_unlock_irqrestore(&gate_mpath->frame_queue.lock, flags);
+
+	if (!copy)
+		return;
+
+	spin_lock_irqsave(&from_mpath->frame_queue.lock, flags);
+	skb_queue_splice(&failq, &from_mpath->frame_queue);
+	spin_unlock_irqrestore(&from_mpath->frame_queue.lock, flags);
+}
 
 /**
  * mesh_path_lookup - look up a path in the mesh path table
