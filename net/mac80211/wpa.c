@@ -87,11 +87,6 @@ ieee80211_rx_h_michael_mic_verify(struct ieee80211_rx_data *rx)
 	struct sk_buff *skb = rx->skb;
 	struct ieee80211_rx_status *status = IEEE80211_SKB_RXCB(skb);
 	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *)skb->data;
-	int queue = rx->queue;
-
-	/* otherwise, TKIP is vulnerable to TID 0 vs. non-QoS replays */
-	if (rx->queue == NUM_RX_DATA_QUEUES - 1)
-		queue = 0;
 
 	/*
 	 * it makes no sense to check for MIC errors on anything other
@@ -248,11 +243,6 @@ ieee80211_crypto_tkip_decrypt(struct ieee80211_rx_data *rx)
 	struct ieee80211_key *key = rx->key;
 	struct sk_buff *skb = rx->skb;
 	struct ieee80211_rx_status *status = IEEE80211_SKB_RXCB(skb);
-	int queue = rx->queue;
-
-	/* otherwise, TKIP is vulnerable to TID 0 vs. non-QoS replays */
-	if (rx->queue == NUM_RX_DATA_QUEUES - 1)
-		queue = 0;
 
 	hdrlen = ieee80211_hdrlen(hdr->frame_control);
 
