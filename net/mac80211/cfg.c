@@ -950,7 +950,12 @@ static int ieee80211_add_station(struct wiphy *wiphy, struct net_device *dev,
 		return err;
 	}
 
-	rate_control_rate_init(sta);
+	/*
+	 * for TDLS, rate control should be initialized only when supported
+	 * rates are known.
+	 */
+	if (!test_sta_flag(sta, WLAN_STA_TDLS_PEER))
+		rate_control_rate_init(sta);
 
 	layer2_update = sdata->vif.type == NL80211_IFTYPE_AP_VLAN ||
 		sdata->vif.type == NL80211_IFTYPE_AP;
@@ -1041,6 +1046,9 @@ static int ieee80211_change_station(struct wiphy *wiphy,
 	}
 
 	sta_apply_parameters(local, sta, params);
+
+	if (test_sta_flag(sta, WLAN_STA_TDLS_PEER) && params->supported_rates)
+		rate_control_rate_init(sta);
 
 	rcu_read_unlock();
 
