@@ -719,15 +719,9 @@ EXPORT_SYMBOL(neigh_destroy);
  */
 static void neigh_suspect(struct neighbour *neigh)
 {
-	struct hh_cache *hh;
-
 	NEIGH_PRINTK2("neigh %p is suspected.\n", neigh);
 
 	neigh->output = neigh->ops->output;
-
-	hh = neigh->hh;
-	if (hh)
-		hh->hh_output = neigh->ops->output;
 }
 
 /* Neighbour state is OK;
@@ -737,15 +731,9 @@ static void neigh_suspect(struct neighbour *neigh)
  */
 static void neigh_connect(struct neighbour *neigh)
 {
-	struct hh_cache *hh;
-
 	NEIGH_PRINTK2("neigh %p is connected.\n", neigh);
 
 	neigh->output = neigh->ops->connected_output;
-
-	hh = neigh->hh;
-	if (hh)
-		hh->hh_output = dev_queue_xmit;
 }
 
 static void neigh_periodic_work(struct work_struct *work)
@@ -1218,47 +1206,20 @@ static inline bool neigh_hh_lookup(struct neighbour *n, struct dst_entry *dst)
 }
 
 /* called with read_lock_bh(&n->lock); */
-static void neigh_hh_init(struct neighbour *n, struct dst_entry *dst,
-			  __be16 protocol)
+static void neigh_hh_init(struct neighbour *n, struct dst_entry *dst)
 {
-	struct hh_cache	*hh;
 	struct net_device *dev = dst->dev;
-
-	if (likely(neigh_hh_lookup(n, dst)))
-		return;
-
-	/* slow path */
-	hh = kzalloc(sizeof(*hh), GFP_ATOMIC);
-	if (!hh)
-		return;
-
-	seqlock_init(&hh->hh_lock);
-	atomic_set(&hh->hh_refcnt, 2);
-
-	if (dev->header_ops->cache(n, hh, protocol)) {
-		kfree(hh);
-		return;
-	}
+	__be16 prot = dst->ops->protocol;
+	struct hh_cache	*hh = &n->hh;
 
 	write_lock_bh(&n->lock);
 
-	/* must check if another thread already did the insert */
-	if (neigh_hh_lookup(n, dst)) {
-		kfree(hh);
-		goto end;
-	}
+	/* Only one thread can come in here and initialize the
+	 * hh_cache entry.
+	 */
+	if (!hh->hh_len)
+		dev->header_ops->cache(n, hh, prot);
 
-	if (n->nud_state & NUD_CONNECTED)
-		hh->hh_output = dev_queue_xmit;
-	else
-		hh->hh_output = n->ops->output;
-
-	smp_wmb(); /* paired with smp_rmb() in neigh_hh_lookup() */
-	n->hh	    = hh;
-
-	if (unlikely(cmpxchg(&dst->hh, NULL, hh) != NULL))
-		hh_cache_put(hh);
-end:
 	write_unlock_bh(&n->lock);
 }
 
