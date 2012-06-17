@@ -171,7 +171,7 @@ static void ieee80211_check_pending_bar(struct sta_info *sta, u8 *addr, u8 tid)
 		return;
 
 	tid_tx->bar_pending = false;
-	ieee80211_send_bar(sta->sdata, addr, tid, tid_tx->failed_bar_ssn);
+	ieee80211_send_bar(&sta->sdata->vif, addr, tid, tid_tx->failed_bar_ssn);
 }
 
 static void ieee80211_frame_acked(struct sta_info *sta, struct sk_buff *skb)
