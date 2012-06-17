@@ -1279,7 +1279,9 @@ struct net_device {
 	       NETREG_UNREGISTERED,	/* completed unregister todo */
 	       NETREG_RELEASED,		/* called free_netdev */
 	       NETREG_DUMMY,		/* dummy device for NAPI poll */
-	} reg_state:16;
+	} reg_state:8;
+
+	bool dismantle; /* device is going do be freed */
 
 	enum {
 		RTNL_LINK_INITIALIZED,
