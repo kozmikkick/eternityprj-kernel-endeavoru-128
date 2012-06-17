@@ -688,8 +688,6 @@ static void neigh_destroy_rcu(struct rcu_head *head)
  */
 void neigh_destroy(struct neighbour *neigh)
 {
-	struct hh_cache *hh;
-
 	NEIGH_CACHE_STAT_INC(neigh->tbl, destroys);
 
 	if (!neigh->dead) {
@@ -701,16 +699,6 @@ void neigh_destroy(struct neighbour *neigh)
 
 	if (neigh_del_timer(neigh))
 		printk(KERN_WARNING "Impossible event.\n");
-
-	hh = neigh->hh;
-	if (hh) {
-		neigh->hh = NULL;
-
-		write_seqlock_bh(&hh->hh_lock);
-		hh->hh_output = neigh_blackhole;
-		write_sequnlock_bh(&hh->hh_lock);
-		hh_cache_put(hh);
-	}
 
 	skb_queue_purge(&neigh->arp_queue);
 
