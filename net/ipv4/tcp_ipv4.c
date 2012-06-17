@@ -206,7 +206,7 @@ int tcp_v4_connect(struct sock *sk, struct sockaddr *uaddr, int addr_len)
 
 	if (tcp_death_row.sysctl_tw_recycle &&
 	    !tp->rx_opt.ts_recent_stamp && fl4->daddr == daddr) {
-		struct inet_peer *peer = rt_get_peer(rt);
+		struct inet_peer *peer = rt_get_peer(rt, fl4->daddr);
 		/*
 		 * VJ's idea. We save last timestamp seen from
 		 * the destination in peer table, when entering state
@@ -769,11 +769,12 @@ static int tcp_v4_send_synack(struct sock *sk, struct dst_entry *dst,
 			      struct request_values *rvp)
 {
 	const struct inet_request_sock *ireq = inet_rsk(req);
+	struct flowi4 fl4;
 	int err = -1;
 	struct sk_buff * skb;
 
 	/* First, grab a route. */
-	if (!dst && (dst = inet_csk_route_req(sk, req)) == NULL)
+	if (!dst && (dst = inet_csk_route_req(sk, &fl4, req)) == NULL)
 		return -1;
 
 	skb = tcp_make_synack(sk, dst, req, rvp);
@@ -1338,6 +1339,7 @@ int tcp_v4_conn_request(struct sock *sk, struct sk_buff *skb)
 		req->cookie_ts = tmp_opt.tstamp_ok;
 	} else if (!isn) {
 		struct inet_peer *peer = NULL;
+		struct flowi4 fl4;
 
 		/* VJ's idea. We save last timestamp seen
 		 * from the destination in peer table, when entering
@@ -1350,9 +1352,9 @@ int tcp_v4_conn_request(struct sock *sk, struct sk_buff *skb)
 		 */
 		if (tmp_opt.saw_tstamp &&
 		    tcp_death_row.sysctl_tw_recycle &&
-		    (dst = inet_csk_route_req(sk, req)) != NULL &&
-		    (peer = rt_get_peer((struct rtable *)dst)) != NULL &&
-		    peer->daddr.addr.a4 == saddr) {
+		    (dst = inet_csk_route_req(sk, &fl4, req)) != NULL &&
+		    fl4.daddr == saddr &&
+		    (peer = rt_get_peer((struct rtable *)dst, fl4.daddr)) != NULL) {
 			inet_peer_refcheck(peer);
 			if ((u32)get_seconds() - peer->tcp_ts_stamp < TCP_PAWS_MSL &&
 			    (s32)(peer->tcp_ts - req->ts_recent) >
