@@ -5261,6 +5261,44 @@ static u32 netdev_fix_features(struct net_device *dev, u32 features)
 
 	return features;
 }
+EXPORT_SYMBOL(netdev_fix_features);
+
+int __netdev_update_features(struct net_device *dev)
+{
+	u32 features;
+	int err = 0;
+
+	ASSERT_RTNL();
+
+	features = netdev_get_wanted_features(dev);
+
+	if (dev->netdev_ops->ndo_fix_features)
+		features = dev->netdev_ops->ndo_fix_features(dev, features);
+
+	/* driver might be less strict about feature dependencies */
+	features = netdev_fix_features(dev, features);
+
+	if (dev->features == features)
+		return 0;
+
+	netdev_info(dev, "Features changed: 0x%08x -> 0x%08x\n",
+		dev->features, features);
+
+	if (dev->netdev_ops->ndo_set_features)
+		err = dev->netdev_ops->ndo_set_features(dev, features);
+
+	if (unlikely(err < 0)) {
+		netdev_err(dev,
+			"set_features() failed (%d); wanted 0x%08x, left 0x%08x\n",
+			err, features, dev->features);
+		return -1;
+	}
+
+	if (!err)
+		dev->features = features;
+
+	return 1;
+}
 
 /**
  *	netdev_update_features - recalculate device features

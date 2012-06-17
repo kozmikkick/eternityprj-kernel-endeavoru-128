@@ -3564,8 +3564,6 @@ static int nl80211_set_reg(struct sk_buff *skb, struct genl_info *info)
 		num_rules++;
 		if (num_rules > NL80211_MAX_SUPP_REG_RULES)
 			return -EINVAL;
-
-		params.sta_modify_mask |= STATION_PARAM_APPLY_UAPSD;
 	}
 
 	mutex_lock(&cfg80211_mutex);
@@ -7792,6 +7790,7 @@ void cfg80211_probe_status(struct net_device *dev, const u8 *addr,
 	struct cfg80211_registered_device *rdev = wiphy_to_dev(wdev->wiphy);
 	struct sk_buff *msg;
 	void *hdr;
+	int err;
 
 	msg = nlmsg_new(NLMSG_GOODSIZE, gfp);
 	if (!msg)

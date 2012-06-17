@@ -6,7 +6,7 @@
  * Copyright 2009	Johannes Berg <johannes@sipsolutions.net>
  */
 
-#include <linux/export.h>
+#include <linux/module.h>
 #include <net/cfg80211.h>
 #include "core.h"
 
