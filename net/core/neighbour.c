@@ -1005,7 +1005,7 @@ out_unlock_bh:
 }
 EXPORT_SYMBOL(__neigh_event_send);
 
-static void neigh_update_hhs(const struct neighbour *neigh)
+static void neigh_update_hhs(struct neighbour *neigh)
 {
 	struct hh_cache *hh;
 	void (*update)(struct hh_cache*, const struct net_device*, const unsigned char *)
@@ -1015,7 +1015,7 @@ static void neigh_update_hhs(const struct neighbour *neigh)
 		update = neigh->dev->header_ops->cache_update;
 
 	if (update) {
-		hh = neigh->hh;
+		hh = &neigh->hh;
 		if (hh) {
 			write_seqlock_bh(&hh->hh_lock);
 			update(hh, neigh->dev, neigh->ha);
@@ -1202,21 +1202,6 @@ struct neighbour *neigh_event_ns(struct neigh_table *tbl,
 }
 EXPORT_SYMBOL(neigh_event_ns);
 
-static inline bool neigh_hh_lookup(struct neighbour *n, struct dst_entry *dst)
-{
-	struct hh_cache *hh;
-
-	smp_rmb(); /* paired with smp_wmb() in neigh_hh_init() */
-	hh = n->hh;
-	if (hh) {
-		atomic_inc(&hh->hh_refcnt);
-		if (unlikely(cmpxchg(&dst->hh, NULL, hh) != NULL))
-			hh_cache_put(hh);
-		return true;
-	}
-	return false;
-}
-
 /* called with read_lock_bh(&n->lock); */
 static void neigh_hh_init(struct neighbour *n, struct dst_entry *dst)
 {
@@ -1275,7 +1260,7 @@ int neigh_resolve_output(struct neighbour *neigh, struct sk_buff *skb)
 		if (dev->header_ops->cache &&
 		    !dst->hh &&
 		    !(dst->flags & DST_NOCACHE))
-			neigh_hh_init(neigh, dst, dst->ops->protocol);
+			neigh_hh_init(neigh, dst);
 
 		do {
 			seq = read_seqbegin(&neigh->ha_lock);
