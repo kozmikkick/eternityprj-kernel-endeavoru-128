@@ -745,7 +745,7 @@ static void neigh_connect(struct neighbour *neigh)
 
 	hh = neigh->hh;
 	if (hh)
-		hh->hh_output = neigh->ops->hh_output;
+		hh->hh_output = dev_queue_xmit;
 }
 
 static void neigh_periodic_work(struct work_struct *work)
@@ -1249,7 +1249,7 @@ static void neigh_hh_init(struct neighbour *n, struct dst_entry *dst,
 	}
 
 	if (n->nud_state & NUD_CONNECTED)
-		hh->hh_output = n->ops->hh_output;
+		hh->hh_output = dev_queue_xmit;
 	else
 		hh->hh_output = n->ops->output;
 
