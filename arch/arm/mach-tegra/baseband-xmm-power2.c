@@ -27,7 +27,7 @@
 #include <linux/fs.h>
 #include <linux/uaccess.h>
 #include <linux/wakelock.h>
-#include <linux/pm_qos_params.h>
+#include <linux/pm_qos.h>
 #include <mach/usb_phy.h>
 #include "baseband-xmm-power.h"
 #include "board.h"

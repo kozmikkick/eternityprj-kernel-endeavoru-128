@@ -32,7 +32,7 @@
 #include <linux/clk.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
-#include <linux/pm_qos_params.h>
+#include <linux/pm_qos.h>
 #include <linux/fs.h>
 #include <linux/uaccess.h>
 

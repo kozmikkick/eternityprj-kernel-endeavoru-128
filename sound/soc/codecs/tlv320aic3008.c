@@ -36,7 +36,7 @@
 #include <linux/spi-tegra.h>
 #include <../arch/arm/mach-tegra/htc_audio_power.h>
 #include <mach/board_htc.h>
-#include <linux/pm_qos_params.h>
+#include <linux/pm_qos.h>
 
 #undef LOG_TAG
 #define LOG_TAG "AUD"

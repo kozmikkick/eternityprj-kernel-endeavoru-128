@@ -35,7 +35,7 @@
 #include "board.h"
 #include "devices.h"
 #include <mach/board_htc.h>
-#include <linux/pm_qos_params.h>
+#include <linux/pm_qos.h>
 
 #if defined(CONFIG_MACH_QUATTRO_U)
 #include "board-quattro.h"
