@@ -1319,6 +1319,9 @@ int fib_table_insert(struct fib_table *tb, struct fib_config *cfg)
 		}
 	}
 
+	if (!plen)
+		tb->tb_num_default++;
+
 	list_add_tail_rcu(&new_fa->fa_list,
 			  (fa ? &fa->fa_list : fa_head));
 
@@ -1684,6 +1687,9 @@ int fib_table_delete(struct fib_table *tb, struct fib_config *cfg)
 
 	list_del_rcu(&fa->fa_list);
 
+	if (!plen)
+		tb->tb_num_default--;
+
 	if (list_empty(fa_head)) {
 		hlist_del_rcu(&li->hlist);
 		free_leaf_info(li);
@@ -1974,6 +1980,7 @@ struct fib_table *fib_trie_table(u32 id)
 
 	tb->tb_id = id;
 	tb->tb_default = -1;
+	tb->tb_num_default = 0;
 
 	t = (struct trie *) tb->tb_data;
 	memset(t, 0, sizeof(*t));
