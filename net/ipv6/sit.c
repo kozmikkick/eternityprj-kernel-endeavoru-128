@@ -447,7 +447,7 @@ out:
 }
 
 static int
-isatap_chksrc(struct sk_buff *skb, struct iphdr *iph, struct ip_tunnel *t)
+isatap_chksrc(struct sk_buff *skb, const struct iphdr *iph, struct ip_tunnel *t)
 {
 	struct ip_tunnel_prl_entry *p;
 	int ok = 1;
@@ -460,7 +460,8 @@ isatap_chksrc(struct sk_buff *skb, struct iphdr *iph, struct ip_tunnel *t)
 		else
 			skb->ndisc_nodetype = NDISC_NODETYPE_NODEFAULT;
 	} else {
-		struct in6_addr *addr6 = &ipv6_hdr(skb)->saddr;
+		const struct in6_addr *addr6 = &ipv6_hdr(skb)->saddr;
+
 		if (ipv6_addr_is_isatap(addr6) &&
 		    (addr6->s6_addr32[3] == iph->saddr) &&
 		    ipv6_chk_prefix(addr6, t->dev))
@@ -494,7 +495,7 @@ static int ipip6_err(struct sk_buff *skb, u32 info)
    8 bytes of packet payload. It means, that precise relaying of
    ICMP in the real Internet is absolutely infeasible.
  */
-	struct iphdr *iph = (struct iphdr*)skb->data;
+	const struct iphdr *iph = (const struct iphdr *)skb->data;
 	const int type = icmp_hdr(skb)->type;
 	const int code = icmp_hdr(skb)->code;
 	struct ip_tunnel *t;
@@ -552,7 +553,7 @@ out:
 	return err;
 }
 
-static inline void ipip6_ecn_decapsulate(struct iphdr *iph, struct sk_buff *skb)
+static inline void ipip6_ecn_decapsulate(const struct iphdr *iph, struct sk_buff *skb)
 {
 	if (INET_ECN_is_ce(iph->tos))
 		IP6_ECN_set_ce(ipv6_hdr(skb));
@@ -560,7 +561,7 @@ static inline void ipip6_ecn_decapsulate(struct iphdr *iph, struct sk_buff *skb)
 
 static int ipip6_rcv(struct sk_buff *skb)
 {
-	struct iphdr *iph;
+	const struct iphdr *iph;
 	struct ip_tunnel *tunnel;
 
 	if (!pskb_may_pull(skb, sizeof(struct ipv6hdr)))
@@ -616,7 +617,7 @@ out:
  * comes from 6rd / 6to4 (RFC 3056) addr space.
  */
 static inline
-__be32 try_6rd(struct in6_addr *v6dst, struct ip_tunnel *tunnel)
+__be32 try_6rd(const struct in6_addr *v6dst, struct ip_tunnel *tunnel)
 {
 	__be32 dst = 0;
 
@@ -659,8 +660,8 @@ static netdev_tx_t ipip6_tunnel_xmit(struct sk_buff *skb,
 {
 	struct ip_tunnel *tunnel = netdev_priv(dev);
 	struct pcpu_tstats *tstats;
-	struct iphdr  *tiph = &tunnel->parms.iph;
-	struct ipv6hdr *iph6 = ipv6_hdr(skb);
+	const struct iphdr  *tiph = &tunnel->parms.iph;
+	const struct ipv6hdr *iph6 = ipv6_hdr(skb);
 	u8     tos = tunnel->parms.iph.tos;
 	__be16 df = tiph->frag_off;
 	struct rtable *rt;     			/* Route to the other host */
@@ -669,7 +670,7 @@ static netdev_tx_t ipip6_tunnel_xmit(struct sk_buff *skb,
 	unsigned int max_headroom;		/* The extra header space needed */
 	__be32 dst = tiph->daddr;
 	int    mtu;
-	struct in6_addr *addr6;
+	const struct in6_addr *addr6;
 	int addr_type;
 
 	if (skb->protocol != htons(ETH_P_IPV6))
@@ -688,7 +689,7 @@ static netdev_tx_t ipip6_tunnel_xmit(struct sk_buff *skb,
 			goto tx_error;
 		}
 
-		addr6 = (struct in6_addr*)&neigh->primary_key;
+		addr6 = (const struct in6_addr*)&neigh->primary_key;
 		addr_type = ipv6_addr_type(addr6);
 
 		if ((addr_type & IPV6_ADDR_UNICAST) &&
@@ -713,7 +714,7 @@ static netdev_tx_t ipip6_tunnel_xmit(struct sk_buff *skb,
 			goto tx_error;
 		}
 
-		addr6 = (struct in6_addr*)&neigh->primary_key;
+		addr6 = (const struct in6_addr*)&neigh->primary_key;
 		addr_type = ipv6_addr_type(addr6);
 
 		if (addr_type == IPV6_ADDR_ANY) {
@@ -844,7 +845,7 @@ static void ipip6_tunnel_bind_dev(struct net_device *dev)
 {
 	struct net_device *tdev = NULL;
 	struct ip_tunnel *tunnel;
-	struct iphdr *iph;
+	const struct iphdr *iph;
 
 	tunnel = netdev_priv(dev);
 	iph = &tunnel->parms.iph;
