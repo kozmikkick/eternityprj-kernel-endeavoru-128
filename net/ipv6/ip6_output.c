@@ -134,7 +134,8 @@ static int ip6_finish_output2(struct sk_buff *skb)
 				skb->len);
 	}
 
-	if (dst->hh)
+	neigh = dst_get_neighbour(dst);
+	if (neigh) {
 		return neigh_hh_output(dst->hh, skb);
 	else
 		return neigh->output(skb);
