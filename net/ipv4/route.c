@@ -156,7 +156,7 @@ static u32 *ipv4_cow_metrics(struct dst_entry *dst, unsigned long old)
 	u32 *p = NULL;
 
 	if (!rt->peer)
-		rt_bind_peer(rt, 1);
+		rt_bind_peer(rt, rt->rt_dst, 1);
 
 	peer = rt->peer;
 	if (peer) {
@@ -1211,11 +1211,11 @@ static u32 rt_peer_genid(void)
 	return atomic_read(&__rt_peer_genid);
 }
 
-void rt_bind_peer(struct rtable *rt, int create)
+void rt_bind_peer(struct rtable *rt, __be32 daddr, int create)
 {
 	struct inet_peer *peer;
 
-	peer = inet_getpeer_v4(rt->rt_dst, create);
+	peer = inet_getpeer_v4(daddr, create);
 
 	if (peer && cmpxchg(&rt->peer, NULL, peer) != NULL)
 		inet_putpeer(peer);
@@ -1249,7 +1249,7 @@ void __ip_select_ident(struct iphdr *iph, struct dst_entry *dst, int more)
 
 	if (rt) {
 		if (rt->peer == NULL)
-			rt_bind_peer(rt, 1);
+			rt_bind_peer(rt, rt->rt_dst, 1);
 
 		/* If peer is attached to destination, it is never detached,
 		   so that we need not to grab a lock to dereference it.
@@ -1399,7 +1399,7 @@ void ip_rt_send_redirect(struct sk_buff *skb)
 	rcu_read_unlock();
 
 	if (!rt->peer)
-		rt_bind_peer(rt, 1);
+		rt_bind_peer(rt, rt->rt_dst, 1);
 	peer = rt->peer;
 	if (!peer) {
 		icmp_send(skb, ICMP_REDIRECT, ICMP_REDIR_HOST, rt->rt_gateway);
@@ -1467,7 +1467,7 @@ static int ip_error(struct sk_buff *skb)
 	}
 
 	if (!rt->peer)
-		rt_bind_peer(rt, 1);
+		rt_bind_peer(rt, rt->rt_dst, 1);
 	peer = rt->peer;
 
 	send = true;
@@ -1574,7 +1574,7 @@ static void ip_rt_update_pmtu(struct dst_entry *dst, u32 mtu)
 	dst_confirm(dst);
 
 	if (!rt->peer)
-		rt_bind_peer(rt, 1);
+		rt_bind_peer(rt, rt->rt_dst, 1);
 	peer = rt->peer;
 	if (peer) {
 		if (mtu < ip_rt_min_pmtu)
@@ -1631,7 +1631,7 @@ static struct dst_entry *ipv4_dst_check(struct dst_entry *dst, u32 cookie)
 		struct inet_peer *peer;
 
 		if (!rt->peer)
-			rt_bind_peer(rt, 0);
+			rt_bind_peer(rt, rt->rt_dst, 0);
 
 		peer = rt->peer;
 		if (peer && peer->pmtu_expires)
