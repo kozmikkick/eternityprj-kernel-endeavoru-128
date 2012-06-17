@@ -100,6 +100,7 @@ static int ip6_finish_output2(struct sk_buff *skb)
 {
 	struct dst_entry *dst = skb_dst(skb);
 	struct net_device *dev = dst->dev;
+	struct neighbour *neigh;
 
 	skb->protocol = htons(ETH_P_IPV6);
 	skb->dev = dev;
@@ -134,7 +135,7 @@ static int ip6_finish_output2(struct sk_buff *skb)
 				skb->len);
 	}
 
-	neigh = dst_get_neighbour(dst);
+	neigh = dst->neighbour;
 	if (neigh)
 		return neigh_output(neigh, skb);
 
