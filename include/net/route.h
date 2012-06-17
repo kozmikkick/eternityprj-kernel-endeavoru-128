@@ -52,7 +52,7 @@ struct rtable {
 	int			rt_genid;
 	unsigned		rt_flags;
 	__u16			rt_type;
-	__u8			rt_tos;
+	__u8			rt_key_tos;
 
 	__be32			rt_dst;	/* Path destination	*/
 	__be32			rt_src;	/* Path source		*/
@@ -115,7 +115,7 @@ extern void		ip_rt_redirect(__be32 old_gw, __be32 dst, __be32 new_gw,
 				       __be32 src, struct net_device *dev);
 extern void		rt_cache_flush(struct net *net, int how);
 extern void		rt_cache_flush_batch(struct net *net);
-extern struct rtable *__ip_route_output_key(struct net *, const struct flowi4 *flp);
+extern struct rtable *__ip_route_output_key(struct net *, struct flowi4 *flp);
 extern struct rtable *ip_route_output_flow(struct net *, struct flowi4 *flp,
 					   struct sock *sk);
 extern struct dst_entry *ipv4_blackhole_route(struct net *net, struct dst_entry *dst_orig);
@@ -152,19 +152,18 @@ static inline struct rtable *ip_route_output_ports(struct net *net, struct flowi
 	return ip_route_output_flow(net, fl4, sk);
 }
 
-static inline struct rtable *ip_route_output_gre(struct net *net,
+static inline struct rtable *ip_route_output_gre(struct net *net, struct flowi4 *fl4,
 						 __be32 daddr, __be32 saddr,
 						 __be32 gre_key, __u8 tos, int oif)
 {
-	struct flowi4 fl4 = {
-		.flowi4_oif = oif,
-		.daddr = daddr,
-		.saddr = saddr,
-		.flowi4_tos = tos,
-		.flowi4_proto = IPPROTO_GRE,
-		.fl4_gre_key = gre_key,
-	};
-	return ip_route_output_key(net, &fl4);
+	memset(fl4, 0, sizeof(*fl4));
+	fl4->flowi4_oif = oif;
+	fl4->daddr = daddr;
+	fl4->saddr = saddr;
+	fl4->flowi4_tos = tos;
+	fl4->flowi4_proto = IPPROTO_GRE;
+	fl4->fl4_gre_key = gre_key;
+	return ip_route_output_key(net, fl4);
 }
 
 extern int ip_route_input_common(struct sk_buff *skb, __be32 dst, __be32 src,
@@ -190,7 +189,7 @@ extern unsigned		inet_addr_type(struct net *net, __be32 addr);
 extern unsigned		inet_dev_addr_type(struct net *net, const struct net_device *dev, __be32 addr);
 extern void		ip_rt_multicast_event(struct in_device *);
 extern int		ip_rt_ioctl(struct net *, unsigned int cmd, void __user *arg);
-extern void		ip_rt_get_source(u8 *src, struct rtable *rt);
+extern void		ip_rt_get_source(u8 *src, struct sk_buff *skb, struct rtable *rt);
 extern int		ip_rt_dump(struct sk_buff *skb,  struct netlink_callback *cb);
 
 struct in_ifaddr;
@@ -270,8 +269,6 @@ static inline struct rtable *ip_route_connect(struct flowi4 *fl4,
 		rt = __ip_route_output_key(net, fl4);
 		if (IS_ERR(rt))
 			return rt;
-		fl4->daddr = rt->rt_dst;
-		fl4->saddr = rt->rt_src;
 		ip_rt_put(rt);
 	}
 	security_sk_classify_flow(sk, flowi4_to_flowi(fl4));
