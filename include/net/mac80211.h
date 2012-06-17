@@ -853,6 +853,21 @@ struct ieee80211_channel_switch {
 };
 
 /**
+ * enum ieee80211_vif_flags - virtual interface flags
+ *
+ * @IEEE80211_VIF_BEACON_FILTER: the device performs beacon filtering
+ *	on this virtual interface to avoid unnecessary CPU wakeups
+ * @IEEE80211_VIF_SUPPORTS_CQM_RSSI: the device can do connection quality
+ *	monitoring on this virtual interface -- i.e. it can monitor
+ *	connection quality related parameters, such as the RSSI level and
+ *	provide notifications if configured trigger levels are reached.
+ */
+enum ieee80211_vif_flags {
+	IEEE80211_VIF_BEACON_FILTER		= BIT(0),
+	IEEE80211_VIF_SUPPORTS_CQM_RSSI		= BIT(1),
+};
+
+/**
  * struct ieee80211_vif - per-interface data
  *
  * Data in this structure is continually present for driver
@@ -872,6 +887,7 @@ struct ieee80211_vif {
 	struct ieee80211_bss_conf bss_conf;
 	u8 addr[ETH_ALEN];
 	bool p2p;
+	u32 driver_flags;
 	/* must be last */
 	u8 drv_priv[0] __attribute__((__aligned__(sizeof(void *))));
 };
