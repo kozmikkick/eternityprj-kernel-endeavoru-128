@@ -2,6 +2,7 @@
   * This file contains the handling of RX in wlan driver.
   */
 #include <linux/etherdevice.h>
+#include <linux/hardirq.h>
 #include <linux/slab.h>
 #include <linux/types.h>
 #include <net/cfg80211.h>
