@@ -1234,19 +1234,6 @@ ieee80211_tx_prepare(struct ieee80211_sub_if_data *sdata,
 	tx->channel = local->hw.conf.channel;
 	__skb_queue_head_init(&tx->skbs);
 
-	/* process and remove the injection radiotap header */
-	if (unlikely(info->flags & IEEE80211_TX_INTFL_HAS_RADIOTAP)) {
-		if (!__ieee80211_parse_tx_radiotap(tx, skb))
-			return TX_DROP;
-
-		/*
-		 * __ieee80211_parse_tx_radiotap has now removed
-		 * the radiotap header that was present and pre-filled
-		 * 'tx' with tx control information.
-		 */
-		info->flags &= ~IEEE80211_TX_INTFL_HAS_RADIOTAP;
-	}
-
 	/*
 	 * If this flag is set to true anywhere, and we get here,
 	 * we are doing the needed processing, so remove the flag
@@ -1669,8 +1656,7 @@ netdev_tx_t ieee80211_monitor_start_xmit(struct sk_buff *skb,
 	memset(info, 0, sizeof(*info));
 
 	info->flags = IEEE80211_TX_CTL_REQ_TX_STATUS |
-		      IEEE80211_TX_CTL_INJECTED |
-		      IEEE80211_TX_INTFL_HAS_RADIOTAP;
+		      IEEE80211_TX_CTL_INJECTED;
 
 	rcu_read_lock();
 
