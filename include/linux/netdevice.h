@@ -2552,6 +2552,7 @@ static inline u32 netdev_get_wanted_features(struct net_device *dev)
 u32 netdev_increment_features(u32 all, u32 one, u32 mask);
 u32 netdev_fix_features(struct net_device *dev, u32 features);
 void netdev_update_features(struct net_device *dev);
+void netdev_change_features(struct net_device *dev);
 
 void netif_stacked_transfer_operstate(const struct net_device *rootdev,
 					struct net_device *dev);
