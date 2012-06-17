@@ -693,7 +693,6 @@ static const struct net_device_ops ftnet_ops =
 	.ndo_start_xmit = &ft1000_start_xmit,
 	.ndo_get_stats = &ft1000_netdev_stats,
 };
-#endif
 
 
 //---------------------------------------------------------------------------
@@ -781,14 +780,7 @@ int init_ft1000_netdev(struct ft1000_device *ft1000dev)
 
 	INIT_LIST_HEAD(&pInfo->nodes.list);
 
-#ifdef HAVE_NET_DEVICE_OPS
 	netdev->netdev_ops = &ftnet_ops;
-#else
-	netdev->hard_start_xmit = &ft1000_start_xmit;
-	netdev->get_stats = &ft1000_netdev_stats;
-	netdev->open = &ft1000_open;
-	netdev->stop = &ft1000_close;
-#endif
 
 	ft1000dev->net = netdev;
 
