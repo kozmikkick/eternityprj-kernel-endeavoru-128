@@ -87,6 +87,21 @@ static ssize_t ieee80211_if_fmt_##name(					\
 #define IEEE80211_IF_FMT_SIZE(name, field)				\
 		IEEE80211_IF_FMT(name, field, "%zd\n")
 
+#define IEEE80211_IF_FMT_HEXARRAY(name, field)				\
+static ssize_t ieee80211_if_fmt_##name(					\
+	const struct ieee80211_sub_if_data *sdata,			\
+	char *buf, int buflen)						\
+{									\
+	char *p = buf;							\
+	int i;								\
+	for (i = 0; i < sizeof(sdata->field); i++) {			\
+		p += scnprintf(p, buflen + buf - p, "%.2x ",		\
+				 sdata->field[i]);			\
+	}								\
+	p += scnprintf(p, buflen + buf - p, "\n");			\
+	return p - buf;							\
+}
+
 #define IEEE80211_IF_FMT_ATOMIC(name, field)				\
 static ssize_t ieee80211_if_fmt_##name(					\
 	const struct ieee80211_sub_if_data *sdata,			\
@@ -148,6 +163,11 @@ IEEE80211_IF_FILE(rc_rateidx_mask_2ghz, rc_rateidx_mask[IEEE80211_BAND_2GHZ],
 		  HEX);
 IEEE80211_IF_FILE(rc_rateidx_mask_5ghz, rc_rateidx_mask[IEEE80211_BAND_5GHZ],
 		  HEX);
+IEEE80211_IF_FILE(rc_rateidx_mcs_mask_2ghz,
+		  rc_rateidx_mcs_mask[IEEE80211_BAND_2GHZ], HEXARRAY);
+IEEE80211_IF_FILE(rc_rateidx_mcs_mask_5ghz,
+		  rc_rateidx_mcs_mask[IEEE80211_BAND_5GHZ], HEXARRAY);
+
 IEEE80211_IF_FILE(flags, flags, HEX);
 IEEE80211_IF_FILE(state, state, LHEX);
 IEEE80211_IF_FILE(channel_type, vif.bss_conf.channel_type, DEC);
@@ -440,6 +460,8 @@ static void add_sta_files(struct ieee80211_sub_if_data *sdata)
 	DEBUGFS_ADD(channel_type);
 	DEBUGFS_ADD(rc_rateidx_mask_2ghz);
 	DEBUGFS_ADD(rc_rateidx_mask_5ghz);
+	DEBUGFS_ADD(rc_rateidx_mcs_mask_2ghz);
+	DEBUGFS_ADD(rc_rateidx_mcs_mask_5ghz);
 
 	DEBUGFS_ADD(bssid);
 	DEBUGFS_ADD(aid);
@@ -457,6 +479,8 @@ static void add_ap_files(struct ieee80211_sub_if_data *sdata)
 	DEBUGFS_ADD(channel_type);
 	DEBUGFS_ADD(rc_rateidx_mask_2ghz);
 	DEBUGFS_ADD(rc_rateidx_mask_5ghz);
+	DEBUGFS_ADD(rc_rateidx_mcs_mask_2ghz);
+	DEBUGFS_ADD(rc_rateidx_mcs_mask_5ghz);
 
 	DEBUGFS_ADD(num_sta_ps);
 	DEBUGFS_ADD(dtim_count);
@@ -466,6 +490,12 @@ static void add_ap_files(struct ieee80211_sub_if_data *sdata)
 
 static void add_ibss_files(struct ieee80211_sub_if_data *sdata)
 {
+	DEBUGFS_ADD(channel_type);
+	DEBUGFS_ADD(rc_rateidx_mask_2ghz);
+	DEBUGFS_ADD(rc_rateidx_mask_5ghz);
+	DEBUGFS_ADD(rc_rateidx_mcs_mask_2ghz);
+	DEBUGFS_ADD(rc_rateidx_mcs_mask_5ghz);
+
 	DEBUGFS_ADD_MODE(tsf, 0600);
 }
 
@@ -477,6 +507,8 @@ static void add_wds_files(struct ieee80211_sub_if_data *sdata)
 	DEBUGFS_ADD(channel_type);
 	DEBUGFS_ADD(rc_rateidx_mask_2ghz);
 	DEBUGFS_ADD(rc_rateidx_mask_5ghz);
+	DEBUGFS_ADD(rc_rateidx_mcs_mask_2ghz);
+	DEBUGFS_ADD(rc_rateidx_mcs_mask_5ghz);
 
 	DEBUGFS_ADD(peer);
 }
@@ -489,6 +521,8 @@ static void add_vlan_files(struct ieee80211_sub_if_data *sdata)
 	DEBUGFS_ADD(channel_type);
 	DEBUGFS_ADD(rc_rateidx_mask_2ghz);
 	DEBUGFS_ADD(rc_rateidx_mask_5ghz);
+	DEBUGFS_ADD(rc_rateidx_mcs_mask_2ghz);
+	DEBUGFS_ADD(rc_rateidx_mcs_mask_5ghz);
 }
 
 static void add_monitor_files(struct ieee80211_sub_if_data *sdata)
