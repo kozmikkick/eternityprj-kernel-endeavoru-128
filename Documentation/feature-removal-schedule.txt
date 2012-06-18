@@ -580,3 +580,11 @@ Why:	These legacy callbacks should no longer be used as i2c-core offers
 Who:	Jean Delvare <khali@linux-fr.org>
 
 ----------------------------
+
+What:	ipt_addrtype match include file
+When:	2012
+Why:	superseded by xt_addrtype
+Who:	Florian Westphal <fw@strlen.de>
+Files:	include/linux/netfilter_ipv4/ipt_addrtype.h
+
+----------------------------
