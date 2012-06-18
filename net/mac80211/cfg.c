@@ -779,12 +779,10 @@ static int sta_apply_parameters(struct ieee80211_local *local,
 
 		if (set & BIT(NL80211_STA_FLAG_AUTHENTICATED) &&
 		    !test_sta_flag(sta, WLAN_STA_AUTH)) {
-			ret = sta_info_move_state_checked(sta,
-					IEEE80211_STA_AUTH);
+			ret = sta_info_move_state(sta, IEEE80211_STA_AUTH);
 			if (ret)
 				return ret;
-			ret = sta_info_move_state_checked(sta,
-					IEEE80211_STA_ASSOC);
+			ret = sta_info_move_state(sta, IEEE80211_STA_ASSOC);
 			if (ret)
 				return ret;
 		}
@@ -792,11 +790,9 @@ static int sta_apply_parameters(struct ieee80211_local *local,
 
 	if (mask & BIT(NL80211_STA_FLAG_AUTHORIZED)) {
 		if (set & BIT(NL80211_STA_FLAG_AUTHORIZED))
-			ret = sta_info_move_state_checked(sta,
-					IEEE80211_STA_AUTHORIZED);
+			ret = sta_info_move_state(sta, IEEE80211_STA_AUTHORIZED);
 		else
-			ret = sta_info_move_state_checked(sta,
-					IEEE80211_STA_ASSOC);
+			ret = sta_info_move_state(sta, IEEE80211_STA_ASSOC);
 		if (ret)
 			return ret;
 	}
@@ -808,12 +804,10 @@ static int sta_apply_parameters(struct ieee80211_local *local,
 
 		if (!(set & BIT(NL80211_STA_FLAG_AUTHENTICATED)) &&
 		    test_sta_flag(sta, WLAN_STA_AUTH)) {
-			ret = sta_info_move_state_checked(sta,
-					IEEE80211_STA_AUTH);
+			ret = sta_info_move_state(sta, IEEE80211_STA_AUTH);
 			if (ret)
 				return ret;
-			ret = sta_info_move_state_checked(sta,
-					IEEE80211_STA_NONE);
+			ret = sta_info_move_state(sta, IEEE80211_STA_NONE);
 			if (ret)
 				return ret;
 		}
