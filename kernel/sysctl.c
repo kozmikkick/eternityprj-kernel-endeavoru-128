@@ -56,6 +56,7 @@
 #include <linux/kprobes.h>
 #include <linux/pipe_fs_i.h>
 #include <linux/oom.h>
+#include <linux/kmod.h>
 
 #include <asm/uaccess.h>
 #include <asm/processor.h>
@@ -625,6 +626,11 @@ static struct ctl_table kern_table[] = {
 		.procname	= "random",
 		.mode		= 0555,
 		.child		= random_table,
+	},
+	{
+		.procname	= "usermodehelper",
+		.mode		= 0555,
+		.child		= usermodehelper_table,
 	},
 	{
 		.procname	= "overflowuid",
