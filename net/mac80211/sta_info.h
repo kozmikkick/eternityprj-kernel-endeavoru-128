@@ -446,13 +446,17 @@ static inline int test_and_set_sta_flag(struct sta_info *sta,
 	return test_and_set_bit(flag, &sta->_flags);
 }
 
-int sta_info_move_state_checked(struct sta_info *sta,
-				enum ieee80211_sta_state new_state);
+int sta_info_move_state(struct sta_info *sta,
+			enum ieee80211_sta_state new_state);
 
-static inline void sta_info_move_state(struct sta_info *sta,
-				       enum ieee80211_sta_state new_state)
+static inline void sta_info_pre_move_state(struct sta_info *sta,
+					   enum ieee80211_sta_state new_state)
 {
-	int ret = sta_info_move_state_checked(sta, new_state);
+	int ret;
+
+	WARN_ON_ONCE(test_sta_flag(sta, WLAN_STA_INSERTED));
+
+	ret = sta_info_move_state(sta, new_state);
 	WARN_ON_ONCE(ret);
 }
 
