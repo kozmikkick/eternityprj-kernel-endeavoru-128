@@ -329,6 +329,8 @@ static int nilfs_rmdir(struct inode *dir, struct dentry *dentry)
 	struct nilfs_transaction_info ti;
 	int err;
 
+	dentry_unhash(dentry);
+
 	err = nilfs_transaction_begin(dir->i_sb, &ti, 0);
 	if (err)
 		return err;
