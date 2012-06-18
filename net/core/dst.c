@@ -187,6 +187,7 @@ void *dst_alloc(struct dst_ops *ops, struct net_device *dev,
 	dst->path = dst;
 	dst->input = dst_discard;
 	dst->output = dst_discard;
+	dst->_neighbour = NULL
 
 	dst->obsolete = initial_obsolete;
 	atomic_set(&dst->__refcnt, initial_ref);
@@ -234,11 +235,11 @@ struct dst_entry *dst_destroy(struct dst_entry * dst)
 	smp_rmb();
 
 again:
-	neigh = dst->neighbour;
+	neigh = dst->_neighbour;
 	child = dst->child;
 
 	if (neigh) {
-		dst->neighbour = NULL;
+		dst->_neighbour = NULL;
 		neigh_release(neigh);
 	}
 
@@ -370,8 +371,8 @@ static void dst_ifdown(struct dst_entry *dst, struct net_device *dev,
 		dst->dev = dev_net(dst->dev)->loopback_dev;
 		dev_hold(dst->dev);
 		dev_put(dev);
-		if (dst->neighbour && dst->neighbour->dev == dev) {
-			dst->neighbour->dev = dst->dev;
+		if (dst->_neighbour && dst->_neighbour->dev == dev) {
+			dst->_neighbour->dev = dst->dev;
 			dev_hold(dst->dev);
 			dev_put(dev);
 		}
