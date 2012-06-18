@@ -757,14 +757,8 @@ static int __must_check __sta_info_destroy(struct sta_info *sta)
 	while (sta->sta_state > IEEE80211_STA_NONE)
 		sta_info_move_state(sta, sta->sta_state - 1);
 
-	if (sta->uploaded) {
-		if (sdata->vif.type == NL80211_IFTYPE_AP_VLAN)
-			sdata = container_of(sdata->bss,
-					     struct ieee80211_sub_if_data,
-					     u.ap);
+	if (sta->uploaded)
 		drv_sta_remove(local, sdata, &sta->sta);
-		sdata = sta->sdata;
-	}
 
 	/*
 	 * At this point, after we wait for an RCU grace period,
