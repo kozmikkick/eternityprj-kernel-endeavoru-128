@@ -96,17 +96,12 @@ struct dst_entry {
 
 static inline struct neighbour *dst_get_neighbour_noref(struct dst_entry *dst)
 {
-	return rcu_dereference(dst->neighbour);
+	return rcu_dereference(dst->_neighbour);
 }
 
 static inline struct neighbour *dst_get_neighbour_noref_raw(struct dst_entry *dst)
 {
-	return rcu_dereference_raw(dst->neighbour);
-}
-
-static inline void dst_set_neighbour(struct dst_entry *dst, struct neighbour *neigh)
-{
-	rcu_assign_pointer(dst->neighbour, neigh);
+	return rcu_dereference_raw(dst->_neighbour);
 }
 
 static inline struct neighbour *dst_get_neighbour(struct dst_entry *dst)

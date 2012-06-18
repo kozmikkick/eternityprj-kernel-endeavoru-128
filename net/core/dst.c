@@ -187,7 +187,7 @@ void *dst_alloc(struct dst_ops *ops, struct net_device *dev,
 	dst->path = dst;
 	dst->input = dst_discard;
 	dst->output = dst_discard;
-	dst->_neighbour = NULL
+	dst->_neighbour = NULL;
 
 	dst->obsolete = initial_obsolete;
 	atomic_set(&dst->__refcnt, initial_ref);
