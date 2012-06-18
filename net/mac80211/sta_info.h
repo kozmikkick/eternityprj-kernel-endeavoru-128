@@ -52,6 +52,8 @@
  * @WLAN_STA_SP: Station is in a service period, so don't try to
  *	reply to other uAPSD trigger frames or PS-Poll.
  * @WLAN_STA_4ADDR_EVENT: 4-addr event was already sent for this frame.
+ * @WLAN_STA_INSERTED: This station is inserted into the hash table.
+ * @WLAN_STA_RATE_CONTROL: rate control was initialized for this station.
  */
 enum ieee80211_sta_info_flags {
 	WLAN_STA_AUTH,
@@ -71,6 +73,8 @@ enum ieee80211_sta_info_flags {
 	WLAN_STA_UAPSD,
 	WLAN_STA_SP,
 	WLAN_STA_4ADDR_EVENT,
+	WLAN_STA_INSERTED,
+	WLAN_STA_RATE_CONTROL,
 };
 
 #define STA_TID_NUM 16
