@@ -467,7 +467,7 @@ static const struct net_device_ops gannet_netdev_ops = {
 	.ndo_stop = gannet_stop,
 	.ndo_start_xmit = gannet_xmit,
 	.ndo_get_stats = gannet_get_stats,
-	.ndo_set_multicast_list = gannet_set_multicast_list,
+	.ndo_set_rx_mode = gannet_set_multicast_list,
 	.ndo_tx_timeout = gannet_tx_timeout,
 	.ndo_change_mtu = NULL,
 };
