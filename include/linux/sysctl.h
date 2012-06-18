@@ -1050,6 +1050,7 @@ struct ctl_path {
 extern void setup_sysctl_set(struct ctl_table_set *p,
 	struct ctl_table_set *parent,
 	int (*is_seen)(struct ctl_table_set *));
+extern void retire_sysctl_set(struct ctl_table_set *set);
 
 extern void sysctl_head_get(struct ctl_table_header *);
 extern void sysctl_head_put(struct ctl_table_header *);

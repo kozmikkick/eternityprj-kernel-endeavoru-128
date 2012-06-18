@@ -176,6 +176,10 @@ static ssize_t proc_sys_write(struct file *filp, const char __user *buf,
 	return proc_sys_call_handler(filp, (void __user *)buf, count, ppos, 1);
 }
 
+void retire_sysctl_set(struct ctl_table_set *set)
+{
+	WARN_ON(!list_empty(&set->list));
+}
 
 static int proc_sys_fill_cache(struct file *filp, void *dirent,
 				filldir_t filldir,
