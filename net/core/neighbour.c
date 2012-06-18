@@ -297,6 +297,7 @@ static struct neighbour *neigh_alloc(struct neigh_table *tbl)
 	n->updated	  = n->used = now;
 	n->nud_state	  = NUD_NONE;
 	n->output	  = neigh_blackhole;
+	seqlock_init(&n->hh.hh_lock);
 	n->parms	  = neigh_parms_clone(&tbl->parms);
 	setup_timer(&n->timer, neigh_timer_handler, (unsigned long)n);
 
@@ -1016,7 +1017,7 @@ static void neigh_update_hhs(struct neighbour *neigh)
 
 	if (update) {
 		hh = &neigh->hh;
-		if (hh) {
+		if (hh->hh_len) {
 			write_seqlock_bh(&hh->hh_lock);
 			update(hh, neigh->dev, neigh->ha);
 			write_sequnlock_bh(&hh->hh_lock);
@@ -1164,11 +1165,12 @@ int neigh_update(struct neighbour *neigh, const u8 *lladdr, u8 new,
 
 		while (neigh->nud_state & NUD_VALID &&
 		       (skb = __skb_dequeue(&neigh->arp_queue)) != NULL) {
-			struct neighbour *n1 = neigh;
+			struct dst_entry *dst = skb_dst(skb);
+			struct neighbour *n2, *n1 = neigh;
 			write_unlock_bh(&neigh->lock);
 			/* On shaper/eql skb->dst->neighbour != neigh :( */
-			if (skb_dst(skb) && skb_dst(skb)->neighbour)
-				n1 = skb_dst(skb)->neighbour;
+			if (dst && (n2 = dst_get_neighbour_noref(dst)) != NULL)
+				n1 = n2;
 			n1->output(n1, skb);
 			write_lock_bh(&neigh->lock);
 		}
@@ -1257,9 +1259,7 @@ int neigh_resolve_output(struct neighbour *neigh, struct sk_buff *skb)
 		struct net_device *dev = neigh->dev;
 		unsigned int seq;
 
-		if (dev->header_ops->cache &&
-		    !dst->hh &&
-		    !(dst->flags & DST_NOCACHE))
+		if (dev->header_ops->cache && !neigh->hh.hh_len)
 			neigh_hh_init(neigh, dst);
 
 		do {
@@ -1331,15 +1331,11 @@ static void neigh_proxy_process(unsigned long arg)
 
 		if (tdif <= 0) {
 			struct net_device *dev = skb->dev;
-
 			__skb_unlink(skb, &tbl->proxy_queue);
-			if (tbl->proxy_redo && netif_running(dev)) {
-				rcu_read_lock();
+			if (tbl->proxy_redo && netif_running(dev))
 				tbl->proxy_redo(skb);
-				rcu_read_unlock();
-			} else {
+			else
 				kfree_skb(skb);
-			}
 
 			dev_put(dev);
 		} else if (!sched_next || tdif < sched_next)
