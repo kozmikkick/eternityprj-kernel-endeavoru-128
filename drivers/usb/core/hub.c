@@ -2332,7 +2332,7 @@ int usb_port_suspend(struct usb_device *udev, pm_message_t msg)
 			dev_dbg(&udev->dev, "won't remote wakeup, status %d\n",
 					status);
 			/* bail if autosuspend is requested */
-			if (msg.event & PM_EVENT_AUTO)
+			if (PMSG_IS_AUTO(msg))
 				return status;
 		}
 	}
@@ -2361,12 +2361,12 @@ int usb_port_suspend(struct usb_device *udev, pm_message_t msg)
 				USB_CTRL_SET_TIMEOUT);
 
 		/* System sleep transitions should never fail */
-		if (!(msg.event & PM_EVENT_AUTO))
+		if (!PMSG_IS_AUTO(msg))
 			status = 0;
 	} else {
 		/* device has up to 10 msec to fully suspend */
 		dev_dbg(&udev->dev, "usb %ssuspend\n",
-				(msg.event & PM_EVENT_AUTO ? "auto-" : ""));
+				(PMSG_IS_AUTO(msg) ? "auto-" : ""));
 		usb_set_device_state(udev, USB_STATE_SUSPENDED);
 		msleep(10);
 	}
@@ -2517,7 +2517,7 @@ int usb_port_resume(struct usb_device *udev, pm_message_t msg)
 	} else {
 		/* drive resume for at least 20 msec */
 		dev_dbg(&udev->dev, "usb %sresume\n",
-				(msg.event & PM_EVENT_AUTO ? "auto-" : ""));
+				(PMSG_IS_AUTO(msg) ? "auto-" : ""));
 		/* extend from 25 to 50*/
 		/* hr_msleep for accurate time sleep */
 		start_time=jiffies;
@@ -2641,7 +2641,7 @@ static int hub_suspend(struct usb_interface *intf, pm_message_t msg)
 		udev = hdev->children [port1-1];
 		if (udev && udev->can_submit) {
 			dev_warn(&intf->dev, "port %d nyet suspended\n", port1);
-			if (msg.event & PM_EVENT_AUTO)
+			if (PMSG_IS_AUTO(msg))
 				return -EBUSY;
 		}
 	}
