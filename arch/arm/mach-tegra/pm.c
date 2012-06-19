@@ -282,6 +282,7 @@ static __init int alloc_suspend_context(void)
 	pgd_t *pgd;
 	pmd_t *pmd;
 	pte_t *pte;
+	pud_t *pud;
 
 	ctx_page = alloc_pages(GFP_KERNEL, 0);
 	if (IS_ERR_OR_NULL(ctx_page))
@@ -297,7 +298,10 @@ static __init int alloc_suspend_context(void)
 	pgd = tegra_pgd + pgd_index(ctx_virt);
 	if (!pgd_present(*pgd))
 		goto fail;
-	pmd = pmd_offset(pgd, ctx_virt);
+	pud = pud_offset(pgd, ctx_virt);
+	if (!pud_present(*pud))
+		goto fail;
+	pmd = pmd_offset(pud, ctx_virt);
 	if (!pmd_none(*pmd))
 		goto fail;
 	pte = pte_alloc_kernel(pmd, ctx_virt);
