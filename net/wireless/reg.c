@@ -36,12 +36,14 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/list.h>
 #include <linux/random.h>
 #include <linux/ctype.h>
 #include <linux/nl80211.h>
 #include <linux/platform_device.h>
+#include <linux/moduleparam.h>
 #include <net/cfg80211.h>
 #include "core.h"
 #include "reg.h"
@@ -49,10 +51,8 @@
 #include "nl80211.h"
 
 #ifdef CONFIG_CFG80211_REG_DEBUG
-#define REG_DBG_PRINT(format, args...) \
-	do { \
-		printk(KERN_DEBUG pr_fmt(format), ##args);	\
-	} while (0)
+#define REG_DBG_PRINT(format, args...)			\
+	printk(KERN_DEBUG pr_fmt(format), ##args)
 #else
 #define REG_DBG_PRINT(args...)
 #endif
@@ -114,6 +114,9 @@ struct reg_beacon {
 
 static void reg_todo(struct work_struct *work);
 static DECLARE_WORK(reg_work, reg_todo);
+
+static void reg_timeout_work(struct work_struct *work);
+static DECLARE_DELAYED_WORK(reg_timeout, reg_timeout_work);
 
 /* We keep a static world regulatory domain in case of the absence of CRDA */
 static const struct ieee80211_regdomain world_regdom = {
@@ -685,11 +688,9 @@ static int freq_reg_info_regd(struct wiphy *wiphy,
 	for (i = 0; i < regd->n_reg_rules; i++) {
 		const struct ieee80211_reg_rule *rr;
 		const struct ieee80211_freq_range *fr = NULL;
-		const struct ieee80211_power_rule *pr = NULL;
 
 		rr = &regd->reg_rules[i];
 		fr = &rr->freq_range;
-		pr = &rr->power_rule;
 
 		/*
 		 * We only need to know if one frequency rule was
@@ -768,9 +769,10 @@ static void chan_reg_rule_print_dbg(struct ieee80211_channel *chan,
 		      chan->center_freq,
 		      KHZ_TO_MHZ(desired_bw_khz));
 
-	REG_DBG_PRINT("%d KHz - %d KHz @  KHz), (%s mBi, %d mBm)\n",
+	REG_DBG_PRINT("%d KHz - %d KHz @ %d KHz), (%s mBi, %d mBm)\n",
 		      freq_range->start_freq_khz,
 		      freq_range->end_freq_khz,
+		      freq_range->max_bandwidth_khz,
 		      max_antenna_gain,
 		      power_rule->max_eirp);
 }
@@ -867,6 +869,7 @@ static void handle_channel(struct wiphy *wiphy,
 		return;
 	}
 
+	chan->beacon_found = false;
 	chan->flags = flags | bw_flags | map_regdom_flags(reg_rule->flags);
 	chan->max_antenna_gain = min(chan->orig_mag,
 		(int) MBI_TO_DBI(power_rule->max_antenna_gain));
@@ -917,7 +920,7 @@ static bool ignore_reg_update(struct wiphy *wiphy,
 	    wiphy->flags & WIPHY_FLAG_CUSTOM_REGULATORY) {
 		REG_DBG_PRINT("Ignoring regulatory request %s "
 			      "since the driver uses its own custom "
-			      "regulatory domain ",
+			      "regulatory domain\n",
 			      reg_initiator_name(initiator));
 		return true;
 	}
@@ -930,33 +933,13 @@ static bool ignore_reg_update(struct wiphy *wiphy,
 	    initiator != NL80211_REGDOM_SET_BY_COUNTRY_IE &&
 	    !is_world_regdom(last_request->alpha2)) {
 		REG_DBG_PRINT("Ignoring regulatory request %s "
-			      "since the driver requires its own regulaotry "
-			      "domain to be set first",
+			      "since the driver requires its own regulatory "
+			      "domain to be set first\n",
 			      reg_initiator_name(initiator));
 		return true;
 	}
 
 	return false;
-}
-
-static void update_all_wiphy_regulatory(enum nl80211_reg_initiator initiator)
-{
-	struct cfg80211_registered_device *rdev;
-	struct wiphy *wiphy;
-
-	list_for_each_entry(rdev, &cfg80211_rdev_list, list) {
-		wiphy = &rdev->wiphy;
-		wiphy_update_regulatory(wiphy, initiator);
-		/*
-		 * Regulatory updates set by CORE are ignored for custom
-		 * regulatory cards. Let us notify the changes to the driver,
-		 * as some drivers used this to restore its orig_* reg domain.
-		 */
-		if (initiator == NL80211_REGDOM_SET_BY_CORE &&
-		    wiphy->flags & WIPHY_FLAG_CUSTOM_REGULATORY &&
-		    wiphy->reg_notifier)
-			wiphy->reg_notifier(wiphy, last_request);
-	}
 }
 
 static void handle_reg_beacon(struct wiphy *wiphy,
@@ -1151,8 +1134,6 @@ static void reg_process_ht_flags(struct wiphy *wiphy)
 	if (!wiphy)
 		return;
 
-	last_request->dfs_region = cfg80211_regdomain->dfs_region;
-
 	for (band = 0; band < IEEE80211_NUM_BANDS; band++) {
 		if (wiphy->bands[band])
 			reg_process_ht_flags_band(wiphy, band);
@@ -1160,22 +1141,55 @@ static void reg_process_ht_flags(struct wiphy *wiphy)
 
 }
 
-void wiphy_update_regulatory(struct wiphy *wiphy,
-			     enum nl80211_reg_initiator initiator)
+static void wiphy_update_regulatory(struct wiphy *wiphy,
+				    enum nl80211_reg_initiator initiator)
 {
 	enum ieee80211_band band;
 
+	assert_reg_lock();
+
 	if (ignore_reg_update(wiphy, initiator))
-		goto out;
+		return;
+
+	last_request->dfs_region = cfg80211_regdomain->dfs_region;
+
 	for (band = 0; band < IEEE80211_NUM_BANDS; band++) {
 		if (wiphy->bands[band])
 			handle_band(wiphy, band, initiator);
 	}
-out:
+
 	reg_process_beacons(wiphy);
 	reg_process_ht_flags(wiphy);
 	if (wiphy->reg_notifier)
 		wiphy->reg_notifier(wiphy, last_request);
+}
+
+void regulatory_update(struct wiphy *wiphy,
+		       enum nl80211_reg_initiator setby)
+{
+	mutex_lock(&reg_mutex);
+	wiphy_update_regulatory(wiphy, setby);
+	mutex_unlock(&reg_mutex);
+}
+
+static void update_all_wiphy_regulatory(enum nl80211_reg_initiator initiator)
+{
+	struct cfg80211_registered_device *rdev;
+	struct wiphy *wiphy;
+
+	list_for_each_entry(rdev, &cfg80211_rdev_list, list) {
+		wiphy = &rdev->wiphy;
+		wiphy_update_regulatory(wiphy, initiator);
+		/*
+		 * Regulatory updates set by CORE are ignored for custom
+		 * regulatory cards. Let us notify the changes to the driver,
+		 * as some drivers used this to restore its orig_* reg domain.
+		 */
+		if (initiator == NL80211_REGDOM_SET_BY_CORE &&
+		    wiphy->flags & WIPHY_FLAG_CUSTOM_REGULATORY &&
+		    wiphy->reg_notifier)
+			wiphy->reg_notifier(wiphy, last_request);
+	}
 }
 
 static void handle_channel_custom(struct wiphy *wiphy,
@@ -1372,6 +1386,9 @@ static void reg_set_request_processed(void)
 		need_more_processing = true;
 	spin_unlock(&reg_requests_lock);
 
+	if (last_request->initiator == NL80211_REGDOM_SET_BY_USER)
+		cancel_delayed_work_sync(&reg_timeout);
+
 	if (need_more_processing)
 		schedule_work(&reg_work);
 }
@@ -1483,8 +1500,18 @@ static void reg_process_hint(struct regulatory_request *reg_request,
 	r = __regulatory_hint(wiphy, reg_request);
 	/* This is required so that the orig_* parameters are saved */
 	if (r == -EALREADY && wiphy &&
-	    wiphy->flags & WIPHY_FLAG_STRICT_REGULATORY)
+	    wiphy->flags & WIPHY_FLAG_STRICT_REGULATORY) {
 		wiphy_update_regulatory(wiphy, reg_initiator);
+		return;
+	}
+
+	/*
+	 * We only time out user hints, given that they should be the only
+	 * source of bogus requests.
+	 */
+	if (r != -EALREADY &&
+	    reg_initiator == NL80211_REGDOM_SET_BY_USER)
+		schedule_delayed_work(&reg_timeout, msecs_to_jiffies(3142));
 }
 
 /*
@@ -1502,7 +1529,7 @@ static void reg_process_pending_hints(void)
 	/* When last_request->processed becomes true this will be rescheduled */
 	if (last_request && !last_request->processed) {
 		REG_DBG_PRINT("Pending regulatory request, waiting "
-			      "for it to be processed...");
+			      "for it to be processed...\n");
 		goto out;
 	}
 
@@ -1803,7 +1830,10 @@ static void restore_custom_reg_settings(struct wiphy *wiphy)
 static void restore_regulatory_settings(bool reset_user)
 {
 	char alpha2[2];
+	char world_alpha2[2];
 	struct reg_beacon *reg_beacon, *btmp;
+	struct regulatory_request *reg_request, *tmp;
+	LIST_HEAD(tmp_reg_req_list);
 	struct cfg80211_registered_device *rdev;
 
 	mutex_lock(&cfg80211_mutex);
@@ -1811,6 +1841,25 @@ static void restore_regulatory_settings(bool reset_user)
 
 	reset_regdomains(true);
 	restore_alpha2(alpha2, reset_user);
+
+	/*
+	 * If there's any pending requests we simply
+	 * stash them to a temporary pending queue and
+	 * add then after we've restored regulatory
+	 * settings.
+	 */
+	spin_lock(&reg_requests_lock);
+	if (!list_empty(&reg_requests_list)) {
+		list_for_each_entry_safe(reg_request, tmp,
+					 &reg_requests_list, list) {
+			if (reg_request->initiator !=
+			    NL80211_REGDOM_SET_BY_USER)
+				continue;
+			list_del(&reg_request->list);
+			list_add_tail(&reg_request->list, &tmp_reg_req_list);
+		}
+	}
+	spin_unlock(&reg_requests_lock);
 
 	/* Clear beacon hints */
 	spin_lock_bh(&reg_pending_beacons_lock);
@@ -1833,6 +1882,8 @@ static void restore_regulatory_settings(bool reset_user)
 
 	/* First restore to the basic regulatory settings */
 	cfg80211_regdomain = cfg80211_world_regdom;
+	world_alpha2[0] = cfg80211_regdomain->alpha2[0];
+	world_alpha2[1] = cfg80211_regdomain->alpha2[1];
 
 	list_for_each_entry(rdev, &cfg80211_rdev_list, list) {
 		if (rdev->wiphy.flags & WIPHY_FLAG_CUSTOM_REGULATORY)
@@ -1842,7 +1893,7 @@ static void restore_regulatory_settings(bool reset_user)
 	mutex_unlock(&reg_mutex);
 	mutex_unlock(&cfg80211_mutex);
 
-	regulatory_hint_core(cfg80211_regdomain->alpha2);
+	regulatory_hint_core(world_alpha2);
 
 	/*
 	 * This restores the ieee80211_regdom module parameter
@@ -1851,8 +1902,31 @@ static void restore_regulatory_settings(bool reset_user)
 	 */
 	if (is_an_alpha2(alpha2))
 		regulatory_hint_user(user_alpha2);
-}
 
+	if (list_empty(&tmp_reg_req_list))
+		return;
+
+	mutex_lock(&cfg80211_mutex);
+	mutex_lock(&reg_mutex);
+
+	spin_lock(&reg_requests_lock);
+	list_for_each_entry_safe(reg_request, tmp, &tmp_reg_req_list, list) {
+		REG_DBG_PRINT("Adding request for country %c%c back "
+			      "into the queue\n",
+			      reg_request->alpha2[0],
+			      reg_request->alpha2[1]);
+		list_del(&reg_request->list);
+		list_add_tail(&reg_request->list, &reg_requests_list);
+	}
+	spin_unlock(&reg_requests_lock);
+
+	mutex_unlock(&reg_mutex);
+	mutex_unlock(&cfg80211_mutex);
+
+	REG_DBG_PRINT("Kicking the queue\n");
+
+	schedule_work(&reg_work);
+}
 
 void regulatory_hint_disconnect(void)
 {
@@ -2234,6 +2308,13 @@ out:
 	mutex_unlock(&reg_mutex);
 }
 
+static void reg_timeout_work(struct work_struct *work)
+{
+	REG_DBG_PRINT("Timeout while waiting for CRDA to reply, "
+		      "restoring regulatory settings\n");
+	restore_regulatory_settings(true);
+}
+
 int __init regulatory_init(void)
 {
 	int err = 0;
@@ -2287,6 +2368,7 @@ void /* __init_or_exit */ regulatory_exit(void)
 	struct reg_beacon *reg_beacon, *btmp;
 
 	cancel_work_sync(&reg_work);
+	cancel_delayed_work_sync(&reg_timeout);
 
 	mutex_lock(&cfg80211_mutex);
 	mutex_lock(&reg_mutex);
