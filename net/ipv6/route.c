@@ -76,7 +76,7 @@ static struct rt6_info *ip6_rt_copy(const struct rt6_info *ort,
 				    const struct in6_addr *dest);
 static struct dst_entry	*ip6_dst_check(struct dst_entry *dst, u32 cookie);
 static unsigned int	 ip6_default_advmss(const struct dst_entry *dst);
-static unsigned int	 ip6_mtu(const struct dst_entry *dst);
+static unsigned int	 ip6_default_mtu(const struct dst_entry *dst);
 static struct dst_entry *ip6_negative_advice(struct dst_entry *);
 static void		ip6_dst_destroy(struct dst_entry *);
 static void		ip6_dst_ifdown(struct dst_entry *,
@@ -103,6 +103,9 @@ static u32 *ipv6_cow_metrics(struct dst_entry *dst, unsigned long old)
 	struct rt6_info *rt = (struct rt6_info *) dst;
 	struct inet_peer *peer;
 	u32 *p = NULL;
+
+	if (!(rt->dst.flags & DST_HOST))
+		return NULL;
 
 	if (!rt->rt6i_peer)
 		rt6_bind_peer(rt, 1);
@@ -140,7 +143,7 @@ static struct dst_ops ip6_dst_ops_template = {
 	.gc_thresh		=	1024,
 	.check			=	ip6_dst_check,
 	.default_advmss		=	ip6_default_advmss,
-	.mtu			=	ip6_mtu,
+	.default_mtu		=	ip6_default_mtu,
 	.cow_metrics		=	ipv6_cow_metrics,
 	.destroy		=	ip6_dst_destroy,
 	.ifdown			=	ip6_dst_ifdown,
@@ -151,7 +154,7 @@ static struct dst_ops ip6_dst_ops_template = {
 	.neigh_lookup		=	ip6_neigh_lookup,
 };
 
-static unsigned int ip6_blackhole_mtu(const struct dst_entry *dst)
+static unsigned int ip6_blackhole_default_mtu(const struct dst_entry *dst)
 {
 	return 0;
 }
@@ -171,7 +174,7 @@ static struct dst_ops ip6_dst_blackhole_ops = {
 	.protocol		=	cpu_to_be16(ETH_P_IPV6),
 	.destroy		=	ip6_dst_destroy,
 	.check			=	ip6_dst_check,
-	.mtu			=	ip6_blackhole_mtu,
+	.default_mtu		=	ip6_blackhole_default_mtu,
 	.default_advmss		=	ip6_default_advmss,
 	.update_pmtu		=	ip6_rt_blackhole_update_pmtu,
 	.cow_metrics		=	ip6_rt_blackhole_cow_metrics,
@@ -236,9 +239,16 @@ static struct rt6_info ip6_blk_hole_entry_template = {
 
 /* allocate dst with ip6_dst_ops */
 static inline struct rt6_info *ip6_dst_alloc(struct dst_ops *ops,
-					     struct net_device *dev)
+					     struct net_device *dev,
+					     int flags)
 {
-	return (struct rt6_info *)dst_alloc(ops, dev, 0, 0, 0);
+	struct rt6_info *rt = dst_alloc(ops, dev, 0, 0, flags);
+
+	if (rt != NULL)
+		memset(&rt->rt6i_table, 0,
+			sizeof(*rt) - sizeof(struct dst_entry));
+
+	return rt;
 }
 
 static void ip6_dst_destroy(struct dst_entry *dst)
@@ -246,6 +256,9 @@ static void ip6_dst_destroy(struct dst_entry *dst)
 	struct rt6_info *rt = (struct rt6_info *)dst;
 	struct inet6_dev *idev = rt->rt6i_idev;
 	struct inet_peer *peer = rt->rt6i_peer;
+
+	if (!(rt->dst.flags & DST_HOST))
+		dst_destroy_metrics_generic(dst);
 
 	if (idev != NULL) {
 		rt->rt6i_idev = NULL;
@@ -359,7 +372,7 @@ out:
 #ifdef CONFIG_IPV6_ROUTER_PREF
 static void rt6_probe(struct rt6_info *rt)
 {
-	struct neighbour *neigh = rt ? dst_get_neighbour(&rt->dst) : NULL;
+	struct neighbour *neigh;
 	/*
 	 * Okay, this does not seem to be appropriate
 	 * for now, however, we need to check if it
@@ -368,8 +381,10 @@ static void rt6_probe(struct rt6_info *rt)
 	 * Router Reachability Probe MUST be rate-limited
 	 * to no more than one per minute.
 	 */
+	rcu_read_lock();
+	neigh = rt ? dst_get_neighbour(&rt->dst) : NULL;
 	if (!neigh || (neigh->nud_state & NUD_VALID))
-		return;
+		goto out;
 	read_lock_bh(&neigh->lock);
 	if (!(neigh->nud_state & NUD_VALID) &&
 	    time_after(jiffies, neigh->updated + rt->rt6i_idev->cnf.rtr_probe_interval)) {
@@ -382,8 +397,11 @@ static void rt6_probe(struct rt6_info *rt)
 		target = (struct in6_addr *)&neigh->primary_key;
 		addrconf_addr_solict_mult(target, &mcaddr);
 		ndisc_send_ns(rt->rt6i_dev, NULL, target, &mcaddr, NULL);
-	} else
+	} else {
 		read_unlock_bh(&neigh->lock);
+	}
+out:
+	rcu_read_unlock();
 }
 #else
 static inline void rt6_probe(struct rt6_info *rt)
@@ -407,8 +425,11 @@ static inline int rt6_check_dev(struct rt6_info *rt, int oif)
 
 static inline int rt6_check_neigh(struct rt6_info *rt)
 {
-	struct neighbour *neigh = dst_get_neighbour(&rt->dst);
+	struct neighbour *neigh;
 	int m;
+
+	rcu_read_lock();
+	neigh = dst_get_neighbour(&rt->dst);
 	if (rt->rt6i_flags & RTF_NONEXTHOP ||
 	    !(rt->rt6i_flags & RTF_GATEWAY))
 		m = 1;
@@ -425,6 +446,7 @@ static inline int rt6_check_neigh(struct rt6_info *rt)
 		read_unlock_bh(&neigh->lock);
 	} else
 		m = 0;
+	rcu_read_unlock();
 	return m;
 }
 
@@ -709,9 +731,7 @@ static struct rt6_info *rt6_alloc_cow(const struct rt6_info *ort,
 			ipv6_addr_copy(&rt->rt6i_gateway, daddr);
 		}
 
-		rt->rt6i_dst.plen = 128;
 		rt->rt6i_flags |= RTF_CACHE;
-		rt->dst.flags |= DST_HOST;
 
 #ifdef CONFIG_IPV6_SUBTREES
 		if (rt->rt6i_src.plen && saddr) {
@@ -761,10 +781,8 @@ static struct rt6_info *rt6_alloc_clone(struct rt6_info *ort,
 	struct rt6_info *rt = ip6_rt_copy(ort, daddr);
 
 	if (rt) {
-		rt->rt6i_dst.plen = 128;
 		rt->rt6i_flags |= RTF_CACHE;
-		rt->dst.flags |= DST_HOST;
-		dst_set_neighbour(&rt->dst, neigh_clone(dst_get_neighbour(&ort->dst)));
+		dst_set_neighbour(&rt->dst, neigh_clone(dst_get_neighbour_raw(&ort->dst)));
 	}
 	return rt;
 }
@@ -798,7 +816,7 @@ restart:
 	dst_hold(&rt->dst);
 	read_unlock_bh(&table->tb6_lock);
 
-	if (!dst_get_neighbour(&rt->dst) && !(rt->rt6i_flags & RTF_NONEXTHOP))
+	if (!dst_get_neighbour_raw(&rt->dst) && !(rt->rt6i_flags & RTF_NONEXTHOP))
 		nrt = rt6_alloc_cow(rt, &fl6->daddr, &fl6->saddr);
 	else if (!(rt->dst.flags & DST_HOST))
 		nrt = rt6_alloc_clone(rt, &fl6->daddr);
@@ -896,6 +914,8 @@ struct dst_entry *ip6_blackhole_route(struct net *net, struct dst_entry *dst_ori
 
 	rt = dst_alloc(&ip6_dst_blackhole_ops, ort->dst.dev, 1, 0, 0);
 	if (rt) {
+		memset(&rt->rt6i_table, 0, sizeof(*rt) - sizeof(struct dst_entry));
+
 		new = &rt->dst;
 
 		new->__use = 1;
@@ -1020,7 +1040,7 @@ static unsigned int ip6_default_advmss(const struct dst_entry *dst)
 	return mtu;
 }
 
-static unsigned int ip6_mtu(const struct dst_entry *dst)
+static unsigned int ip6_default_mtu(const struct dst_entry *dst)
 {
 	unsigned int mtu = IPV6_MIN_MTU;
 	struct inet6_dev *idev;
@@ -1048,7 +1068,7 @@ struct dst_entry *icmp6_dst_alloc(struct net_device *dev,
 	if (unlikely(idev == NULL))
 		return NULL;
 
-	rt = ip6_dst_alloc(&net->ipv6.ip6_dst_ops, dev);
+	rt = ip6_dst_alloc(&net->ipv6.ip6_dst_ops, dev, 0);
 	if (unlikely(rt == NULL)) {
 		in6_dev_put(idev);
 		goto out;
@@ -1062,20 +1082,15 @@ struct dst_entry *icmp6_dst_alloc(struct net_device *dev,
 			neigh = NULL;
 	}
 
-	rt->rt6i_idev     = idev;
+	rt->dst.flags |= DST_HOST;
+	rt->dst.output  = ip6_output;
 	dst_set_neighbour(&rt->dst, neigh);
 	atomic_set(&rt->dst.__refcnt, 1);
-	ipv6_addr_copy(&rt->rt6i_dst.addr, addr);
 	dst_metric_set(&rt->dst, RTAX_HOPLIMIT, 255);
-	rt->dst.output  = ip6_output;
 
-#if 0	/* there's no chance to use these for ndisc */
-	rt->dst.flags   = ipv6_addr_type(addr) & IPV6_ADDR_UNICAST
-				? DST_HOST
-				: 0;
 	ipv6_addr_copy(&rt->rt6i_dst.addr, addr);
 	rt->rt6i_dst.plen = 128;
-#endif
+	rt->rt6i_idev     = idev;
 
 	spin_lock_bh(&icmp6_dst_lock);
 	rt->dst.next = icmp6_dst_gc_list;
@@ -1221,7 +1236,7 @@ int ip6_route_add(struct fib6_config *cfg)
 		goto out;
 	}
 
-	rt = ip6_dst_alloc(&net->ipv6.ip6_dst_ops, NULL);
+	rt = ip6_dst_alloc(&net->ipv6.ip6_dst_ops, NULL, DST_NOCOUNT);
 
 	if (rt == NULL) {
 		err = -ENOMEM;
@@ -1251,8 +1266,16 @@ int ip6_route_add(struct fib6_config *cfg)
 	ipv6_addr_prefix(&rt->rt6i_dst.addr, &cfg->fc_dst, cfg->fc_dst_len);
 	rt->rt6i_dst.plen = cfg->fc_dst_len;
 	if (rt->rt6i_dst.plen == 128)
-	       rt->dst.flags = DST_HOST;
+	       rt->dst.flags |= DST_HOST;
 
+	if (!(rt->dst.flags & DST_HOST) && cfg->fc_mx) {
+		u32 *metrics = kzalloc(sizeof(u32) * RTAX_MAX, GFP_KERNEL);
+		if (!metrics) {
+			err = -ENOMEM;
+			goto out;
+		}
+		dst_init_metrics(&rt->dst, metrics, 0);
+	}
 #ifdef CONFIG_IPV6_SUBTREES
 	ipv6_addr_prefix(&rt->rt6i_src.addr, &cfg->fc_src, cfg->fc_src_len);
 	rt->rt6i_src.plen = cfg->fc_src_len;
@@ -1588,7 +1611,7 @@ void rt6_redirect(const struct in6_addr *dest, const struct in6_addr *src,
 	dst_confirm(&rt->dst);
 
 	/* Duplicate redirect: silently ignore. */
-	if (neigh == dst_get_neighbour(&rt->dst))
+	if (neigh == dst_get_neighbour_raw(&rt->dst))
 		goto out;
 
 	nrt = ip6_rt_copy(rt, dest);
@@ -1598,9 +1621,6 @@ void rt6_redirect(const struct in6_addr *dest, const struct in6_addr *src,
 	nrt->rt6i_flags = RTF_GATEWAY|RTF_UP|RTF_DYNAMIC|RTF_CACHE;
 	if (on_link)
 		nrt->rt6i_flags &= ~RTF_GATEWAY;
-
-	nrt->rt6i_dst.plen = 128;
-	nrt->dst.flags |= DST_HOST;
 
 	ipv6_addr_copy(&nrt->rt6i_gateway, (struct in6_addr*)neigh->primary_key);
 	dst_set_neighbour(&nrt->dst, neigh_clone(neigh));
@@ -1683,7 +1703,7 @@ again:
 	   1. It is connected route. Action: COW
 	   2. It is gatewayed route or NONEXTHOP route. Action: clone it.
 	 */
-	if (!dst_get_neighbour(&rt->dst) && !(rt->rt6i_flags & RTF_NONEXTHOP))
+	if (!dst_get_neighbour_raw(&rt->dst) && !(rt->rt6i_flags & RTF_NONEXTHOP))
 		nrt = rt6_alloc_cow(rt, daddr, saddr);
 	else
 		nrt = rt6_alloc_clone(rt, daddr);
@@ -1741,14 +1761,15 @@ static struct rt6_info *ip6_rt_copy(const struct rt6_info *ort,
 {
 	struct net *net = dev_net(ort->rt6i_dev);
 	struct rt6_info *rt = ip6_dst_alloc(&net->ipv6.ip6_dst_ops,
-					    ort->dst.dev);
+					    ort->dst.dev, 0);
 
 	if (rt) {
 		rt->dst.input = ort->dst.input;
 		rt->dst.output = ort->dst.output;
+		rt->dst.flags |= DST_HOST;
 
 		ipv6_addr_copy(&rt->rt6i_dst.addr, dest);
-		rt->rt6i_dst.plen = ort->rt6i_dst.plen;
+		rt->rt6i_dst.plen = 128;
 		dst_copy_metrics(&rt->dst, &ort->dst);
 		rt->dst.error = ort->dst.error;
 		rt->rt6i_idev = ort->rt6i_idev;
@@ -1764,6 +1785,7 @@ static struct rt6_info *ip6_rt_copy(const struct rt6_info *ort,
 #ifdef CONFIG_IPV6_SUBTREES
 		memcpy(&rt->rt6i_src, &ort->rt6i_src, sizeof(struct rt6key));
 #endif
+		memcpy(&rt->rt6i_prefsrc, &ort->rt6i_prefsrc, sizeof(struct rt6key));
 		rt->rt6i_table = ort->rt6i_table;
 	}
 	return rt;
@@ -2020,7 +2042,7 @@ struct rt6_info *addrconf_dst_alloc(struct inet6_dev *idev,
 {
 	struct net *net = dev_net(idev->dev);
 	struct rt6_info *rt = ip6_dst_alloc(&net->ipv6.ip6_dst_ops,
-					    net->loopback_dev);
+					    net->loopback_dev, 0);
 	struct neighbour *neigh;
 
 	if (rt == NULL) {
@@ -2032,7 +2054,7 @@ struct rt6_info *addrconf_dst_alloc(struct inet6_dev *idev,
 
 	in6_dev_hold(idev);
 
-	rt->dst.flags = DST_HOST;
+	rt->dst.flags |= DST_HOST;
 	rt->dst.input = ip6_input;
 	rt->dst.output = ip6_output;
 	rt->rt6i_idev = idev;
@@ -2326,6 +2348,7 @@ static int rt6_fill_node(struct net *net,
 	struct nlmsghdr *nlh;
 	long expires;
 	u32 table;
+	struct neighbour *n;
 
 	if (prefix) {	/* user wants prefix routes only */
 		if (!(rt->rt6i_flags & RTF_PREFIX_RT)) {
@@ -2414,8 +2437,11 @@ static int rt6_fill_node(struct net *net,
 	if (rtnetlink_put_metrics(skb, dst_metrics_ptr(&rt->dst)) < 0)
 		goto nla_put_failure;
 
-	if (dst_get_neighbour(&rt->dst))
-		NLA_PUT(skb, RTA_GATEWAY, 16, &dst_get_neighbour(&rt->dst)->primary_key);
+	rcu_read_lock();
+	n = dst_get_neighbour(&rt->dst);
+	if (n)
+		NLA_PUT(skb, RTA_GATEWAY, 16, &n->primary_key);
+	rcu_read_unlock();
 
 	if (rt->dst.dev)
 		NLA_PUT_U32(skb, RTA_OIF, rt->rt6i_dev->ifindex);
@@ -2608,12 +2634,14 @@ static int rt6_info_route(struct rt6_info *rt, void *p_arg)
 #else
 	seq_puts(m, "00000000000000000000000000000000 00 ");
 #endif
+	rcu_read_lock();
 	n = dst_get_neighbour(&rt->dst);
 	if (n) {
 		seq_printf(m, "%pi6", n->primary_key);
 	} else {
 		seq_puts(m, "00000000000000000000000000000000");
 	}
+	rcu_read_unlock();
 	seq_printf(m, " %08x %08x %08x %08x %8s\n",
 		   rt->rt6i_metric, atomic_read(&rt->dst.__refcnt),
 		   rt->dst.__use, rt->rt6i_flags,

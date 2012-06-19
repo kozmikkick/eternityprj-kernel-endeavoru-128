@@ -182,6 +182,7 @@ fq_find(__be32 id, u32 user, struct in6_addr *src, struct in6_addr *dst)
 	return container_of(q, struct nf_ct_frag6_queue, q);
 
 oom:
+	pr_debug("Can't alloc new queue\n");
 	return NULL;
 }
 
@@ -369,10 +370,10 @@ nf_ct_frag6_reasm(struct nf_ct_frag6_queue *fq, struct net_device *dev)
 		struct sk_buff *clone;
 		int i, plen = 0;
 
-		clone = alloc_skb(0, GFP_ATOMIC);
-		if (clone == NULL)
+		if ((clone = alloc_skb(0, GFP_ATOMIC)) == NULL) {
+			pr_debug("Can't alloc skb\n");
 			goto out_oom;
-
+		}
 		clone->next = head->next;
 		head->next = clone;
 		skb_shinfo(clone)->frag_list = skb_shinfo(head)->frag_list;

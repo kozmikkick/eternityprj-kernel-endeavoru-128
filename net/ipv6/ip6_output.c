@@ -135,10 +135,15 @@ static int ip6_finish_output2(struct sk_buff *skb)
 				skb->len);
 	}
 
+	rcu_read_lock();
 	neigh = dst_get_neighbour(dst);
-	if (neigh)
-		return neigh_output(neigh, skb);
+	if (neigh) {
+		int res = neigh_output(neigh, skb);
 
+		rcu_read_unlock();
+		return res;
+	}
+	rcu_read_unlock();
 	IP6_INC_STATS_BH(dev_net(dst->dev),
 			 ip6_dst_idev(dst), IPSTATS_MIB_OUTNOROUTES);
 	kfree_skb(skb);
@@ -596,6 +601,31 @@ int ip6_find_1stfragopt(struct sk_buff *skb, u8 **nexthdr)
 	return offset;
 }
 
+void ipv6_select_ident(struct frag_hdr *fhdr, struct rt6_info *rt)
+{
+	static atomic_t ipv6_fragmentation_id;
+	int old, new;
+
+	if (rt) {
+		struct inet_peer *peer;
+
+		if (!rt->rt6i_peer)
+			rt6_bind_peer(rt, 1);
+		peer = rt->rt6i_peer;
+		if (peer) {
+			fhdr->identification = htonl(inet_getid(peer, 0));
+			return;
+		}
+	}
+	do {
+		old = atomic_read(&ipv6_fragmentation_id);
+		new = old + 1;
+		if (!new)
+			new = 1;
+	} while (atomic_cmpxchg(&ipv6_fragmentation_id, old, new) != old);
+	fhdr->identification = htonl(new);
+}
+
 int ip6_fragment(struct sk_buff *skb, int (*output)(struct sk_buff *))
 {
 	struct sk_buff *frag;
@@ -680,7 +710,7 @@ int ip6_fragment(struct sk_buff *skb, int (*output)(struct sk_buff *))
 		skb_reset_network_header(skb);
 		memcpy(skb_network_header(skb), tmp_hdr, hlen);
 
-		ipv6_select_ident(fh);
+		ipv6_select_ident(fh, rt);
 		fh->nexthdr = nexthdr;
 		fh->reserved = 0;
 		fh->frag_off = htons(IP6_MF);
@@ -826,7 +856,7 @@ slow_path:
 		fh->nexthdr = nexthdr;
 		fh->reserved = 0;
 		if (!frag_id) {
-			ipv6_select_ident(fh);
+			ipv6_select_ident(fh, rt);
 			frag_id = fh->identification;
 		} else
 			fh->identification = frag_id;
@@ -950,12 +980,14 @@ static int ip6_dst_lookup_tail(struct sock *sk,
 	 * dst entry and replace it instead with the
 	 * dst entry of the nexthop router
 	 */
+	rcu_read_lock();
 	n = dst_get_neighbour(*dst);
 	if (n && !(n->nud_state & NUD_VALID)) {
 		struct inet6_ifaddr *ifp;
 		struct flowi6 fl_gw6;
 		int redirect;
 
+		rcu_read_unlock();
 		ifp = ipv6_get_ifaddr(net, &fl6->saddr,
 				      (*dst)->dev, 1);
 
@@ -975,6 +1007,8 @@ static int ip6_dst_lookup_tail(struct sock *sk,
 			if ((err = (*dst)->error))
 				goto out_err_release;
 		}
+	} else {
+		rcu_read_unlock();
 	}
 #endif
 
@@ -1076,7 +1110,8 @@ static inline int ip6_ufo_append_data(struct sock *sk,
 			int getfrag(void *from, char *to, int offset, int len,
 			int odd, struct sk_buff *skb),
 			void *from, int length, int hh_len, int fragheaderlen,
-			int transhdrlen, int mtu,unsigned int flags)
+			int transhdrlen, int mtu,unsigned int flags,
+			struct rt6_info *rt)
 
 {
 	struct sk_buff *skb;
@@ -1120,7 +1155,7 @@ static inline int ip6_ufo_append_data(struct sock *sk,
 		skb_shinfo(skb)->gso_size = (mtu - fragheaderlen -
 					     sizeof(struct frag_hdr)) & ~7;
 		skb_shinfo(skb)->gso_type = SKB_GSO_UDP;
-		ipv6_select_ident(&fhdr);
+		ipv6_select_ident(&fhdr, rt);
 		skb_shinfo(skb)->ip6_frag_id = fhdr.identification;
 		__skb_queue_tail(&sk->sk_write_queue, skb);
 
@@ -1286,7 +1321,7 @@ int ip6_append_data(struct sock *sk, int getfrag(void *from, char *to,
 
 			err = ip6_ufo_append_data(sk, getfrag, from, length,
 						  hh_len, fragheaderlen,
-						  transhdrlen, mtu, flags);
+						  transhdrlen, mtu, flags, rt);
 			if (err)
 				goto error;
 			return 0;

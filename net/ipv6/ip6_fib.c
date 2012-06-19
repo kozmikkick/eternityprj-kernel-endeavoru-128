@@ -394,10 +394,11 @@ static int inet6_dump_fib(struct sk_buff *skb, struct netlink_callback *cb)
 	arg.net = net;
 	w->args = &arg;
 
+	rcu_read_lock();
 	for (h = s_h; h < FIB6_TABLE_HASHSZ; h++, s_e = 0) {
 		e = 0;
 		head = &net->ipv6.fib_table_hash[h];
-		hlist_for_each_entry(tb, node, head, tb6_hlist) {
+		hlist_for_each_entry_rcu(tb, node, head, tb6_hlist) {
 			if (e < s_e)
 				goto next;
 			res = fib6_dump_table(tb, skb, cb);
@@ -408,6 +409,7 @@ next:
 		}
 	}
 out:
+	rcu_read_unlock();
 	cb->args[1] = e;
 	cb->args[0] = h;
 
@@ -1453,7 +1455,7 @@ static int fib6_age(struct rt6_info *rt, void *arg)
 			RT6_TRACE("aging clone %p\n", rt);
 			return -1;
 		} else if ((rt->rt6i_flags & RTF_GATEWAY) &&
-			   (!(dst_get_neighbour(&rt->dst)->flags & NTF_ROUTER))) {
+			   (!(dst_get_neighbour_raw(&rt->dst)->flags & NTF_ROUTER))) {
 			RT6_TRACE("purging route %p via non-router but gateway\n",
 				  rt);
 			return -1;

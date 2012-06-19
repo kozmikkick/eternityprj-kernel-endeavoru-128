@@ -123,6 +123,15 @@ extern struct ctl_path net_ipv6_ctl_path[];
 	SNMP_INC_STATS##modifier((net)->mib.statname##_statistics, (field));\
 })
 
+/* per device counters are atomic_long_t */
+#define _DEVINCATOMIC(net, statname, modifier, idev, field)		\
+({									\
+	struct inet6_dev *_idev = (idev);				\
+	if (likely(_idev != NULL))					\
+		SNMP_INC_STATS_ATOMIC_LONG((_idev)->stats.statname##dev, (field)); \
+	SNMP_INC_STATS##modifier((net)->mib.statname##_statistics, (field));\
+})
+
 #define _DEVADD(net, statname, modifier, idev, field, val)		\
 ({									\
 	struct inet6_dev *_idev = (idev);				\
@@ -154,16 +163,16 @@ extern struct ctl_path net_ipv6_ctl_path[];
 #define IP6_UPD_PO_STATS_BH(net, idev,field,val)   \
 		_DEVUPD(net, ipv6, 64_BH, idev, field, val)
 #define ICMP6_INC_STATS(net, idev, field)	\
-		_DEVINC(net, icmpv6, , idev, field)
+		_DEVINCATOMIC(net, icmpv6, , idev, field)
 #define ICMP6_INC_STATS_BH(net, idev, field)	\
-		_DEVINC(net, icmpv6, _BH, idev, field)
+		_DEVINCATOMIC(net, icmpv6, _BH, idev, field)
 
 #define ICMP6MSGOUT_INC_STATS(net, idev, field)		\
-	_DEVINC(net, icmpv6msg, , idev, field +256)
+	_DEVINCATOMIC(net, icmpv6msg, , idev, field +256)
 #define ICMP6MSGOUT_INC_STATS_BH(net, idev, field)	\
-	_DEVINC(net, icmpv6msg, _BH, idev, field +256)
+	_DEVINCATOMIC(net, icmpv6msg, _BH, idev, field +256)
 #define ICMP6MSGIN_INC_STATS_BH(net, idev, field)	\
-	_DEVINC(net, icmpv6msg, _BH, idev, field)
+	_DEVINCATOMIC(net, icmpv6msg, _BH, idev, field)
 
 struct ip6_ra_chain {
 	struct ip6_ra_chain	*next;
@@ -454,17 +463,7 @@ static inline int ipv6_addr_diff(const struct in6_addr *a1, const struct in6_add
 	return __ipv6_addr_diff(a1, a2, sizeof(struct in6_addr));
 }
 
-static __inline__ void ipv6_select_ident(struct frag_hdr *fhdr)
-{
-	static u32 ipv6_fragmentation_id = 1;
-	static DEFINE_SPINLOCK(ip6_id_lock);
-
-	spin_lock_bh(&ip6_id_lock);
-	fhdr->identification = htonl(ipv6_fragmentation_id);
-	if (++ipv6_fragmentation_id == 0)
-		ipv6_fragmentation_id = 1;
-	spin_unlock_bh(&ip6_id_lock);
-}
+extern void ipv6_select_ident(struct frag_hdr *fhdr, struct rt6_info *rt);
 
 /*
  *	Prototypes exported by ipv6
