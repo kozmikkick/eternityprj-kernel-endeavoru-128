@@ -234,6 +234,8 @@ static inline int valid_signal(unsigned long sig)
 	return sig <= _NSIG ? 1 : 0;
 }
 
+struct timespec;
+
 extern int next_signal(struct sigpending *pending, sigset_t *mask);
 extern int do_send_sig_info(int sig, struct siginfo *info,
 				struct task_struct *p, bool group);

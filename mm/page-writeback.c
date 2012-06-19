@@ -484,7 +484,7 @@ static void balance_dirty_pages(struct address_space *mapping,
 				unsigned long write_chunk)
 {
 	long nr_reclaimable, bdi_nr_reclaimable;
-	long nr_writeback, bdi_nr_writeback;
+	long bdi_nr_writeback;
 	unsigned long background_thresh;
 	unsigned long nr_dirty;  /* = file_dirty + writeback + unstable_nfs */
 	unsigned long dirty_thresh;
