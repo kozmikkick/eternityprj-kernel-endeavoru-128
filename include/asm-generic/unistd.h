@@ -654,9 +654,19 @@ __SYSCALL(__NR_open_by_handle_at, sys_open_by_handle_at)
 __SYSCALL(__NR_clock_adjtime, sys_clock_adjtime)
 #define __NR_syncfs 267
 __SYSCALL(__NR_syncfs, sys_syncfs)
+#define __NR_setns 268
+__SYSCALL(__NR_setns, sys_setns)
+#define __NR_sendmmsg 269
+__SC_COMP(__NR_sendmmsg, sys_sendmmsg, compat_sys_sendmmsg)
+#define __NR_process_vm_readv 270
+ __SC_COMP(__NR_process_vm_readv, sys_process_vm_readv, \
+	   compat_sys_process_vm_readv)
+#define __NR_process_vm_writev 271
+__SC_COMP(__NR_process_vm_writev, sys_process_vm_writev, \
+	  compat_sys_process_vm_writev)
 
 #undef __NR_syscalls
-#define __NR_syscalls 268
+#define __NR_syscalls 272
 
 /*
  * All syscalls below here should go away really,
