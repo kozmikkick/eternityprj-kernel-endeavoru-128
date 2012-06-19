@@ -1111,6 +1111,8 @@ static void reg_process_ht_flags(struct wiphy *wiphy)
 	if (!wiphy)
 		return;
 
+	last_request->dfs_region = cfg80211_regdomain->dfs_region;
+
 	for (band = 0; band < IEEE80211_NUM_BANDS; band++) {
 		if (wiphy->bands[band])
 			reg_process_ht_flags_band(wiphy, band);
