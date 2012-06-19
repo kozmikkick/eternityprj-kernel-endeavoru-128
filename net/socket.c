@@ -509,15 +509,8 @@ const struct file_operations bad_sock_fops = {
  *	an inode not a file.
  */
 
-int add_or_remove_port(struct sock *sk, int add_or_remove);	/* SSD_RIL: Garbage_Filter_TCP */
-
 void sock_release(struct socket *sock)
 {
-	/* ++SSD_RIL: Garbage_Filter_TCP */
-	if (sock->sk != NULL)
-		add_or_remove_port(sock->sk, 0);
-	/* --SSD_RIL: Garbage_Filter_TCP */
-
 	if (sock->ops) {
 		struct module *owner = sock->ops->owner;
 
@@ -545,8 +538,6 @@ int sock_tx_timestamp(struct sock *sk, __u8 *tx_flags)
 		*tx_flags |= SKBTX_HW_TSTAMP;
 	if (sock_flag(sk, SOCK_TIMESTAMPING_TX_SOFTWARE))
 		*tx_flags |= SKBTX_SW_TSTAMP;
-	if (sock_flag(sk, SOCK_WIFI_STATUS))
-		*tx_flags |= SKBTX_WIFI_STATUS;
 	return 0;
 }
 EXPORT_SYMBOL(sock_tx_timestamp);
@@ -567,7 +558,7 @@ static inline int __sock_sendmsg_nosec(struct kiocb *iocb, struct socket *sock,
 }
 
 static inline int __sock_sendmsg(struct kiocb *iocb, struct socket *sock,
-				struct msghdr *msg, size_t size)
+				 struct msghdr *msg, size_t size)
 {
 	int err = security_socket_sendmsg(sock, msg, size);
 
@@ -683,22 +674,6 @@ void __sock_recv_timestamp(struct msghdr *msg, struct sock *sk,
 }
 EXPORT_SYMBOL_GPL(__sock_recv_timestamp);
 
-void __sock_recv_wifi_status(struct msghdr *msg, struct sock *sk,
-	struct sk_buff *skb)
-{
-	int ack;
-
-	if (!sock_flag(sk, SOCK_WIFI_STATUS))
-		return;
-	if (!skb->wifi_acked_valid)
-		return;
-
-	ack = skb->wifi_acked;
-
-	put_cmsg(msg, SOL_SOCKET, SCM_WIFI_STATUS, sizeof(ack), &ack);
-}
-EXPORT_SYMBOL_GPL(__sock_recv_wifi_status);
-
 static inline void sock_recv_drops(struct msghdr *msg, struct sock *sk,
 				   struct sk_buff *skb)
 {
@@ -718,7 +693,6 @@ EXPORT_SYMBOL_GPL(__sock_recv_ts_and_drops);
 static inline int __sock_recvmsg_nosec(struct kiocb *iocb, struct socket *sock,
 				       struct msghdr *msg, size_t size, int flags)
 {
-	int err;
 	struct sock_iocb *si = kiocb_to_siocb(iocb);
 
 	sock_update_classid(sock->sk);
@@ -729,8 +703,7 @@ static inline int __sock_recvmsg_nosec(struct kiocb *iocb, struct socket *sock,
 	si->size = size;
 	si->flags = flags;
 
-	err = sock->ops->recvmsg(iocb, sock, msg, size, flags);
-	return err;
+	return sock->ops->recvmsg(iocb, sock, msg, size, flags);
 }
 
 static inline int __sock_recvmsg(struct kiocb *iocb, struct socket *sock,
@@ -1494,10 +1467,6 @@ SYSCALL_DEFINE2(listen, int, fd, int, backlog)
 			err = sock->ops->listen(sock, backlog);
 
 		fput_light(sock->file, fput_needed);
-		/* ++SSD_RIL: Garbage_Filter_TCP */
-		if (sock->sk != NULL)
-			add_or_remove_port(sock->sk, 1);
-		/* --SSD_RIL: Garbage_Filter_TCP */
 	}
 	return err;
 }
@@ -1996,8 +1965,9 @@ static int __sys_sendmsg(struct socket *sock, struct msghdr __user *msg,
 	 * used_address->name_len is initialized to UINT_MAX so that the first
 	 * destination address never matches.
 	 */
-	if (used_address && used_address->name_len == msg_sys->msg_namelen &&
-	    !memcmp(&used_address->name, msg->msg_name,
+	if (used_address && msg_sys->msg_name &&
+	    used_address->name_len == msg_sys->msg_namelen &&
+	    !memcmp(&used_address->name, msg_sys->msg_name,
 		    used_address->name_len)) {
 		err = sock_sendmsg_nosec(sock, msg_sys, total_len);
 		goto out_freectl;
@@ -2009,8 +1979,9 @@ static int __sys_sendmsg(struct socket *sock, struct msghdr __user *msg,
 	 */
 	if (used_address && err >= 0) {
 		used_address->name_len = msg_sys->msg_namelen;
-		memcpy(&used_address->name, msg->msg_name,
-		       used_address->name_len);
+		if (msg_sys->msg_name)
+			memcpy(&used_address->name, msg_sys->msg_name,
+			       used_address->name_len);
 	}
 
 out_freectl:
@@ -2501,7 +2472,7 @@ int sock_register(const struct net_proto_family *ops)
 				      lockdep_is_held(&net_family_lock)))
 		err = -EEXIST;
 	else {
-		RCU_INIT_POINTER(net_families[ops->family], ops);
+		rcu_assign_pointer(net_families[ops->family], ops);
 		err = 0;
 	}
 	spin_unlock(&net_family_lock);
@@ -2529,7 +2500,7 @@ void sock_unregister(int family)
 	BUG_ON(family < 0 || family >= NPROTO);
 
 	spin_lock(&net_family_lock);
-	RCU_INIT_POINTER(net_families[family], NULL);
+	rcu_assign_pointer(net_families[family], NULL);
 	spin_unlock(&net_family_lock);
 
 	synchronize_rcu();

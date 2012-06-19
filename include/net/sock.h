@@ -76,8 +76,8 @@
 					printk(KERN_DEBUG msg); } while (0)
 #else
 /* Validate arguments and do nothing */
-static inline __printf(2, 3)
-void SOCK_DEBUG(struct sock *sk, const char *msg, ...)
+static inline void __attribute__ ((format (printf, 2, 3)))
+SOCK_DEBUG(struct sock *sk, const char *msg, ...)
 {
 }
 #endif
@@ -179,7 +179,6 @@ struct sock_common {
   *	@sk_dst_cache: destination cache
   *	@sk_dst_lock: destination cache lock
   *	@sk_policy: flow policy
-  *	@sk_rmem_alloc: receive queue bytes committed
   *	@sk_receive_queue: incoming packets
   *	@sk_wmem_alloc: transmit queue bytes committed
   *	@sk_write_queue: Packet sending queue
@@ -565,7 +564,6 @@ enum sock_flags {
 	SOCK_FASYNC, /* fasync() active */
 	SOCK_RXQ_OVFL,
 	SOCK_ZEROCOPY, /* buffers from userspace */
-	SOCK_WIFI_STATUS, /* push wifi status to userspace */
 };
 
 static inline void sock_copy_flags(struct sock *nsk, struct sock *osk)
@@ -688,22 +686,13 @@ static inline void sock_rps_reset_flow(const struct sock *sk)
 #endif
 }
 
-static inline void sock_rps_save_rxhash(struct sock *sk,
-					const struct sk_buff *skb)
+static inline void sock_rps_save_rxhash(struct sock *sk, u32 rxhash)
 {
 #ifdef CONFIG_RPS
-	if (unlikely(sk->sk_rxhash != skb->rxhash)) {
+	if (unlikely(sk->sk_rxhash != rxhash)) {
 		sock_rps_reset_flow(sk);
-		sk->sk_rxhash = skb->rxhash;
+		sk->sk_rxhash = rxhash;
 	}
-#endif
-}
-
-static inline void sock_rps_reset_rxhash(struct sock *sk)
-{
-#ifdef CONFIG_RPS
-	sock_rps_reset_flow(sk);
-	sk->sk_rxhash = 0;
 #endif
 }
 
@@ -1403,14 +1392,14 @@ static inline void sk_nocaps_add(struct sock *sk, int flags)
 
 static inline int skb_do_copy_data_nocache(struct sock *sk, struct sk_buff *skb,
 					   char __user *from, char *to,
-					   int copy)
+					   int copy, int offset)
 {
 	if (skb->ip_summed == CHECKSUM_NONE) {
 		int err = 0;
 		__wsum csum = csum_and_copy_from_user(from, to, copy, 0, &err);
 		if (err)
 			return err;
-		skb->csum = csum_block_add(skb->csum, csum, skb->len);
+		skb->csum = csum_block_add(skb->csum, csum, offset);
 	} else if (sk->sk_route_caps & NETIF_F_NOCACHE_COPY) {
 		if (!access_ok(VERIFY_READ, from, copy) ||
 		    __copy_from_user_nocache(to, from, copy))
@@ -1424,11 +1413,12 @@ static inline int skb_do_copy_data_nocache(struct sock *sk, struct sk_buff *skb,
 static inline int skb_add_data_nocache(struct sock *sk, struct sk_buff *skb,
 				       char __user *from, int copy)
 {
-	int err;
+	int err, offset = skb->len;
 
-	err = skb_do_copy_data_nocache(sk, skb, from, skb_put(skb, copy), copy);
+	err = skb_do_copy_data_nocache(sk, skb, from, skb_put(skb, copy),
+				       copy, offset);
 	if (err)
-		__skb_trim(skb, skb->len);
+		__skb_trim(skb, offset);
 
 	return err;
 }
@@ -1440,8 +1430,8 @@ static inline int skb_copy_to_page_nocache(struct sock *sk, char __user *from,
 {
 	int err;
 
-	err = skb_do_copy_data_nocache(sk, skb, from,
-				       page_address(page) + off, copy);
+	err = skb_do_copy_data_nocache(sk, skb, from, page_address(page) + off,
+				       copy, skb->len);
 	if (err)
 		return err;
 
@@ -1715,8 +1705,6 @@ static inline int sock_intr_errno(long timeo)
 
 extern void __sock_recv_timestamp(struct msghdr *msg, struct sock *sk,
 	struct sk_buff *skb);
-extern void __sock_recv_wifi_status(struct msghdr *msg, struct sock *sk,
-	struct sk_buff *skb);
 
 static __inline__ void
 sock_recv_timestamp(struct msghdr *msg, struct sock *sk, struct sk_buff *skb)
@@ -1744,9 +1732,6 @@ sock_recv_timestamp(struct msghdr *msg, struct sock *sk, struct sk_buff *skb)
 		__sock_recv_timestamp(msg, sk, skb);
 	else
 		sk->sk_stamp = kt;
-
-	if (sock_flag(sk, SOCK_WIFI_STATUS) && skb->wifi_acked_valid)
-		__sock_recv_wifi_status(msg, sk, skb);
 }
 
 extern void __sock_recv_ts_and_drops(struct msghdr *msg, struct sock *sk,
