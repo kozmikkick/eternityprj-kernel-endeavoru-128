@@ -105,6 +105,7 @@
 #include <net/route.h>
 #include <net/checksum.h>
 #include <net/xfrm.h>
+#include <trace/events/udp.h>
 #include "udp_impl.h"
 
 struct udp_table udp_table __read_mostly;
@@ -706,12 +707,11 @@ static void udp4_hwcsum(struct sk_buff *skb, __be32 src, __be32 dst)
 	}
 }
 
-static int udp_send_skb(struct sk_buff *skb, __be32 daddr, __be32 dport)
+static int udp_send_skb(struct sk_buff *skb, struct flowi4 *fl4)
 {
 	struct sock *sk = skb->sk;
 	struct inet_sock *inet = inet_sk(sk);
 	struct udphdr *uh;
-	struct rtable *rt = (struct rtable *)skb_dst(skb);
 	int err = 0;
 	int is_udplite = IS_UDPLITE(sk);
 	int offset = skb_transport_offset(skb);
@@ -723,7 +723,7 @@ static int udp_send_skb(struct sk_buff *skb, __be32 daddr, __be32 dport)
 	 */
 	uh = udp_hdr(skb);
 	uh->source = inet->inet_sport;
-	uh->dest = dport;
+	uh->dest = fl4->fl4_dport;
 	uh->len = htons(len);
 	uh->check = 0;
 
@@ -737,14 +737,14 @@ static int udp_send_skb(struct sk_buff *skb, __be32 daddr, __be32 dport)
 
 	} else if (skb->ip_summed == CHECKSUM_PARTIAL) { /* UDP hardware csum */
 
-		udp4_hwcsum(skb, rt->rt_src, daddr);
+		udp4_hwcsum(skb, fl4->saddr, fl4->daddr);
 		goto send;
 
 	} else
 		csum = udp_csum(skb);
 
 	/* add protocol-dependent pseudo-header */
-	uh->check = csum_tcpudp_magic(rt->rt_src, daddr, len,
+	uh->check = csum_tcpudp_magic(fl4->saddr, fl4->daddr, len,
 				      sk->sk_protocol, csum);
 	if (uh->check == 0)
 		uh->check = CSUM_MANGLED_0;
@@ -778,7 +778,7 @@ static int udp_push_pending_frames(struct sock *sk)
 	if (!skb)
 		goto out;
 
-	err = udp_send_skb(skb, fl4->daddr, fl4->fl4_dport);
+	err = udp_send_skb(skb, fl4);
 
 out:
 	up->len = 0;
@@ -963,7 +963,7 @@ back_from_confirm:
 				  msg->msg_flags);
 		err = PTR_ERR(skb);
 		if (skb && !IS_ERR(skb))
-			err = udp_send_skb(skb, daddr, dport);
+			err = udp_send_skb(skb, fl4);
 		goto out;
 	}
 
@@ -1267,7 +1267,7 @@ int udp_disconnect(struct sock *sk, int flags)
 	sk->sk_state = TCP_CLOSE;
 	inet->inet_daddr = 0;
 	inet->inet_dport = 0;
-	sock_rps_reset_rxhash(sk);
+	sock_rps_save_rxhash(sk, 0);
 	sk->sk_bound_dev_if = 0;
 	if (!(sk->sk_userlocks & SOCK_BINDADDR_LOCK))
 		inet_reset_saddr(sk);
@@ -1355,7 +1355,7 @@ static int __udp_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
 	int rc;
 
 	if (inet_sk(sk)->inet_daddr)
-		sock_rps_save_rxhash(sk, skb);
+		sock_rps_save_rxhash(sk, skb->rxhash);
 
 	rc = ip_queue_rcv_skb(sk, skb);
 	if (rc < 0) {
@@ -1367,6 +1367,7 @@ static int __udp_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
 					 is_udplite);
 		UDP_INC_STATS_BH(sock_net(sk), UDP_MIB_INERRORS, is_udplite);
 		kfree_skb(skb);
+		trace_udp_fail_queue_rcv_skb(rc, sk);
 		return -1;
 	}
 
@@ -1460,9 +1461,10 @@ int udp_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
 		}
 	}
 
-	if (rcu_access_pointer(sk->sk_filter) &&
-	    udp_lib_checksum_complete(skb))
-		goto drop;
+	if (rcu_dereference_raw(sk->sk_filter)) {
+		if (udp_lib_checksum_complete(skb))
+			goto drop;
+	}
 
 
 	if (sk_rcvqueues_full(sk, skb))
@@ -2209,16 +2211,10 @@ void __init udp_table_init(struct udp_table *table, const char *name)
 
 void __init udp_init(void)
 {
-	unsigned long nr_pages, limit;
+	unsigned long limit;
 
 	udp_table_init(&udp_table, "UDP");
-	/* Set the pressure threshold up by the same strategy of TCP. It is a
-	 * fraction of global memory that is up to 1/2 at 256 MB, decreasing
-	 * toward zero with the amount of memory, with a floor of 128 pages.
-	 */
-	nr_pages = totalram_pages - totalhigh_pages;
-	limit = min(nr_pages, 1UL<<(28-PAGE_SHIFT)) >> (20-PAGE_SHIFT);
-	limit = (limit * (nr_pages >> (20-PAGE_SHIFT))) >> (PAGE_SHIFT-11);
+	limit = nr_free_buffer_pages() / 8;
 	limit = max(limit, 128UL);
 	sysctl_udp_mem[0] = limit / 4 * 3;
 	sysctl_udp_mem[1] = limit;

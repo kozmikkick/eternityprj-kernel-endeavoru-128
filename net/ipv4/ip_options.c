@@ -38,7 +38,7 @@
  */
 
 void ip_options_build(struct sk_buff *skb, struct ip_options *opt,
-			    __be32 daddr, struct rtable *rt, int is_frag)
+		      __be32 daddr, struct rtable *rt, int is_frag)
 {
 	unsigned char *iph = skb_network_header(skb);
 
@@ -640,7 +640,6 @@ int ip_options_rcv_srr(struct sk_buff *skb)
 	}
 	if (srrptr <= srrspace) {
 		opt->srr_is_hit = 1;
-		iph->daddr = nexthop;
 		opt->is_changed = 1;
 	}
 	return 0;

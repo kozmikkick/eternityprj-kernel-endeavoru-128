@@ -56,6 +56,7 @@ struct inet_peer {
 			struct inetpeer_addr_base	redirect_learned;
 		};
 		struct rcu_head         rcu;
+		struct inet_peer	*gc_next;
 	};
 };
 
@@ -69,7 +70,7 @@ static inline bool inet_metrics_new(const struct inet_peer *p)
 }
 
 /* can be called with or without local BH being disabled */
-struct inet_peer	*inet_getpeer(struct inetpeer_addr *daddr, int create);
+struct inet_peer	*inet_getpeer(const struct inetpeer_addr *daddr, int create);
 
 static inline struct inet_peer *inet_getpeer_v4(__be32 v4daddr, int create)
 {

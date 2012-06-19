@@ -256,7 +256,8 @@ static inline int TCP_ECN_rcv_ecn_echo(struct tcp_sock *tp, struct tcphdr *th)
 
 static void tcp_fixup_sndbuf(struct sock *sk)
 {
-	int sndmem = SKB_TRUESIZE(tcp_sk(sk)->rx_opt.mss_clamp + MAX_TCP_HEADER);
+	int sndmem = tcp_sk(sk)->rx_opt.mss_clamp + MAX_TCP_HEADER + 16 +
+		     sizeof(struct sk_buff);
 
 	if (sk->sk_sndbuf < 3 * sndmem) {
 		sk->sk_sndbuf = 3 * sndmem;
@@ -339,7 +340,7 @@ static void tcp_grow_window(struct sock *sk, struct sk_buff *skb)
 static void tcp_fixup_rcvbuf(struct sock *sk)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
-	int rcvmem = SKB_TRUESIZE(tp->advmss + MAX_TCP_HEADER);
+	int rcvmem = tp->advmss + MAX_TCP_HEADER + 16 + sizeof(struct sk_buff);
 
 	/* Try to select rcvbuf so that 4 mss-sized segments
 	 * will fit to window and corresponding skbs will fit to our rcvbuf.
@@ -530,7 +531,8 @@ void tcp_rcv_space_adjust(struct sock *sk)
 			space /= tp->advmss;
 			if (!space)
 				space = 1;
-			rcvmem = SKB_TRUESIZE(tp->advmss + MAX_TCP_HEADER);
+			rcvmem = (tp->advmss + MAX_TCP_HEADER +
+				  16 + sizeof(struct sk_buff));
 			while (tcp_win_from_space(rcvmem) < tp->advmss)
 				rcvmem += 128;
 			space *= rcvmem;
@@ -1122,7 +1124,7 @@ static int tcp_is_sackblock_valid(struct tcp_sock *tp, int is_dsack,
 		return 0;
 
 	/* ...Then it's D-SACK, and must reside below snd_una completely */
-	if (!after(end_seq, tp->snd_una))
+	if (after(end_seq, tp->snd_una))
 		return 0;
 
 	if (!before(start_seq, tp->undo_marker))
@@ -1387,9 +1389,7 @@ static int tcp_shifted_skb(struct sock *sk, struct sk_buff *skb,
 
 	BUG_ON(!pcount);
 
-	/* Tweak before seqno plays */
-	if (!tcp_is_fack(tp) && tcp_is_sack(tp) && tp->lost_skb_hint &&
-	    !before(TCP_SKB_CB(tp->lost_skb_hint)->seq, TCP_SKB_CB(skb)->seq))
+	if (skb == tp->lost_skb_hint)
 		tp->lost_cnt_hint += pcount;
 
 	TCP_SKB_CB(prev)->end_seq += shifted;
@@ -4895,10 +4895,8 @@ static void tcp_new_space(struct sock *sk)
 	struct tcp_sock *tp = tcp_sk(sk);
 
 	if (tcp_should_expand_sndbuf(sk)) {
-		int sndmem = SKB_TRUESIZE(max_t(u32,
-						tp->rx_opt.mss_clamp,
-						tp->mss_cache) +
-					  MAX_TCP_HEADER);
+		int sndmem = max_t(u32, tp->rx_opt.mss_clamp, tp->mss_cache) +
+			MAX_TCP_HEADER + 16 + sizeof(struct sk_buff);
 		int demanded = max_t(unsigned int, tp->snd_cwnd,
 				     tp->reordering + 1);
 		sndmem *= 2 * demanded;
