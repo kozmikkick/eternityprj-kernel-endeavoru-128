@@ -199,7 +199,7 @@ static struct gpio tegra_baseband_gpios[] = {
 #ifdef BB_XMM_OEM1
 	{ BB_VDD_EN, GPIOF_OUT_INIT_LOW, "BB_VDD_EN" },
 	{ AP2BB_RST_PWRDWNn, GPIOF_OUT_INIT_LOW, "AP2BB_RST_PWRDWNn" },
-#endif BB_XMM_OEM1
+#endif /* BB_XMM_OEM1 */
 };
 #ifdef CONFIG_HTC_XMM_RADIO
 // For power consumption , power off modem
@@ -213,7 +213,7 @@ static struct gpio tegra_baseband_gpios_power_off_modem[] = {
 #ifdef BB_XMM_OEM1
 	{ BB_VDD_EN, GPIOF_OUT_INIT_LOW, "BB_VDD_EN" },
 	{ AP2BB_RST_PWRDWNn, GPIOF_OUT_INIT_LOW, "AP2BB_RST_PWRDWNn" },
-#endif BB_XMM_OEM1
+#endif /* BB_XMM_OEM1 */
 };
 #endif
 
@@ -265,9 +265,11 @@ static ssize_t debug_gpio_dump(struct device *dev,
 	const char *buf, size_t count)
 {	
 	int rValue=0;
+	int value = 0; /* EternityProject, 20/06/2012:  */
+	int ret = 0;   /* Solve warning			*/
 	
 	pr_info("**********************\n");
-	int value = gpio_get_value(TEGRA_GPIO_PM4);
+	value = gpio_get_value(TEGRA_GPIO_PM4);
 	pr_info("BB_VDD_EN=%d\n", value);
 	value = gpio_get_value(TEGRA_GPIO_PC1);
 	pr_info("AP2BB_RST_PWRDWNn=%d\n", value);
@@ -288,7 +290,7 @@ static ssize_t debug_gpio_dump(struct device *dev,
 
 	
 	/*set BB2AP_SUSPEND_REQ Pin (TEGRA_GPIO_PV0) to OutPut High to trigger Modem fatal*/
-	int ret=gpio_direction_output(TEGRA_GPIO_PV0,1);
+	ret=gpio_direction_output(TEGRA_GPIO_PV0,1);
 	pr_info("set BB2AP_SUSPEND_REQ Pin (TEGRA_GPIO_PV0) to OutPut High to trigger Modem fatal\n");
 	if (ret < 0)
 		pr_err("%s: set BB2AP_SUSPEND_REQ Pin to Output error\n", __func__);
@@ -313,13 +315,13 @@ return count;
 static DEVICE_ATTR(debug_gpio_dump, S_IRUSR | S_IWUSR | S_IRGRP,
 		NULL, debug_gpio_dump);
 
-int enable_avdd_dsi_csi_power()
+int enable_avdd_dsi_csi_power(void)
 {
-	 pr_info(MODULE_NAME "[xmm]%s\n",__func__);
-	int ret=0;
+	pr_info("[baseband-xmm-power.c]enable_avdd_dsi_csi_power\n"); /* EPRJ, 200612 Can we avoid some stupid warnings?! Please! :| */
+	int ret = 0;
 	if (enterprise_dsi_reg == NULL) {
 		enterprise_dsi_reg = regulator_get(NULL, "avdd_dsi_csi");
-		pr_info(MODULE_NAME "[xmm]%s regulator_getED\n",__func__);
+		pr_info(MODULE_NAME "[xmm]enable_avdd_dsi_csi_power: regulator_getED\n");
 		if (IS_ERR_OR_NULL(enterprise_dsi_reg)) {
 			pr_err("dsi: Could not get regulator avdd_dsi_csi\n");
 				enterprise_dsi_reg = NULL;
@@ -329,19 +331,20 @@ int enable_avdd_dsi_csi_power()
 	ret = regulator_enable(enterprise_dsi_reg);
 	if (ret < 0) {
 		printk(KERN_ERR
-			"DSI regulator avdd_dsi_csi couldn't be enabled\n",ret);
+			"DSI regulator avdd_dsi_csi couldn't be enabled\n");
 		
 	}
 		return ret;
 
 }
-int disable_avdd_dsi_csi_power()
+int disable_avdd_dsi_csi_power(void)
 {
-	 pr_info(MODULE_NAME "[xmm]%s\n",__func__);
-	int ret=0;
+	pr_info(MODULE_NAME "[xmm]disable_avdd_dsi_csi_power\n");
+	int ret;
+	ret = 0;
 	if (enterprise_dsi_reg == NULL) {
 		enterprise_dsi_reg = regulator_get(NULL, "avdd_dsi_csi");
-		pr_info(MODULE_NAME "[xmm]%s regulator_getED\n",__func__);
+		pr_info(MODULE_NAME "[xmm]disable_avdd_dsi_csi_power: regulator_getED\n");
 		if (IS_ERR_OR_NULL(enterprise_dsi_reg)) {
 			pr_err("dsi: Could not get regulator avdd_dsi_csi\n");
 				enterprise_dsi_reg = NULL;
@@ -351,7 +354,7 @@ int disable_avdd_dsi_csi_power()
 	ret = regulator_disable(enterprise_dsi_reg);
 	if (ret < 0) {
 		printk(KERN_ERR
-			"DSI regulator avdd_dsi_csi couldn't be disabled\n",ret);
+			"DSI regulator avdd_dsi_csi couldn't be disabled\n");
 
 	}
 	enterprise_dsi_reg=NULL;
@@ -360,7 +363,7 @@ int disable_avdd_dsi_csi_power()
 
 int gpio_config_only_one(unsigned gpio, unsigned long flags, const char *label)
 {
-	int err=0;
+	int err = 0;
 
 
 	if (flags & GPIOF_DIR_IN)
@@ -392,7 +395,7 @@ err_free:
 
 int gpio_request_only_one(unsigned gpio,const char *label)
 {
-	int err=0;
+	int err = 0;
 
 	err = gpio_request(gpio, label);
 	if (err)
@@ -402,7 +405,7 @@ int gpio_request_only_one(unsigned gpio,const char *label)
 
 int gpio_request_only_array(struct gpio *array, size_t num)
 {
-	int i, err=0;
+	int i, err = 0;
 
 	for (i = 0; i < num; i++, array++) {
 		err = gpio_request_only_one(array->gpio, array->label);
@@ -421,10 +424,10 @@ err_free:
 static int gpio_o_l_uart(int gpio, char* name)
 {
 	int ret=0;
-	pr_debug(MODULE_NAME "%s ,name=%s gpio=%d\n", __func__,name,gpio);
+	pr_debug(MODULE_NAME "gpio_o_l_uart ,name=%s gpio=%d\n", name,gpio);
 	ret = gpio_direction_output(gpio, 0);
 	if (ret < 0) {
-		pr_err(" %s: gpio_direction_output failed %d\n", __func__, ret);
+		pr_err(" gpio_o_l_uart: gpio_direction_output failed %d\n", ret);
 		gpio_free(gpio);
 		return ret;
 	}
@@ -432,29 +435,32 @@ static int gpio_o_l_uart(int gpio, char* name)
 	gpio_export(gpio, true);
 }
 
-void modem_on_for_uart_config()
+void modem_on_for_uart_config(void)
 {
 
 
-	pr_debug(MODULE_NAME "%s ,first_time=%s uart_pin_pull_low=%d\n", __func__,first_time?"true":"false",uart_pin_pull_state);
+	pr_debug(MODULE_NAME "modem_on_for_uart_config ,first_time=%s uart_pin_pull_low=%d\n",first_time?"true":"false",uart_pin_pull_state);
 	if(uart_pin_pull_state==0){
 	//if uart pin pull low, then we put back to normal
-	pr_debug(MODULE_NAME "%s tegra_gpio_disable for UART\n", __func__);
+	pr_debug(MODULE_NAME "modem_on_for_uart_config tegra_gpio_disable for UART\n");
 	tegra_gpio_disable(TEGRA_GPIO_PJ7);
 	tegra_gpio_disable(TEGRA_GPIO_PK7);
 	tegra_gpio_disable(TEGRA_GPIO_PB0);
 	tegra_gpio_disable(TEGRA_GPIO_PB1);
 	uart_pin_pull_state=1;//set back to UART
 	}
-	if (baseband_xmm_powerstate != BBXMM_PS_UNINIT)
-		return -EINVAL;
-
+/*	if (baseband_xmm_powerstate != BBXMM_PS_UNINIT)
+ *		return -EINVAL;
+ * EternityProject, 20/06/2012:
+ * OMG, is that return really supposed to be here?
+ * ...It's a void function ç_ç
+ */
 
 }
 
-int modem_off_for_uart_config()
+int modem_off_for_uart_config(void)
 {
-	int err=0;
+	int err = 0;
 
 	pr_debug(MODULE_NAME "%s uart_pin_pull_low=%d\n", __func__,uart_pin_pull_state);
 	if(uart_pin_pull_state==1){
@@ -473,7 +479,7 @@ int modem_off_for_usb_config(struct gpio *array, size_t num)
 {
 	pr_debug(MODULE_NAME "%s 1219_01\n", __func__);
 
-	int err=0;
+	int err = 0;
 	err = gpio_config_only_array(tegra_baseband_gpios_power_off_modem,
 		ARRAY_SIZE(tegra_baseband_gpios_power_off_modem));
 	if (err < 0) {
@@ -487,7 +493,7 @@ int modem_on_for_usb_config(struct gpio *array, size_t num)
 {
 	pr_debug(MODULE_NAME "%s \n", __func__);
 
-	int err=0;
+	int err = 0;
 	err = gpio_config_only_array(tegra_baseband_gpios,
 		ARRAY_SIZE(tegra_baseband_gpios));
 	if (err < 0) {
@@ -499,7 +505,7 @@ int modem_on_for_usb_config(struct gpio *array, size_t num)
 
 }
 
-int config_gpio_for_power_off()
+int config_gpio_for_power_off(void)
 {
 	int err=0;
 
@@ -525,7 +531,7 @@ int config_gpio_for_power_off()
 	return err;
 }
 
-int config_gpio_for_power_on()
+int config_gpio_for_power_on(void)
 {
 	int err=0;
 
@@ -748,7 +754,7 @@ static int baseband_xmm_power_off(struct platform_device *device)
 		pr_err("%s: disable_irq_wake error\n", __func__);
 #endif
 	/* unregister usb host controller */
-	pr_info("%s: hsic device: %x\n", __func__, data->modem.xmm.hsic_device);
+	pr_info("%s: hsic device: %x\n", __func__, (unsigned int)data->modem.xmm.hsic_device);
 	if (data->hsic_unregister)
 		data->hsic_unregister(data->modem.xmm.hsic_device);
 	else
@@ -777,7 +783,6 @@ static int baseband_xmm_power_off(struct platform_device *device)
 
 #ifdef CONFIG_HTC_XMM_RADIO
 	// For power consumption
-	int err=0;
 	pr_debug("%s config_gpio_for_power_off\n", __func__);
 	config_gpio_for_power_off();
 #endif
@@ -813,7 +818,6 @@ static ssize_t baseband_xmm_onoff(struct device *dev,
 	struct device_attribute *attr,
 	const char *buf, size_t count)
 {
-	int size;
 	struct platform_device *device = to_platform_device(dev);
 
 	mutex_lock(&baseband_xmm_onoff_lock);
@@ -833,6 +837,7 @@ static ssize_t baseband_xmm_onoff(struct device *dev,
 	} else
 		power_onoff = 0;
 #else /* !BB_XMM_OEM1 */
+	int size;
 	size = sscanf(buf, "%d", &power_onoff);
 	if (size != 1) {
 		pr_err("%s: size=%d -EINVAL\n", __func__, size);
@@ -1486,7 +1491,8 @@ static int baseband_xmm_power_driver_probe(struct platform_device *device)
 	int err, ret=0;
 
 	 pr_info(MODULE_NAME"%s 0316 hr_sleep and jiffe - CPU Freq. \n", __func__);
-	 pr_info(MODULE_NAME"enum_delay_ms=%d\n", enum_delay_ms);
+	/* EternityProject, 20/06/2012: "long unsigned int is %lu, not %d, PIGS!!! */
+	 pr_info(MODULE_NAME"enum_delay_ms=%lu\n", enum_delay_ms);
 #ifdef CONFIG_HTC_XMM_RADIO
 	 htcpcbid=htc_get_pcbid_info();
 	 pr_info(MODULE_NAME"htcpcbid=%d\n", htcpcbid);
