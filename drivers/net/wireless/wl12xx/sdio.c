@@ -56,6 +56,8 @@ static const struct sdio_device_id wl1271_devices[] __devinitconst = {
 };
 MODULE_DEVICE_TABLE(sdio, wl1271_devices);
 
+extern void set_wifi_is_on(int on);
+
 static void wl1271_sdio_set_block_size(struct device *child,
 				       unsigned int blksz)
 {
@@ -130,6 +132,9 @@ static int wl12xx_sdio_power_on(struct wl12xx_sdio_glue *glue)
 	int ret;
 	struct sdio_func *func = dev_to_sdio_func(glue->dev);
 
+	printk("[EternityProject] SDIO PowerON\n");
+	set_wifi_is_on(1); /* EternityProject, 21/06/2012 */
+
 	/* If enabled, tell runtime PM not to power off the card */
 	if (pm_runtime_enabled(&func->dev)) {
 		ret = pm_runtime_get_sync(&func->dev);
@@ -154,6 +159,9 @@ static int wl12xx_sdio_power_off(struct wl12xx_sdio_glue *glue)
 {
 	int ret;
 	struct sdio_func *func = dev_to_sdio_func(glue->dev);
+
+	printk("[EternityProject] SDIO PowerOFF\n");
+	set_wifi_is_on(0); /* EternityProject, 21/06/2012 */
 
 	sdio_claim_host(func);
 	sdio_disable_func(func);
@@ -285,6 +293,8 @@ static void __devexit wl1271_remove(struct sdio_func *func)
 {
 	struct wl12xx_sdio_glue *glue = sdio_get_drvdata(func);
 
+	set_wifi_is_on(0);
+
 	/* Undo decrement done above in wl1271_probe */
 	pm_runtime_get_noresume(&func->dev);
 
@@ -296,6 +306,10 @@ static void __devexit wl1271_remove(struct sdio_func *func)
 #ifdef CONFIG_PM
 static int wl1271_suspend(struct device *dev)
 {
+	printk("[EternityProject WiFi] Suspending SDIO.\n");
+	set_wifi_is_on(0);
+
+
 	/* Tell MMC/SDIO core it's OK to power down the card
 	 * (if it isn't already), but not to remove it completely */
 	struct sdio_func *func = dev_to_sdio_func(dev);
@@ -331,7 +345,10 @@ out:
 
 static int wl1271_resume(struct device *dev)
 {
-	dev_dbg(dev, "wl1271 resume\n");
+/*	dev_dbg(dev, "wl1271 resume\n"); */
+
+	printk("[EternityProject WiFi] Resuming SDIO.\n");
+	set_wifi_is_on(1);
 
 	return 0;
 }
