@@ -38,7 +38,6 @@
 
 #include "psb_drv.h"
 #include "psb_reg.h"
-#include "psb_drv.h"
 #include "psb_fb.h"
 #include "psb_sgx.h"
 

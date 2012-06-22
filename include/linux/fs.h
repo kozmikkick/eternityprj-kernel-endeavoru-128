@@ -376,7 +376,6 @@ struct inodes_stat_t {
 
 #include <linux/linkage.h>
 #include <linux/wait.h>
-#include <linux/types.h>
 #include <linux/kdev_t.h>
 #include <linux/dcache.h>
 #include <linux/path.h>
@@ -747,9 +746,13 @@ struct inode {
 
 	spinlock_t		i_lock;	/* i_blocks, i_bytes, maybe i_size */
 	unsigned int		i_flags;
+	unsigned int		i_state;
+#ifdef CONFIG_SECURITY
+	void			*i_security;
+#endif
 	struct mutex		i_mutex;
 
-	unsigned long		i_state;
+
 	unsigned long		dirtied_when;	/* jiffies of first dirtying */
 
 	struct hlist_node	i_hash;
@@ -801,9 +804,6 @@ struct inode {
 	atomic_t		i_readcount; /* struct files open RO */
 #endif
 	atomic_t		i_writecount;
-#ifdef CONFIG_SECURITY
-	void			*i_security;
-#endif
 #ifdef CONFIG_FS_POSIX_ACL
 	struct posix_acl	*i_acl;
 	struct posix_acl	*i_default_acl;

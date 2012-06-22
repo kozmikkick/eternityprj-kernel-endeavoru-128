@@ -23,7 +23,6 @@
 #include BCMEMBEDIMAGE
 #endif				/* BCMEMBEDIMAGE */
 
-#include <bcmdefs.h>
 #include <bcmutils.h>
 #include <bcmdevs.h>
 
