@@ -57,6 +57,7 @@ static const struct sdio_device_id wl1271_devices[] __devinitconst = {
 MODULE_DEVICE_TABLE(sdio, wl1271_devices);
 
 extern void set_wifi_is_on(int on);
+extern bool stop_wifi_driver_flag;
 
 static void wl1271_sdio_set_block_size(struct device *child,
 				       unsigned int blksz)
@@ -319,7 +320,7 @@ static int wl1271_suspend(struct device *dev)
 
 	/* check whether sdio should keep power */
 /*	if (wl->wow_enabled) {*/
-//	if (stop_wifi_driver_flag) {
+	if (stop_wifi_driver_flag) {
 		sdio_flags = sdio_get_host_pm_caps(func);
 
 		if (!(sdio_flags & MMC_PM_KEEP_POWER)) {
@@ -335,7 +336,7 @@ static int wl1271_suspend(struct device *dev)
 			dev_err(dev, "error while trying to keep power\n");
 			goto out;
 		}
-//	}
+	}
 	
 	/*
 	 * EternityProject: Add quirks for BOARD_ENDEAVORU
