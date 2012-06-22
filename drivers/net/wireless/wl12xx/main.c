@@ -384,8 +384,10 @@ static struct conf_drv_settings default_conf = {
 	},
 };
 
+/* EternityProject: Add stop_wifi_driver_flag */
 static char *fwlog_param;
 static bool bug_on_recovery;
+bool stop_wifi_driver_flag;
 
 static void __wl1271_op_remove_interface(struct wl1271 *wl,
 					 struct ieee80211_vif *vif,
@@ -1755,7 +1757,7 @@ static int wl1271_op_suspend(struct ieee80211_hw *hw,
 
 	wl1271_tx_flush(wl);
 
-	wl->wow_enabled = true;
+//	wl->wow_enabled = true;
 	wl12xx_for_each_wlvif(wl, wlvif) {
 		ret = wl1271_configure_suspend(wl, wlvif);
 		if (ret < 0) {
@@ -1815,7 +1817,7 @@ static int wl1271_op_resume(struct ieee80211_hw *hw)
 	wl12xx_for_each_wlvif(wl, wlvif) {
 		wl1271_configure_resume(wl, wlvif);
 	}
-	wl->wow_enabled = false;
+//	wl->wow_enabled = false;
 
 	return 0;
 }
@@ -2192,6 +2194,12 @@ static int wl1271_op_add_interface(struct ieee80211_hw *hw,
 	wl1271_debug(DEBUG_MAC80211, "mac80211 add interface type %d mac %pM",
 		     ieee80211_vif_type_p2p(vif), vif->addr);
 
+	/*
+	 * EternityProject: Put here stop_wifi_driver_flag
+	 * -- Note: Hack needed only for BOARD_ENDEAVORU
+	 */
+	stop_wifi_driver_flag = 0;
+
 	wl12xx_get_vif_count(hw, vif, &vif_count);
 
 	mutex_lock(&wl->mutex);
@@ -2303,7 +2311,17 @@ static void __wl1271_op_remove_interface(struct wl1271 *wl,
 	if (wl->state != WL1271_STATE_ON)
 		return;
 
+	
 	wl1271_info("down");
+
+	/*
+	 * EternityProject: Put here stop_wifi_driver_flag.
+	 * NOTE: Required for WiFi functionality resume
+	 *       after suspending the device.
+	 *       This hack is required only on BOARD_ENDEAVORU.
+	 */
+	printk("EternityProject: stop_wifi_driver_flag, set to 1");
+	stop_wifi_driver_flag = 1;
 
 	if (wl->scan.state != WL1271_SCAN_STATE_IDLE &&
 	    wl->scan_vif == vif) {
@@ -5614,6 +5632,17 @@ MODULE_PARM_DESC(debug_level, "wl12xx debugging level");
 module_param_named(fwlog, fwlog_param, charp, 0);
 MODULE_PARM_DESC(fwlog,
 		 "FW logger options: continuous, ondemand, dbgpins or disable");
+
+/*
+ * EternityProject: Add stop_wifi_driver_flag
+ * Note: Needed only for BOARD_ENDEAVORU
+ */
+bool stop_wifi_driver_flag = 0;
+EXPORT_SYMBOL_GPL(stop_wifi_driver_flag);
+module_param_named(stop_wifi_driver_flag, stop_wifi_driver_flag, bool, S_IRUSR | S_IWUSR);
+MODULE_PARM_DESC(stop_wifi_driver_flag,
+		 "EternityProject: Flag to stop or resume WiFi");
+
 
 module_param(bug_on_recovery, bool, S_IRUSR | S_IWUSR);
 MODULE_PARM_DESC(bug_on_recovery, "BUG() on fw recovery");

@@ -132,8 +132,9 @@ static int wl12xx_sdio_power_on(struct wl12xx_sdio_glue *glue)
 	int ret;
 	struct sdio_func *func = dev_to_sdio_func(glue->dev);
 
-	printk("[EternityProject] SDIO PowerON\n");
-	set_wifi_is_on(1); /* EternityProject, 21/06/2012 */
+/*	printk("[EternityProject] SDIO PowerON\n");
+	set_wifi_is_on(1);  EternityProject, 21/06/2012
+THIS IS NOT SUPPOSED TO BE HERE. */
 
 	/* If enabled, tell runtime PM not to power off the card */
 	if (pm_runtime_enabled(&func->dev)) {
@@ -160,8 +161,9 @@ static int wl12xx_sdio_power_off(struct wl12xx_sdio_glue *glue)
 	int ret;
 	struct sdio_func *func = dev_to_sdio_func(glue->dev);
 
-	printk("[EternityProject] SDIO PowerOFF\n");
-	set_wifi_is_on(0); /* EternityProject, 21/06/2012 */
+/*	printk("[EternityProject] SDIO PowerOFF\n");
+	set_wifi_is_on(0);  EternityProject, 21/06/2012 
+THIS IS NOT SUPPOSED TO BE HERE */
 
 	sdio_claim_host(func);
 	sdio_disable_func(func);
@@ -293,8 +295,6 @@ static void __devexit wl1271_remove(struct sdio_func *func)
 {
 	struct wl12xx_sdio_glue *glue = sdio_get_drvdata(func);
 
-	set_wifi_is_on(0);
-
 	/* Undo decrement done above in wl1271_probe */
 	pm_runtime_get_noresume(&func->dev);
 
@@ -306,10 +306,6 @@ static void __devexit wl1271_remove(struct sdio_func *func)
 #ifdef CONFIG_PM
 static int wl1271_suspend(struct device *dev)
 {
-	printk("[EternityProject WiFi] Suspending SDIO.\n");
-	set_wifi_is_on(0);
-
-
 	/* Tell MMC/SDIO core it's OK to power down the card
 	 * (if it isn't already), but not to remove it completely */
 	struct sdio_func *func = dev_to_sdio_func(dev);
@@ -322,7 +318,8 @@ static int wl1271_suspend(struct device *dev)
 		wl->wow_enabled);
 
 	/* check whether sdio should keep power */
-	if (wl->wow_enabled) {
+/*	if (wl->wow_enabled) {*/
+//	if (stop_wifi_driver_flag) {
 		sdio_flags = sdio_get_host_pm_caps(func);
 
 		if (!(sdio_flags & MMC_PM_KEEP_POWER)) {
@@ -338,7 +335,17 @@ static int wl1271_suspend(struct device *dev)
 			dev_err(dev, "error while trying to keep power\n");
 			goto out;
 		}
-	}
+//	}
+	
+	/*
+	 * EternityProject: Add quirks for BOARD_ENDEAVORU
+	 */
+//	if (stop_wifi_driver_flag) {
+		/* Release SDIO host and use
+		 * sdio_set_host_pm_flags for keeping power
+		 */
+//	}
+
 out:
 	return ret;
 }
@@ -347,8 +354,8 @@ static int wl1271_resume(struct device *dev)
 {
 /*	dev_dbg(dev, "wl1271 resume\n"); */
 
-	printk("[EternityProject WiFi] Resuming SDIO.\n");
-	set_wifi_is_on(1);
+//	printk("[EternityProject WiFi] Resuming SDIO.\n");
+//	set_wifi_is_on(1);
 
 	return 0;
 }
@@ -373,11 +380,15 @@ static struct sdio_driver wl1271_sdio_driver = {
 
 static int __init wl1271_init(void)
 {
+	printk("EternityProject: set wifi_is_on to 1\n");
+	set_wifi_is_on(1);
 	return sdio_register_driver(&wl1271_sdio_driver);
 }
 
 static void __exit wl1271_exit(void)
 {
+	printk("EternityProject: set wifi_is_on to 0\n");
+	set_wifi_is_on(0);
 	sdio_unregister_driver(&wl1271_sdio_driver);
 }
 
