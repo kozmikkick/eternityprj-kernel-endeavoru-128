@@ -155,7 +155,7 @@ v9fs_inode_from_fid_dotl(struct v9fs_session_info *v9ses, struct p9_fid *fid,
  */
 
 static int
-v9fs_vfs_create_dotl(struct inode *dir, struct dentry *dentry, int omode,
+v9fs_vfs_create_dotl(struct inode *dir, struct dentry *dentry, umode_t omode,
 		struct nameidata *nd)
 {
 	int err = 0;
@@ -186,7 +186,7 @@ v9fs_vfs_create_dotl(struct inode *dir, struct dentry *dentry, int omode,
 
 	name = (char *) dentry->d_name.name;
 	P9_DPRINTK(P9_DEBUG_VFS, "v9fs_vfs_create_dotl: name:%s flags:0x%x "
-			"mode:0x%x\n", name, flags, omode);
+			"mode:0x%hx\n", name, flags, omode);
 
 	dfid = v9fs_fid_lookup(dentry->d_parent);
 	if (IS_ERR(dfid)) {
