@@ -731,7 +731,7 @@ static int follow_automount(struct path *path, unsigned flags,
 	 */
 	if (!(flags & LOOKUP_FOLLOW) &&
 	    !(flags & (LOOKUP_PARENT | LOOKUP_DIRECTORY |
-		       LOOKUP_OPEN | LOOKUP_CREATE)))
+		       LOOKUP_OPEN | LOOKUP_CREATE | LOOKUP_AUTOMOUNT)))
 		return -EISDIR;
 
 	current->total_link_count++;
