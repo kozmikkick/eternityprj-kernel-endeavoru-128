@@ -943,13 +943,6 @@ int set_extent_new(struct extent_io_tree *tree, u64 start, u64 end,
 			      NULL, mask);
 }
 
-static int clear_extent_new(struct extent_io_tree *tree, u64 start, u64 end,
-		       gfp_t mask)
-{
-	return clear_extent_bit(tree, start, end, EXTENT_NEW, 0, 0,
-				NULL, mask);
-}
-
 int set_extent_uptodate(struct extent_io_tree *tree, u64 start, u64 end,
 			struct extent_state **cached_state, gfp_t mask)
 {
@@ -963,11 +956,6 @@ static int clear_extent_uptodate(struct extent_io_tree *tree, u64 start,
 {
 	return clear_extent_bit(tree, start, end, EXTENT_UPTODATE, 0, 0,
 				cached_state, mask);
-}
-
-int wait_on_extent_writeback(struct extent_io_tree *tree, u64 start, u64 end)
-{
-	return wait_extent_bit(tree, start, end, EXTENT_WRITEBACK);
 }
 
 /*
@@ -1027,25 +1015,6 @@ int unlock_extent(struct extent_io_tree *tree, u64 start, u64 end, gfp_t mask)
 {
 	return clear_extent_bit(tree, start, end, EXTENT_LOCKED, 1, 0, NULL,
 				mask);
-}
-
-/*
- * helper function to set pages and extents in the tree dirty
- */
-int set_range_dirty(struct extent_io_tree *tree, u64 start, u64 end)
-{
-	unsigned long index = start >> PAGE_CACHE_SHIFT;
-	unsigned long end_index = end >> PAGE_CACHE_SHIFT;
-	struct page *page;
-
-	while (index <= end_index) {
-		page = find_get_page(tree->mapping, index);
-		BUG_ON(!page);
-		__set_page_dirty_nobuffers(page);
-		page_cache_release(page);
-		index++;
-	}
-	return 0;
 }
 
 /*
@@ -1817,46 +1786,6 @@ static void end_bio_extent_readpage(struct bio *bio, int err)
 			check_page_locked(tree, page);
 		}
 	} while (bvec <= bvec_end);
-
-	bio_put(bio);
-}
-
-/*
- * IO done from prepare_write is pretty simple, we just unlock
- * the structs in the extent tree when done, and set the uptodate bits
- * as appropriate.
- */
-static void end_bio_extent_preparewrite(struct bio *bio, int err)
-{
-	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
-	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
-	struct extent_io_tree *tree;
-	u64 start;
-	u64 end;
-
-	do {
-		struct page *page = bvec->bv_page;
-		struct extent_state *cached = NULL;
-		tree = &BTRFS_I(page->mapping->host)->io_tree;
-
-		start = ((u64)page->index << PAGE_CACHE_SHIFT) +
-			bvec->bv_offset;
-		end = start + bvec->bv_len - 1;
-
-		if (--bvec >= bio->bi_io_vec)
-			prefetchw(&bvec->bv_page->flags);
-
-		if (uptodate) {
-			set_extent_uptodate(tree, start, end, &cached,
-					    GFP_ATOMIC);
-		} else {
-			ClearPageUptodate(page);
-			SetPageError(page);
-		}
-
-		unlock_extent_cached(tree, start, end, &cached, GFP_ATOMIC);
-
-	} while (bvec >= bio->bi_io_vec);
 
 	bio_put(bio);
 }
@@ -3447,13 +3376,6 @@ int clear_extent_buffer_dirty(struct extent_io_tree *tree,
 		unlock_page(page);
 	}
 	return 0;
-}
-
-int wait_on_extent_buffer_writeback(struct extent_io_tree *tree,
-				    struct extent_buffer *eb)
-{
-	return wait_on_extent_writeback(tree, eb->start,
-					eb->start + eb->len - 1);
 }
 
 int set_extent_buffer_dirty(struct extent_io_tree *tree,

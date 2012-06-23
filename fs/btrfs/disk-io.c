@@ -650,12 +650,6 @@ unsigned long btrfs_async_submit_limit(struct btrfs_fs_info *info)
 	return 256 * limit;
 }
 
-int btrfs_congested_async(struct btrfs_fs_info *info, int iodone)
-{
-	return atomic_read(&info->nr_async_bios) >
-		btrfs_async_submit_limit(info);
-}
-
 static void run_one_async_start(struct btrfs_work *work)
 {
 	struct async_submit_bio *async;
@@ -1284,21 +1278,6 @@ out:
 	return root;
 }
 
-struct btrfs_root *btrfs_lookup_fs_root(struct btrfs_fs_info *fs_info,
-					u64 root_objectid)
-{
-	struct btrfs_root *root;
-
-	if (root_objectid == BTRFS_ROOT_TREE_OBJECTID)
-		return fs_info->tree_root;
-	if (root_objectid == BTRFS_EXTENT_TREE_OBJECTID)
-		return fs_info->extent_root;
-
-	root = radix_tree_lookup(&fs_info->fs_roots_radix,
-				 (unsigned long)root_objectid);
-	return root;
-}
-
 struct btrfs_root *btrfs_read_fs_root_no_name(struct btrfs_fs_info *fs_info,
 					      struct btrfs_key *location)
 {
@@ -1370,11 +1349,6 @@ fail:
 	return ERR_PTR(ret);
 }
 
-struct btrfs_root *btrfs_read_fs_root(struct btrfs_fs_info *fs_info,
-				      struct btrfs_key *location,
-				      const char *name, int namelen)
-{
-	return btrfs_read_fs_root_no_name(fs_info, location);
 #if 0
 	struct btrfs_root *root;
 	int ret;
@@ -1403,7 +1377,6 @@ struct btrfs_root *btrfs_read_fs_root(struct btrfs_fs_info *fs_info,
 	root->in_sysfs = 1;
 	return root;
 #endif
-}
 
 static int btrfs_congested_fn(void *congested_data, int bdi_bits)
 {
