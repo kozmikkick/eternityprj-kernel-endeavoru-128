@@ -1735,8 +1735,6 @@ seqretry:
 		tname = dentry->d_name.name;
 		i = dentry->d_inode;
 		prefetch(tname);
-		if (i)
-			prefetch(i);
 		/*
 		 * This seqcount check is required to ensure name and
 		 * len are loaded atomically, so as not to walk off the
