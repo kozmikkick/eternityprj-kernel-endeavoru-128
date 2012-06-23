@@ -1236,8 +1236,8 @@ struct dentry *__d_alloc(struct super_block *sb, const struct qstr *name)
 }
 
 /**
- * d_alloc	-	allocate a dcache entry
- * @parent: parent of entry to allocate
+ * __d_alloc	-	allocate a dcache entry
+ * @sb: filesystem it will belong to
  * @name: qstr of the name
  *
  * Allocates a dentry. It returns %NULL if there is insufficient memory
