@@ -2218,6 +2218,9 @@ int btrfs_find_space_cluster(struct btrfs_trans_handle *trans,
 
 	spin_lock(&block_group->tree_lock);
 
+	if (!btrfs_test_opt(root, INODE_MAP_CACHE))
+		return 0;
+
 	/*
 	 * If we know we don't have enough space to make a cluster don't even
 	 * bother doing all the work to try and find one.

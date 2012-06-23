@@ -29,6 +29,9 @@ int btrfs_find_highest_inode(struct btrfs_root *root, u64 *objectid)
 	struct btrfs_key found_key;
 	int slot;
 
+	if (!btrfs_test_opt(root, INODE_MAP_CACHE))
+		return 0;
+
 	path = btrfs_alloc_path();
 	if (!path)
 		return -ENOMEM;
