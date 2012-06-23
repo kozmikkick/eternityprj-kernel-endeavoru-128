@@ -70,6 +70,161 @@ char *tomoyo_encode(const char *str)
 }
 
 /**
+ * tomoyo_get_absolute_path - Get the path of a dentry but ignores chroot'ed root.
+ *
+ * @path:   Pointer to "struct path".
+ * @buffer: Pointer to buffer to return value in.
+ * @buflen: Sizeof @buffer.
+ *
+ * Returns the buffer on success, an error code otherwise.
+ *
+ * If dentry is a directory, trailing '/' is appended.
+ */
+static char *tomoyo_get_absolute_path(struct path *path, char * const buffer,
+				      const int buflen)
+{
+	char *pos = ERR_PTR(-ENOMEM);
+	if (buflen >= 256) {
+		struct path ns_root = { };
+		/* go to whatever namespace root we are under */
+		pos = __d_path(path, &ns_root, buffer, buflen - 1);
+		if (!IS_ERR(pos) && *pos == '/' && pos[1]) {
+			struct inode *inode = path->dentry->d_inode;
+			if (inode && S_ISDIR(inode->i_mode)) {
+				buffer[buflen - 2] = '/';
+				buffer[buflen - 1] = '\0';
+			}
+		}
+	}
+	return pos;
+}
+
+/**
+ * tomoyo_get_dentry_path - Get the path of a dentry.
+ *
+ * @dentry: Pointer to "struct dentry".
+ * @buffer: Pointer to buffer to return value in.
+ * @buflen: Sizeof @buffer.
+ *
+ * Returns the buffer on success, an error code otherwise.
+ *
+ * If dentry is a directory, trailing '/' is appended.
+ */
+static char *tomoyo_get_dentry_path(struct dentry *dentry, char * const buffer,
+				    const int buflen)
+{
+	char *pos = ERR_PTR(-ENOMEM);
+	if (buflen >= 256) {
+		pos = dentry_path_raw(dentry, buffer, buflen - 1);
+		if (!IS_ERR(pos) && *pos == '/' && pos[1]) {
+			struct inode *inode = dentry->d_inode;
+			if (inode && S_ISDIR(inode->i_mode)) {
+				buffer[buflen - 2] = '/';
+				buffer[buflen - 1] = '\0';
+			}
+		}
+	}
+	return pos;
+}
+
+/**
+ * tomoyo_get_local_path - Get the path of a dentry.
+ *
+ * @dentry: Pointer to "struct dentry".
+ * @buffer: Pointer to buffer to return value in.
+ * @buflen: Sizeof @buffer.
+ *
+ * Returns the buffer on success, an error code otherwise.
+ */
+static char *tomoyo_get_local_path(struct dentry *dentry, char * const buffer,
+				   const int buflen)
+{
+	struct super_block *sb = dentry->d_sb;
+	char *pos = tomoyo_get_dentry_path(dentry, buffer, buflen);
+	if (IS_ERR(pos))
+		return pos;
+	/* Convert from $PID to self if $PID is current thread. */
+	if (sb->s_magic == PROC_SUPER_MAGIC && *pos == '/') {
+		char *ep;
+		const pid_t pid = (pid_t) simple_strtoul(pos + 1, &ep, 10);
+		if (*ep == '/' && pid && pid ==
+		    task_tgid_nr_ns(current, sb->s_fs_info)) {
+			pos = ep - 5;
+			if (pos < buffer)
+				goto out;
+			memmove(pos, "/self", 5);
+		}
+		goto prepend_filesystem_name;
+	}
+	/* Use filesystem name for unnamed devices. */
+	if (!MAJOR(sb->s_dev))
+		goto prepend_filesystem_name;
+	{
+		struct inode *inode = sb->s_root->d_inode;
+		/*
+		 * Use filesystem name if filesystem does not support rename()
+		 * operation.
+		 */
+		if (inode->i_op && !inode->i_op->rename)
+			goto prepend_filesystem_name;
+	}
+	/* Prepend device name. */
+	{
+		char name[64];
+		int name_len;
+		const dev_t dev = sb->s_dev;
+		name[sizeof(name) - 1] = '\0';
+		snprintf(name, sizeof(name) - 1, "dev(%u,%u):", MAJOR(dev),
+			 MINOR(dev));
+		name_len = strlen(name);
+		pos -= name_len;
+		if (pos < buffer)
+			goto out;
+		memmove(pos, name, name_len);
+		return pos;
+	}
+	/* Prepend filesystem name. */
+prepend_filesystem_name:
+	{
+		const char *name = sb->s_type->name;
+		const int name_len = strlen(name);
+		pos -= name_len + 1;
+		if (pos < buffer)
+			goto out;
+		memmove(pos, name, name_len);
+		pos[name_len] = ':';
+	}
+	return pos;
+out:
+	return ERR_PTR(-ENOMEM);
+}
+
+/**
+ * tomoyo_get_socket_name - Get the name of a socket.
+ *
+ * @path:   Pointer to "struct path".
+ * @buffer: Pointer to buffer to return value in.
+ * @buflen: Sizeof @buffer.
+ *
+ * Returns the buffer.
+ */
+static char *tomoyo_get_socket_name(struct path *path, char * const buffer,
+				    const int buflen)
+{
+	struct inode *inode = path->dentry->d_inode;
+	struct socket *sock = inode ? SOCKET_I(inode) : NULL;
+	struct sock *sk = sock ? sock->sk : NULL;
+	if (sk) {
+		snprintf(buffer, buflen, "socket:[family=%u:type=%u:"
+			 "protocol=%u]", sk->sk_family, sk->sk_type,
+			 sk->sk_protocol);
+	} else {
+		snprintf(buffer, buflen, "socket:[unknown]");
+	}
+	return buffer;
+}
+
+/**
  * tomoyo_realpath_from_path - Returns realpath(3) of the given pathname but ignores chroot'ed root.
  *
  * @path: Pointer to "struct path".
@@ -147,16 +302,6 @@ char *tomoyo_realpath_from_path(struct path *path)
 	kfree(buf);
 	if (!name)
 		tomoyo_warn_oom(__func__);
-	else if (is_dir && *name) {
-		/* Append trailing '/' if dentry is a directory. */
-		char *pos = name + strlen(name) - 1;
-		if (*pos != '/')
-			/*
-			 * This is OK because tomoyo_encode() reserves space
-			 * for appending "/".
-			 */
-			*++pos = '/';
-	}
 	return name;
 }
 
