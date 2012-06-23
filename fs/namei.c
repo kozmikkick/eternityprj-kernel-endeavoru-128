@@ -904,9 +904,6 @@ static bool __follow_mount_rcu(struct nameidata *nd, struct path *path,
 		 */
 		*inode = path->dentry->d_inode;
 	}
-
-	if (unlikely(path->dentry->d_flags & DCACHE_NEED_AUTOMOUNT))
-		return false;
 	return true;
 }
 
@@ -1149,8 +1146,11 @@ static int do_lookup(struct nameidata *nd, struct qstr *name,
 			goto unlazy;
 		path->mnt = mnt;
 		path->dentry = dentry;
-		if (likely(__follow_mount_rcu(nd, path, inode)))
-			return 0;
+		if (unlikely(!__follow_mount_rcu(nd, path, inode)))
+			goto unlazy;
+		if (unlikely(path->dentry->d_flags & DCACHE_NEED_AUTOMOUNT))
+			goto unlazy;
+		return 0;
 unlazy:
 		if (unlazy_walk(nd, dentry))
 			return -ECHILD;
