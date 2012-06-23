@@ -83,6 +83,9 @@
 #include <linux/pid_namespace.h>
 #include <linux/fs_struct.h>
 #include <linux/slab.h>
+#ifdef CONFIG_HARDWALL
+#include <asm/hardwall.h>
+#endif
 #include "internal.h"
 
 /* NOTE:
@@ -2890,6 +2893,9 @@ static const struct pid_entry tgid_base_stuff[] = {
 #ifdef CONFIG_TASK_IO_ACCOUNTING
 	INF("io",	S_IRUSR, proc_tgid_io_accounting),
 #endif
+#ifdef CONFIG_HARDWALL
+	INF("hardwall",   S_IRUGO, proc_pid_hardwall),
+#endif
 };
 
 static int proc_tgid_base_readdir(struct file * filp,
@@ -3228,6 +3234,9 @@ static const struct pid_entry tid_base_stuff[] = {
 #endif
 #ifdef CONFIG_TASK_IO_ACCOUNTING
 	INF("io",	S_IRUSR, proc_tid_io_accounting),
+#endif
+#ifdef CONFIG_HARDWALL
+	INF("hardwall",   S_IRUGO, proc_pid_hardwall),
 #endif
 };
 
