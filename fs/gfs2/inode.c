@@ -507,7 +507,7 @@ struct inode *gfs2_lookupi(struct inode *dir, const struct qstr *name,
 	}
 
 	if (!is_root) {
-		error = gfs2_permission(dir, MAY_EXEC, 0);
+		error = gfs2_permission(dir, MAY_EXEC);
 		if (error)
 			goto out;
 	}
@@ -537,7 +537,7 @@ static int create_ok(struct gfs2_inode *dip, const struct qstr *name,
 {
 	int error;
 
-	error = gfs2_permission(&dip->i_inode, MAY_WRITE | MAY_EXEC, 0);
+	error = gfs2_permission(&dip->i_inode, MAY_WRITE | MAY_EXEC);
 	if (error)
 		return error;
 

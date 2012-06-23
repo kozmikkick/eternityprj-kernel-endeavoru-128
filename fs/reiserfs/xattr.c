@@ -958,7 +958,7 @@ static int xattr_mount_check(struct super_block *s)
 	return 0;
 }
 
-int reiserfs_permission(struct inode *inode, int mask, unsigned int flags)
+int reiserfs_permission(struct inode *inode, int mask)
 {
 	if (flags & IPERM_FLAG_RCU)
 		return -ECHILD;
