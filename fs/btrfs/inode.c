@@ -7459,7 +7459,7 @@ static int btrfs_permission(struct inode *inode, int mask, unsigned int flags)
 		return -EROFS;
 	if ((BTRFS_I(inode)->flags & BTRFS_INODE_READONLY) && (mask & MAY_WRITE))
 		return -EACCES;
-	return generic_permission(inode, mask, flags, btrfs_check_acl);
+	return generic_permission(inode, mask, flags);
 }
 
 static const struct inode_operations btrfs_dir_inode_operations = {
@@ -7479,10 +7479,12 @@ static const struct inode_operations btrfs_dir_inode_operations = {
 	.listxattr	= btrfs_listxattr,
 	.removexattr	= btrfs_removexattr,
 	.permission	= btrfs_permission,
+	.check_acl	= btrfs_check_acl,
 };
 static const struct inode_operations btrfs_dir_ro_inode_operations = {
 	.lookup		= btrfs_lookup,
 	.permission	= btrfs_permission,
+	.check_acl	= btrfs_check_acl,
 };
 
 static const struct file_operations btrfs_dir_file_operations = {
@@ -7551,6 +7553,7 @@ static const struct inode_operations btrfs_file_inode_operations = {
 	.removexattr	= btrfs_removexattr,
 	.permission	= btrfs_permission,
 	.fiemap		= btrfs_fiemap,
+	.check_acl	= btrfs_check_acl,
 };
 static const struct inode_operations btrfs_special_inode_operations = {
 	.getattr	= btrfs_getattr,
@@ -7560,6 +7563,7 @@ static const struct inode_operations btrfs_special_inode_operations = {
 	.getxattr	= btrfs_getxattr,
 	.listxattr	= btrfs_listxattr,
 	.removexattr	= btrfs_removexattr,
+	.check_acl	= btrfs_check_acl,
 };
 static const struct inode_operations btrfs_symlink_inode_operations = {
 	.readlink	= generic_readlink,
@@ -7571,6 +7575,7 @@ static const struct inode_operations btrfs_symlink_inode_operations = {
 	.getxattr	= btrfs_getxattr,
 	.listxattr	= btrfs_listxattr,
 	.removexattr	= btrfs_removexattr,
+	.check_acl	= btrfs_check_acl,
 };
 
 const struct dentry_operations btrfs_dentry_operations = {
