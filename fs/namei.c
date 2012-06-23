@@ -2589,7 +2589,6 @@ int vfs_rmdir(struct inode *dir, struct dentry *dentry)
 	else {
 		error = security_inode_rmdir(dir, dentry);
 		if (!error) {
-			dentry_unhash(dentry);
 			error = dir->i_op->rmdir(dir, dentry);
 			if (!error) {
 				dentry->d_inode->i_flags |= S_DEAD;
