@@ -264,7 +264,7 @@ static int remount(struct super_block *sb, int *flags, char *data)
 		return -EINVAL;
 	}
 
-	if (usbfs_mount && usbfs_mount->mnt_sb)
+	if (usbfs_mount)
 		update_sb(usbfs_mount->mnt_sb);
 
 	return 0;
@@ -500,9 +500,8 @@ static int fs_create_by_name (const char *name, mode_t mode,
 	 * have around.
 	 */
 	if (!parent ) {
-		if (usbfs_mount && usbfs_mount->mnt_sb) {
-			parent = usbfs_mount->mnt_sb->s_root;
-		}
+		if (usbfs_mount)
+			parent = usbfs_mount->mnt_root;
 	}
 
 	if (!parent) {
@@ -608,7 +607,7 @@ static int create_special_files (void)
 
 	ignore_mount = 0;
 
-	parent = usbfs_mount->mnt_sb->s_root;
+	parent = usbfs_mount->mnt_root;
 	devices_usbfs_dentry = fs_create_file ("devices",
 					       listmode | S_IFREG, parent,
 					       NULL, &usbfs_devices_fops,
@@ -662,7 +661,7 @@ static void usbfs_add_bus(struct usb_bus *bus)
 
 	sprintf (name, "%03d", bus->busnum);
 
-	parent = usbfs_mount->mnt_sb->s_root;
+	parent = usbfs_mount->mnt_root;
 	bus->usbfs_dentry = fs_create_file (name, busmode | S_IFDIR, parent,
 					    bus, NULL, busuid, busgid);
 	if (bus->usbfs_dentry == NULL) {
