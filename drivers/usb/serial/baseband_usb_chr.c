@@ -42,7 +42,8 @@
 #include <mach/htc_hostdbg.h>
 
 /* HTC variables */
-extern unsigned int host_dbg_flag;
+//extern unsigned int host_dbg_flag;
+int host_dbg_flag = 1;
 #define MODULE_NAME "[USBCHRv1] "
 
 /* HTC: debug flag */
@@ -948,6 +949,7 @@ static void baseband_usb_driver_disconnect(struct usb_interface *intf)
 		if (baseband_usb_chr && baseband_usb_chr->ipc
 			&& baseband_usb_chr->ipc->workqueue)
 			flush_workqueue(baseband_usb_chr->ipc->workqueue);
+			msleep(2000);
 		/* delete device file */
 		device_remove_file(&usb_dev->dev, &dev_attr_bbusb_ioctl);
 		usb_device_connection = false;
