@@ -2427,6 +2427,7 @@ static void disconnect_rsp(struct pending_cmd *cmd, void *data)
 	struct mgmt_rp_disconnect rp;
 
 	bacpy(&rp.bdaddr, &cp->bdaddr);
+	rp.status = 0;
 
 	cmd_complete(cmd->sk, cmd->index, MGMT_OP_DISCONNECT, &rp, sizeof(rp));
 
@@ -2456,7 +2457,7 @@ int mgmt_disconnected(struct hci_dev *hdev, bdaddr_t *bdaddr, u8 link_type,
 	return err;
 }
 
-int mgmt_disconnect_failed(struct hci_dev *hdev)
+int mgmt_disconnect_failed(struct hci_dev *hdev, bdaddr_t *bdaddr, u8 status)
 {
 	struct pending_cmd *cmd;
 	int err;
@@ -2465,7 +2466,17 @@ int mgmt_disconnect_failed(struct hci_dev *hdev)
 	if (!cmd)
 		return -ENOENT;
 
-	err = cmd_status(cmd->sk, hdev->id, MGMT_OP_DISCONNECT, EIO);
+	if (bdaddr) {
+		struct mgmt_rp_disconnect rp;
+
+		bacpy(&rp.bdaddr, bdaddr);
+		rp.status = status;
+
+		err = cmd_complete(cmd->sk, cmd->index, MGMT_OP_DISCONNECT,
+							&rp, sizeof(rp));
+	} else
+		err = cmd_status(cmd->sk, hdev->id, MGMT_OP_DISCONNECT,
+								status);
 
 	mgmt_pending_remove(cmd);
 
