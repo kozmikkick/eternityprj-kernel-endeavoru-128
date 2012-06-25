@@ -353,8 +353,10 @@ asmlinkage long compat_sys_futimesat(unsigned int dfd, const char __user *filena
 asmlinkage long compat_sys_newfstatat(unsigned int dfd, const char __user * filename,
 				      struct compat_stat __user *statbuf,
 				      int flag);
+asmlinkage long compat_sys_open(const char __user *filename, int flags,
+				umode_t mode);
 asmlinkage long compat_sys_openat(unsigned int dfd, const char __user *filename,
-				  int flags, int mode);
+				  int flags, umode_t mode);
 
 extern ssize_t compat_rw_copy_check_uvector(int type,
 		const struct compat_iovec __user *uvector, unsigned long nr_segs,
