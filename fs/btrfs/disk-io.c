@@ -1085,12 +1085,7 @@ static int __setup_root(u32 nodesize, u32 leafsize, u32 sectorsize,
 	init_completion(&root->kobj_unregister);
 	root->defrag_running = 0;
 	root->root_key.objectid = objectid;
-	root->anon_super.s_root = NULL;
-	root->anon_super.s_dev = 0;
-	INIT_LIST_HEAD(&root->anon_super.s_list);
-	INIT_LIST_HEAD(&root->anon_super.s_instances);
-	init_rwsem(&root->anon_super.s_umount);
-
+	root->anon_dev = 0;
 	return 0;
 }
 
@@ -2403,10 +2398,8 @@ int btrfs_free_fs_root(struct btrfs_fs_info *fs_info, struct btrfs_root *root)
 static void free_fs_root(struct btrfs_root *root)
 {
 	WARN_ON(!RB_EMPTY_ROOT(&root->inode_tree));
-	if (root->anon_super.s_dev) {
-		down_write(&root->anon_super.s_umount);
-		kill_anon_super(&root->anon_super);
-	}
+	if (root->anon_dev)
+		free_anon_bdev(root->anon_dev);
 	free_extent_buffer(root->node);
 	free_extent_buffer(root->commit_root);
 	kfree(root->name);
