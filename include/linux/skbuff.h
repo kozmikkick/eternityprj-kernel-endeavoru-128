@@ -141,9 +141,7 @@ struct sk_buff;
 typedef struct skb_frag_struct skb_frag_t;
 
 struct skb_frag_struct {
-	struct {
-		struct page *p;
-	} page;
+	struct page *page;
 #if (BITS_PER_LONG > 32) || (PAGE_SIZE >= 65536)
 	__u32 page_offset;
 	__u32 size;
@@ -1166,7 +1164,7 @@ static inline void __skb_fill_page_desc(struct sk_buff *skb, int i,
 {
 	skb_frag_t *frag = &skb_shinfo(skb)->frags[i];
 
-	frag->page.p		  = page;
+	frag->page		  = page;
 	frag->page_offset	  = off;
 	frag->size		  = size;
 }
@@ -1690,7 +1688,7 @@ static inline void netdev_free_page(struct net_device *dev, struct page *page)
  */
 static inline struct page *skb_frag_page(const skb_frag_t *frag)
 {
-	return frag->page.p;
+	return frag->page;
 }
 
 /**
@@ -1776,7 +1774,8 @@ static inline void *skb_frag_address_safe(const skb_frag_t *frag)
  */
 static inline void __skb_frag_set_page(skb_frag_t *frag, struct page *page)
 {
-	frag->page.p = page;
+	frag->page = page;
+	__skb_frag_ref(frag);
 }
 
 /**
