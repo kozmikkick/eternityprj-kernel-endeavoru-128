@@ -940,17 +940,6 @@ static void mmc_blk_rw_rq_prep(struct mmc_queue_req *mqrq,
 		(rq_data_dir(req) == WRITE) &&
 		(md->flags & MMC_BLK_REL_WR);
 
-	ret = mmc_blk_part_switch(card, md);
-	if (ret) {
-		if (req) {
-			spin_lock_irq(&md->lock);
-			__blk_end_request_all(req, -EIO);
-			spin_unlock_irq(&md->lock);
-		}
-		ret = 0;
-		goto out;
-	}
-
 	memset(brq, 0, sizeof(struct mmc_blk_request));
 	brq->mrq.cmd = &brq->cmd;
 	brq->mrq.data = &brq->data;
