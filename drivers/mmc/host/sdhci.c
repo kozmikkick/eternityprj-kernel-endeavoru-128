@@ -633,7 +633,7 @@ static u8 sdhci_calc_timeout(struct sdhci_host *host, struct mmc_command *cmd)
 	}
 
 	if (host->quirks & SDHCI_QUIRK_DATA_TIMEOUT_USES_SDCLK)
-		host->timeout_clk = host->clock / 1000;
+		host->timeout_clk = mmc->f_max / 1000;
 
 	/*
 	 * Figure out needed cycles.
