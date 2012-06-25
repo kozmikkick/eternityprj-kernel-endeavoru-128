@@ -60,8 +60,8 @@ static struct usb_device_id id_table[] = {
 MODULE_DEVICE_TABLE(usb, id_table);
 
 /* module options */
-static int console;   /* Optionally allow fbcon to consume first framebuffer */
-static int fb_defio;  /* Optionally enable experimental fb_defio mmap support */
+static bool console;   /* Optionally allow fbcon to consume first framebuffer */
+static bool fb_defio;  /* Optionally enable experimental fb_defio mmap support */
 
 /* dlfb keeps a list of urbs for efficient bulk transfers */
 static void dlfb_urb_completion(struct urb *urb);

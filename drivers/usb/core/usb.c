@@ -48,7 +48,7 @@
 
 const char *usbcore_name = "usbcore";
 
-static int nousb;	/* Disable USB when built into kernel image */
+static bool nousb;	/* Disable USB when built into kernel image */
 /* Prevent autosuspend in Linux suspend path */
 struct wake_lock usbd_suspend_wl;
 

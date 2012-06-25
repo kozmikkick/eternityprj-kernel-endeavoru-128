@@ -295,8 +295,8 @@ static struct
 } dsi;
 
 #ifdef DEBUG
-static unsigned int dsi_perf;
-module_param_named(dsi_perf, dsi_perf, bool, 0644);
+static bool dsi_perf;
+module_param(dsi_perf, bool, 0644);
 #endif
 
 static inline void dsi_write_reg(const struct dsi_reg idx, u32 val)
