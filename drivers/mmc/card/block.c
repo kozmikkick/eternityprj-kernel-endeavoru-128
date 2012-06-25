@@ -1050,7 +1050,7 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *req)
 		spin_unlock_irq(&md->lock);
 	} while (ret);
 
-	if (brq.cmd.resp[0] & R1_URGENT_BKOPS)
+	if (brq->cmd.resp[0] & R1_URGENT_BKOPS)
 		mmc_card_set_need_bkops(card);
 
 out:
