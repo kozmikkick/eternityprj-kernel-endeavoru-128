@@ -1494,8 +1494,8 @@ static inline void hci_inquiry_result_evt(struct hci_dev *hdev, struct sk_buff *
 		data.rssi		= 0x00;
 		data.ssp_mode		= 0x00;
 		hci_inquiry_cache_update(hdev, &data);
-		mgmt_device_found(hdev, &info->bdaddr, ACL_LINK,
-						info->dev_class, 0, NULL, 0);
+		mgmt_device_found(hdev, &info->bdaddr, ACL_LINK, 0x00,
+						info->dev_class, 0, NULL);
 	}
 
 	hci_dev_unlock(hdev);
@@ -1529,7 +1529,8 @@ static inline void hci_conn_complete_evt(struct hci_dev *hdev, struct sk_buff *s
 			conn->state = BT_CONFIG;
 			hci_conn_hold(conn);
 			conn->disc_timeout = HCI_DISCONN_TIMEOUT;
-			mgmt_connected(hdev, &ev->bdaddr, conn->type);
+			mgmt_connected(hdev, &ev->bdaddr, conn->type,
+							conn->dst_type);
 		} else
 			conn->state = BT_CONNECTED;
 
@@ -1562,7 +1563,7 @@ static inline void hci_conn_complete_evt(struct hci_dev *hdev, struct sk_buff *s
 		conn->state = BT_CLOSED;
 		if (conn->type == ACL_LINK)
 			mgmt_connect_failed(hdev, &ev->bdaddr, conn->type,
-								ev->status);
+						conn->dst_type, ev->status);
 	}
 
 	if (conn->type == ACL_LINK)
@@ -1679,7 +1680,8 @@ static inline void hci_disconn_complete_evt(struct hci_dev *hdev, struct sk_buff
 	conn->state = BT_CLOSED;
 
 	if (conn->type == ACL_LINK || conn->type == LE_LINK)
-		mgmt_disconnected(hdev, &conn->dst, conn->type);
+		mgmt_disconnected(hdev, &conn->dst, conn->type,
+							conn->dst_type);
 
 	hci_proto_disconn_cfm(conn, ev->reason);
 	hci_conn_del(conn);
@@ -2536,7 +2538,7 @@ static inline void hci_inquiry_result_with_rssi_evt(struct hci_dev *hdev, struct
 			data.rssi		= info->rssi;
 			data.ssp_mode		= 0x00;
 			hci_inquiry_cache_update(hdev, &data);
-			mgmt_device_found(hdev, &info->bdaddr, ACL_LINK,
+			mgmt_device_found(hdev, &info->bdaddr, ACL_LINK, 0x00,
 						info->dev_class, info->rssi,
 						NULL, 0);
 		}
@@ -2553,7 +2555,7 @@ static inline void hci_inquiry_result_with_rssi_evt(struct hci_dev *hdev, struct
 			data.rssi		= info->rssi;
 			data.ssp_mode		= 0x00;
 			hci_inquiry_cache_update(hdev, &data);
-			mgmt_device_found(hdev, &info->bdaddr, ACL_LINK,
+			mgmt_device_found(hdev, &info->bdaddr, ACL_LINK, 0x00,
 						info->dev_class, info->rssi,
 						NULL, 0);
 		}
@@ -2697,8 +2699,8 @@ static inline void hci_extended_inquiry_result_evt(struct hci_dev *hdev, struct 
 		data.rssi		= info->rssi;
 		data.ssp_mode		= 0x01;
 		hci_inquiry_cache_update(hdev, &data);
-		mgmt_device_found(hdev, &info->bdaddr, ACL_LINK,
-				info->dev_class, info->rssi, info->data, sizeof(info->data));
+		mgmt_device_found(hdev, &info->bdaddr, ACL_LINK, 0x00
+				info->dev_class, info->rssi, info->data);
 	}
 
 	hci_dev_unlock(hdev);
@@ -2961,14 +2963,15 @@ static inline void hci_le_conn_complete_evt(struct hci_dev *hdev, struct sk_buff
 	}
 
 	if (ev->status) {
-		mgmt_connect_failed(hdev, &ev->bdaddr, conn->type, ev->status);
+		mgmt_connect_failed(hdev, &ev->bdaddr, conn->type,
+						conn->dst_type, ev->status);
 		hci_proto_connect_cfm(conn, ev->status);
 		conn->state = BT_CLOSED;
 		hci_conn_del(conn);
 		goto unlock;
 	}
 
-	mgmt_connected(hdev, &ev->bdaddr, conn->type);
+	mgmt_connected(hdev, &ev->bdaddr, conn->type, conn->dst_type);
 
 	conn->sec_level = BT_SECURITY_LOW;
 	conn->handle = __le16_to_cpu(ev->handle);
