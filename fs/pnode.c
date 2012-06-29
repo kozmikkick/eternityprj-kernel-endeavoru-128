@@ -218,14 +218,14 @@ static struct vfsmount *get_source(struct vfsmount *dest,
  * @source_mnt: source mount.
  * @tree_list : list of heads of trees to be attached.
  */
-int propagate_mnt(struct vfsmount *dest_mnt, struct dentry *dest_dentry,
-		    struct vfsmount *source_mnt, struct list_head *tree_list)
+int propagate_mnt(struct mount *dest_mnt, struct dentry *dest_dentry,
+		   struct mount *source_mnt, struct list_head *tree_list)
 {
 	struct vfsmount *m;
 	struct mount *child;
 	int ret = 0;
-	struct vfsmount *prev_dest_mnt = dest_mnt;
-	struct vfsmount *prev_src_mnt  = source_mnt;
+	struct mount *prev_dest_mnt = dest_mnt;
+	struct mount *prev_src_mnt  = source_mnt;
 	LIST_HEAD(tmp_list);
 	LIST_HEAD(umount_list);
 
