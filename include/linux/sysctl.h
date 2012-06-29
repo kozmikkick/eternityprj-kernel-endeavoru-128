@@ -932,6 +932,7 @@ enum
 #include <linux/list.h>
 #include <linux/rcupdate.h>
 #include <linux/wait.h>
+#include <linux/rbtree.h>
 
 /* For the /proc/sys support */
 struct ctl_table;
@@ -1025,6 +1026,11 @@ struct ctl_table
 	void *extra2;
 };
 
+struct ctl_node {
+	struct rb_node node;
+	struct ctl_table_header *header;
+};
+
 /* struct ctl_table_header is used to maintain dynamic lists of
    struct ctl_table trees. */
 struct ctl_table_header
@@ -1032,7 +1038,6 @@ struct ctl_table_header
 	union {
 		struct {
 			struct ctl_table *ctl_table;
-			struct list_head ctl_entry;
 			int used;
 			int count;
 			int nreg;
@@ -1044,12 +1049,13 @@ struct ctl_table_header
 	struct ctl_table_root *root;
 	struct ctl_table_set *set;
 	struct ctl_dir *parent;
+	struct ctl_node *node;
 };
 
 struct ctl_dir {
 	/* Header must be at the start of ctl_dir */
 	struct ctl_table_header header;
-	struct list_head list;
+	struct rb_root root;
 };
 
 struct ctl_table_set {
