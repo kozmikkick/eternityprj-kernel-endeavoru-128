@@ -768,7 +768,17 @@ struct inode {
 	};
 	unsigned long		i_ino;
 	atomic_t		i_count;
-	unsigned int		i_nlink;
+	/*
+	 * Filesystems may only read i_nlink directly.  They shall use the
+	 * following functions for modification:
+	 *
+	 *    (set|clear|inc|drop)_nlink
+	 *    inode_(inc|dec)_link_count
+	 */
+	union {
+		const unsigned int i_nlink;
+		unsigned int __i_nlink;
+	};
 	dev_t			i_rdev;
 	unsigned int		i_blkbits;
 	u64			i_version;
@@ -1752,7 +1762,7 @@ static inline void mark_inode_dirty_sync(struct inode *inode)
  */
 static inline void set_nlink(struct inode *inode, unsigned int nlink)
 {
-	inode->i_nlink = nlink;
+	inode->__i_nlink = nlink;
 }
 
 /**
@@ -1765,7 +1775,7 @@ static inline void set_nlink(struct inode *inode, unsigned int nlink)
  */
 static inline void inc_nlink(struct inode *inode)
 {
-	inode->i_nlink++;
+	inode->__i_nlink++;
 }
 
 static inline void inode_inc_link_count(struct inode *inode)
@@ -1787,7 +1797,7 @@ static inline void inode_inc_link_count(struct inode *inode)
  */
 static inline void drop_nlink(struct inode *inode)
 {
-	inode->i_nlink--;
+	inode->__i_nlink--;
 }
 
 /**
@@ -1800,7 +1810,7 @@ static inline void drop_nlink(struct inode *inode)
  */
 static inline void clear_nlink(struct inode *inode)
 {
-	inode->i_nlink = 0;
+	inode->__i_nlink = 0;
 }
 
 static inline void inode_dec_link_count(struct inode *inode)
