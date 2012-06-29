@@ -728,7 +728,7 @@ int do_remount_sb(struct super_block *sb, int flags, void *data, int force)
 		} else {
 			retval = sb_prepare_remount_readonly(sb);
 			if (retval)
-				return cancel_readonly;
+				goto cancel_readonly;
 		}
 	}
 

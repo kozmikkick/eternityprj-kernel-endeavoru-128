@@ -60,3 +60,17 @@ static inline int mnt_has_parent(struct mount *mnt)
 }
 
 extern struct mount *__lookup_mnt(struct vfsmount *, struct dentry *, int);
+
+static inline void get_mnt_ns(struct mnt_namespace *ns)
+{
+	atomic_inc(&ns->count);
+}
+
+struct proc_mounts {
+	struct seq_file m; /* must be the first element */
+	struct mnt_namespace *ns;
+	struct path root;
+	int (*show)(struct seq_file *, struct vfsmount *);
+};
+
+extern const struct seq_operations mounts_op;
