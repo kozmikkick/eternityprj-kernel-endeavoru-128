@@ -1461,6 +1461,9 @@ struct super_block {
 
 	struct shrinker s_shrink;	/* per-sb shrinker handle */
 
+	/* Number of inodes with nlink == 0 but still referenced */
+	atomic_long_t s_remove_count;
+
 	/* Being remounted read-only */
 	int s_readonly_remount;
 };
@@ -2563,7 +2566,7 @@ extern void setattr_copy(struct inode *inode, const struct iattr *attr);
 
 extern void file_update_time(struct file *file);
 
-extern int generic_show_options(struct seq_file *m, struct vfsmount *mnt);
+extern int generic_show_options(struct seq_file *m, struct dentry *root);
 extern void save_mount_options(struct super_block *sb, char *options);
 extern void replace_mount_options(struct super_block *sb, char *options);
 
