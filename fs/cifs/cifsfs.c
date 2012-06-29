@@ -477,7 +477,7 @@ cifs_show_options(struct seq_file *s, struct vfsmount *m)
 		seq_printf(s, ",cifsacl");
 	if (cifs_sb->mnt_cifs_flags & CIFS_MOUNT_DYNPERM)
 		seq_printf(s, ",dynperm");
-	if (m->mnt_sb->s_flags & MS_POSIXACL)
+	if (root->d_sb->s_flags & MS_POSIXACL)
 		seq_printf(s, ",acl");
 	if (cifs_sb->mnt_cifs_flags & CIFS_MOUNT_MF_SYMLINKS)
 		seq_printf(s, ",mfsymlinks");

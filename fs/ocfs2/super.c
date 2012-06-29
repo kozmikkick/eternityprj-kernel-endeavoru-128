@@ -107,7 +107,7 @@ static int ocfs2_parse_options(struct super_block *sb, char *options,
 			       int is_remount);
 static int ocfs2_check_set_options(struct super_block *sb,
 				   struct mount_options *options);
-static int ocfs2_show_options(struct seq_file *s, struct vfsmount *mnt);
+static int ocfs2_show_options(struct seq_file *s, struct dentry *root);
 static void ocfs2_put_super(struct super_block *sb);
 static int ocfs2_mount_volume(struct super_block *sb);
 static int ocfs2_remount(struct super_block *sb, int *flags, char *data);
@@ -1533,9 +1533,9 @@ bail:
 	return status;
 }
 
-static int ocfs2_show_options(struct seq_file *s, struct vfsmount *mnt)
+static int ocfs2_show_options(struct seq_file *s, struct dentry *root)
 {
-	struct ocfs2_super *osb = OCFS2_SB(mnt->mnt_sb);
+	struct ocfs2_super *osb = OCFS2_SB(root->d_sb);
 	unsigned long opts = osb->s_mount_opt;
 	unsigned int local_alloc_megs;
 
