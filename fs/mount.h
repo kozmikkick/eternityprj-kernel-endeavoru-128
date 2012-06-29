@@ -1,4 +1,14 @@
 #include <linux/mount.h>
+#include <linux/seq_file.h>
+#include <linux/poll.h>
+
+struct mnt_namespace {
+	atomic_t		count;
+	struct mount *	root;
+	struct list_head	list;
+	wait_queue_head_t poll;
+	int event;
+};
 
 struct mnt_pcp {
 	int mnt_count;
