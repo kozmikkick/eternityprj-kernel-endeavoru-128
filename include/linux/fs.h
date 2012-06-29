@@ -782,16 +782,17 @@ struct inode {
 	dev_t			i_rdev;
 	unsigned int		i_blkbits;
 	u64			i_version;
-	loff_t			i_size;
 #ifdef __NEED_I_SIZE_ORDERED
 	seqcount_t		i_size_seqcount;
 #endif
 	struct timespec		i_atime;
 	struct timespec		i_mtime;
 	struct timespec		i_ctime;
+	unsigned short		i_bytes;
 	blkcnt_t		i_blocks;
-	unsigned short          i_bytes;
+	loff_t			i_size;
 	atomic_t		i_dio_count;
+	atomic_t		i_writecount;
 	const struct file_operations	*i_fop;	/* former ->i_op->default_file_ops */
 	struct file_lock	*i_flock;
 	struct address_space	*i_mapping;
@@ -816,7 +817,6 @@ struct inode {
 #ifdef CONFIG_IMA
 	atomic_t		i_readcount; /* struct files open RO */
 #endif
-	atomic_t		i_writecount;
 #ifdef CONFIG_FS_POSIX_ACL
 	struct posix_acl	*i_acl;
 	struct posix_acl	*i_default_acl;
