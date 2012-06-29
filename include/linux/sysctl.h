@@ -1074,17 +1074,6 @@ extern void setup_sysctl_set(struct ctl_table_set *p,
 	int (*is_seen)(struct ctl_table_set *));
 extern void retire_sysctl_set(struct ctl_table_set *set);
 
-extern void sysctl_head_get(struct ctl_table_header *);
-extern void sysctl_head_put(struct ctl_table_header *);
-extern int sysctl_is_seen(struct ctl_table_header *);
-extern struct ctl_table_header *sysctl_head_grab(struct ctl_table_header *);
-extern struct ctl_table_header *sysctl_head_next(struct ctl_table_header *prev);
-extern struct ctl_table_header *__sysctl_head_next(struct nsproxy *namespaces,
-						struct ctl_table_header *prev);
-extern void sysctl_head_finish(struct ctl_table_header *prev);
-extern int sysctl_perm(struct ctl_table_root *root,
-		struct ctl_table *table, int op);
-
 void register_sysctl_root(struct ctl_table_root *root);
 struct ctl_table_header *__register_sysctl_paths(
 	struct ctl_table_root *root, struct nsproxy *namespaces,
@@ -1094,7 +1083,6 @@ struct ctl_table_header *register_sysctl_paths(const struct ctl_path *path,
 						struct ctl_table *table);
 
 void unregister_sysctl_table(struct ctl_table_header * table);
-int sysctl_check_table(struct nsproxy *namespaces, struct ctl_table *table);
 
 extern int sysctl_init(void);
 #else /* CONFIG_SYSCTL */
@@ -1116,10 +1104,6 @@ static inline void unregister_sysctl_table(struct ctl_table_header * table)
 static inline void setup_sysctl_set(struct ctl_table_set *p,
 	struct ctl_table_set *parent,
 	int (*is_seen)(struct ctl_table_set *))
-{
-}
-
-static inline void sysctl_head_put(struct ctl_table_header *head)
 {
 }
 
