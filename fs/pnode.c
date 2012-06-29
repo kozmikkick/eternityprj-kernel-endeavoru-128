@@ -218,10 +218,9 @@ static struct mount *get_source(struct mount *dest,
  * @tree_list : list of heads of trees to be attached.
  */
 int propagate_mnt(struct mount *dest_mnt, struct dentry *dest_dentry,
-		   struct mount *source_mnt, struct list_head *tree_list)
+		    struct mount *source_mnt, struct list_head *tree_list)
 {
-	struct vfsmount *m;
-	struct mount *child;
+	struct mount *m, *child;
 	int ret = 0;
 	struct mount *prev_dest_mnt = dest_mnt;
 	struct mount *prev_src_mnt  = source_mnt;
@@ -231,20 +230,20 @@ int propagate_mnt(struct mount *dest_mnt, struct dentry *dest_dentry,
 	for (m = propagation_next(dest_mnt, dest_mnt); m;
 			m = propagation_next(m, dest_mnt)) {
 		int type;
-		struct vfsmount *source;
+		struct mount *source;
 
 		if (IS_MNT_NEW(m))
 			continue;
 
 		source =  get_source(m, prev_dest_mnt, prev_src_mnt, &type);
 
-		if (!(child = copy_tree(real_mount(source), source->mnt_root, type))) {
+		if (!(child = copy_tree(source, source->mnt.mnt_root, type))) {
 			ret = -ENOMEM;
 			list_splice(tree_list, tmp_list.prev);
 			goto out;
 		}
 
-		if (is_subdir(dest_dentry, m->mnt_root)) {
+		if (is_subdir(dest_dentry, m->mnt.mnt_root)) {
 			mnt_set_mountpoint(m, dest_dentry, child);
 			list_add_tail(&child->mnt_hash, tree_list);
 		} else {
@@ -348,7 +347,7 @@ static void __propagate_umount(struct mount *mnt)
  */
 int propagate_umount(struct list_head *list)
 {
-	struct vfsmount *mnt;
+	struct mount *mnt;
 
 	list_for_each_entry(mnt, list, mnt_hash)
 		__propagate_umount(mnt);
