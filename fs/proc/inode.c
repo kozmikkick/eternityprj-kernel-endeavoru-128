@@ -22,7 +22,6 @@
 #include <linux/slab.h>
 #include <linux/mount.h>
 
-#include <asm/system.h>
 #include <asm/uaccess.h>
 
 #include "internal.h"
@@ -80,7 +79,6 @@ static struct inode *proc_alloc_inode(struct super_block *sb)
 static void proc_i_callback(struct rcu_head *head)
 {
 	struct inode *inode = container_of(head, struct inode, i_rcu);
-	INIT_LIST_HEAD(&inode->i_dentry);
 	kmem_cache_free(proc_inode_cachep, PROC_I(inode));
 }
 
@@ -337,7 +335,7 @@ static int proc_reg_open(struct inode *inode, struct file *file)
 	if (!pde->proc_fops) {
 		spin_unlock(&pde->pde_unload_lock);
 		kfree(pdeo);
-		return -EINVAL;
+		return -ENOENT;
 	}
 	pde->pde_users++;
 	open = pde->proc_fops->open;
@@ -487,8 +485,6 @@ struct inode *proc_get_inode(struct super_block *sb, struct proc_dir_entry *de)
 
 int proc_fill_super(struct super_block *s)
 {
-	struct inode * root_inode;
-
 	s->s_flags |= MS_NODIRATIME | MS_NOSUID | MS_NOEXEC;
 	s->s_blocksize = 1024;
 	s->s_blocksize_bits = 10;
@@ -497,19 +493,11 @@ int proc_fill_super(struct super_block *s)
 	s->s_time_gran = 1;
 	
 	pde_get(&proc_root);
-	root_inode = proc_get_inode(s, &proc_root);
-	if (!root_inode)
-		goto out_no_root;
-	root_inode->i_uid = 0;
-	root_inode->i_gid = 0;
-	s->s_root = d_alloc_root(root_inode);
-	if (!s->s_root)
-		goto out_no_root;
-	return 0;
+	s->s_root = d_make_root(proc_get_inode(s, &proc_root));
+	if (s->s_root)
+		return 0;
 
-out_no_root:
 	printk("proc_read_super: get root inode failed\n");
-	iput(root_inode);
 	pde_put(&proc_root);
 	return -ENOMEM;
 }

@@ -18,6 +18,12 @@ static const struct proc_ns_operations *ns_entries[] = {
 #ifdef CONFIG_NET_NS
 	&netns_operations,
 #endif
+#ifdef CONFIG_UTS_NS
+	&utsns_operations,
+#endif
+#ifdef CONFIG_IPC_NS
+	&ipcns_operations,
+#endif
 };
 
 static const struct file_operations ns_file_operations = {
@@ -31,20 +37,23 @@ static struct dentry *proc_ns_instantiate(struct inode *dir,
 	struct inode *inode;
 	struct proc_inode *ei;
 	struct dentry *error = ERR_PTR(-ENOENT);
+	void *ns;
 
 	inode = proc_pid_make_inode(dir->i_sb, task);
 	if (!inode)
 		goto out;
 
+	ns = ns_ops->get(task);
+	if (!ns)
+		goto out_iput;
+
 	ei = PROC_I(inode);
 	inode->i_mode = S_IFREG|S_IRUSR;
 	inode->i_fop  = &ns_file_operations;
 	ei->ns_ops    = ns_ops;
-	ei->ns	      = ns_ops->get(task);
-	if (!ei->ns)
-		goto out_iput;
+	ei->ns	      = ns;
 
-	dentry->d_op = &pid_dentry_operations;
+	d_set_d_op(dentry, &pid_dentry_operations);
 	d_add(dentry, inode);
 	/* Close the race of the process dying before we return the dentry */
 	if (pid_revalidate(dentry, NULL))
@@ -147,14 +156,15 @@ static struct dentry *proc_ns_dir_lookup(struct inode *dir,
 	if (!ptrace_may_access(task, PTRACE_MODE_READ))
 		goto out;
 
-	last = &ns_entries[ARRAY_SIZE(ns_entries) - 1];
-	for (entry = ns_entries; entry <= last; entry++) {
+	last = &ns_entries[ARRAY_SIZE(ns_entries)];
+	for (entry = ns_entries; entry < last; entry++) {
 		if (strlen((*entry)->name) != len)
 			continue;
 		if (!memcmp(dentry->d_name.name, (*entry)->name, len))
 			break;
 	}
-	if (entry > last)
+	error = ERR_PTR(-ENOENT);
+	if (entry == last)
 		goto out;
 
 	error = proc_ns_instantiate(dir, dentry, task, *entry);
