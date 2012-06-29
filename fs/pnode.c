@@ -292,7 +292,7 @@ int propagate_mount_busy(struct mount *mnt, int refcnt)
 {
 	struct vfsmount *m;
 	struct mount *child;
-	struct vfsmount *parent = mnt->mnt.mnt_parent;
+	struct vfsmount *parent = mnt->mnt_parent;
 	int ret = 0;
 
 	if (&mnt->mnt == parent)
