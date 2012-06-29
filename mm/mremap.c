@@ -41,7 +41,8 @@ static pmd_t *get_old_pmd(struct mm_struct *mm, unsigned long addr)
 		return NULL;
 
 	pmd = pmd_offset(pud, addr);
-	if (pmd_none(*pmd))
+	split_huge_page_pmd(mm, pmd);
+	if (pmd_none_or_clear_bad(pmd))
 		return NULL;
 
 	return pmd;
@@ -64,6 +65,8 @@ static pmd_t *alloc_new_pmd(struct mm_struct *mm, struct vm_area_struct *vma,
 		return NULL;
 
 	VM_BUG_ON(pmd_trans_huge(*pmd));
+	if (pmd_none(*pmd) && __pte_alloc(mm, vma, pmd, addr))
+		return NULL;
 
 	return pmd;
 }
@@ -146,23 +149,6 @@ unsigned long move_page_tables(struct vm_area_struct *vma,
 			continue;
 		new_pmd = alloc_new_pmd(vma->vm_mm, vma, new_addr);
 		if (!new_pmd)
-			break;
-		if (pmd_trans_huge(*old_pmd)) {
-			int err = 0;
-			if (extent == HPAGE_PMD_SIZE)
-				err = move_huge_pmd(vma, new_vma, old_addr,
-						    new_addr, old_end,
-						    old_pmd, new_pmd);
-			if (err > 0) {
-				need_flush = true;
-				continue;
-			} else if (!err) {
-				split_huge_page_pmd(vma->vm_mm, old_pmd);
-			}
-			VM_BUG_ON(pmd_trans_huge(*old_pmd));
-		}
-		if (pmd_none(*new_pmd) && __pte_alloc(new_vma->vm_mm, new_vma,
-						      new_pmd, new_addr))
 			break;
 		next = (new_addr + PMD_SIZE) & PMD_MASK;
 		if (extent > next - new_addr)
