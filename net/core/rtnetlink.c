@@ -1030,6 +1030,9 @@ static int rtnl_dump_ifinfo(struct sk_buff *skb, struct netlink_callback *cb)
 	s_h = cb->args[0];
 	s_idx = cb->args[1];
 
+	rcu_read_lock();
+	cb->seq = net->dev_base_seq;
+
 	for (h = s_h; h < NETDEV_HASHENTRIES; h++, s_idx = 0) {
 		idx = 0;
 		head = &net->dev_index_head[h];
@@ -1046,6 +1049,7 @@ cont:
 		}
 	}
 out:
+	rcu_read_unlock();
 	cb->args[1] = idx;
 	cb->args[0] = h;
 
