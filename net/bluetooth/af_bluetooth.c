@@ -43,6 +43,12 @@
 #ifdef CONFIG_ANDROID_PARANOID_NETWORK
 #include <linux/android_aid.h>
 #endif
+
+#ifndef CONFIG_BT_SOCK_DEBUG
+#undef  BT_DBG
+#define BT_DBG(D...)
+#endif
+
 #define VERSION "2.16"
 
 /* Bluetooth sockets */
@@ -140,20 +146,18 @@ static inline int current_has_bt_admin(void)
 {
 	return 1;
 }
+
 static inline int current_has_bt(void)
 {
-	 return 1;
+	return 1;
 }
 #endif
+
 static int bt_sock_create(struct net *net, struct socket *sock, int proto,
 			  int kern)
 {
 	int err;
 
-	/*
-	 * EternityProject, 30/06/2012
-	 * Add Android stuff to the BT socket creation.
-	 */
 	if (proto == BTPROTO_RFCOMM || proto == BTPROTO_SCO ||
 			proto == BTPROTO_L2CAP) {
 		if (!current_has_bt())
