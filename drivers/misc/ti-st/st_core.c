@@ -628,7 +628,7 @@ long st_unregister(struct st_proto_s *proto)
 	pr_debug("%s: %d \n", __func__, proto->chnl_id);
 
 	st_kim_ref(&st_gdata, 0);
-	if (proto->chnl_id >= ST_MAX_CHANNELS) {
+	if (!st_gdata || proto->chnl_id >= ST_MAX_CHANNELS) {
 		pr_err(" chnl_id %d not supported\n", proto->chnl_id);
 		return -EPROTONOSUPPORT;
 	}
