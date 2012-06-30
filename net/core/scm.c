@@ -173,7 +173,7 @@ int __scm_send(struct socket *sock, struct msghdr *msg, struct scm_cookie *p)
 			if (err)
 				goto error;
 
-			if (pid_vnr(p->pid) != p->creds.pid) {
+			if (!p->pid || pid_vnr(p->pid) != p->creds.pid) {
 				struct pid *pid;
 				err = -ESRCH;
 				pid = find_get_pid(p->creds.pid);
@@ -183,8 +183,9 @@ int __scm_send(struct socket *sock, struct msghdr *msg, struct scm_cookie *p)
 				p->pid = pid;
 			}
 
-			if ((p->cred->euid != p->creds.uid) ||
-				(p->cred->egid != p->creds.gid)) {
+			if (!p->cred ||
+			    (p->cred->euid != p->creds.uid) ||
+			    (p->cred->egid != p->creds.gid)) {
 				struct cred *cred;
 				err = -ENOMEM;
 				cred = prepare_creds();
