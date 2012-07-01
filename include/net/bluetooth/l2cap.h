@@ -45,11 +45,11 @@
 #define L2CAP_DEFAULT_SDU_ITIME		0xFFFFFFFF
 #define L2CAP_DEFAULT_ACC_LAT		0xFFFFFFFF
 
-#define L2CAP_DISC_TIMEOUT		msecs_to_jiffies(100)
-#define L2CAP_DISC_REJ_TIMEOUT		msecs_to_jiffies(5000)
-#define L2CAP_ENC_TIMEOUT		msecs_to_jiffies(5000)
-#define L2CAP_CONN_TIMEOUT		msecs_to_jiffies(40000)
-#define L2CAP_INFO_TIMEOUT		msecs_to_jiffies(4000)
+#define L2CAP_DISC_TIMEOUT             (100)
+#define L2CAP_DISC_REJ_TIMEOUT         (5000)  /*  5 seconds */
+#define L2CAP_ENC_TIMEOUT              (5000)  /*  5 seconds */
+#define L2CAP_CONN_TIMEOUT             (40000) /* 40 seconds */
+#define L2CAP_INFO_TIMEOUT             (4000)  /*  4 seconds */
 
 /* L2CAP socket address */
 struct sockaddr_l2 {
@@ -84,6 +84,7 @@ struct l2cap_conninfo {
 #define L2CAP_LM_TRUSTED	0x0008
 #define L2CAP_LM_RELIABLE	0x0010
 #define L2CAP_LM_SECURE		0x0020
+#define L2CAP_LM_FLUSHABLE	0x0040
 
 /* L2CAP command codes */
 #define L2CAP_COMMAND_REJ	0x01
@@ -482,66 +483,63 @@ struct l2cap_chan {
 	__u32		remote_acc_lat;
 	__u32		remote_flush_to;
 
-	struct delayed_work	chan_timer;
-	struct delayed_work	retrans_timer;
-	struct delayed_work	monitor_timer;
-	struct delayed_work	ack_timer;
-
+	struct timer_list	chan_timer;
+	struct timer_list	retrans_timer;
+	struct timer_list	monitor_timer;
+	struct timer_list	ack_timer;
 	struct sk_buff		*tx_send_head;
 	struct sk_buff_head	tx_q;
 	struct sk_buff_head	srej_q;
 	struct list_head	srej_l;
 
-	struct list_head	list;
-	struct list_head	global_l;
+	struct list_head list;
+	struct list_head global_l;
 
-	void			*data;
-	struct l2cap_ops	*ops;
-	struct mutex		lock;
+	void		*data;
+	struct l2cap_ops *ops;
+/* BlueTi Start */
+	__u32 		addr_type;
+/* BlueTi End */
 };
 
 struct l2cap_ops {
-	char			*name;
+	char		*name;
 
 	struct l2cap_chan	*(*new_connection) (void *data);
 	int			(*recv) (void *data, struct sk_buff *skb);
 	void			(*close) (void *data);
 	void			(*state_change) (void *data, int state);
-	struct sk_buff		*(*alloc_skb) (struct l2cap_chan *chan,
-					unsigned long len, int nb, int *err);
-
 };
 
 struct l2cap_conn {
-	struct hci_conn		*hcon;
-	struct hci_chan		*hchan;
+	struct hci_conn	*hcon;
+	struct hci_chan	*hchan;
 
-	bdaddr_t		*dst;
-	bdaddr_t		*src;
+	bdaddr_t	*dst;
+	bdaddr_t	*src;
 
-	unsigned int		mtu;
+	unsigned int	mtu;
 
-	__u32			feat_mask;
-	__u8			fixed_chan_mask;
+	__u32		feat_mask;
 
-	__u8			info_state;
-	__u8			info_ident;
+	__u8		info_state;
+	__u8		info_ident;
 
-	struct delayed_work	info_timer;
+	struct timer_list info_timer;
 
-	spinlock_t		lock;
+	spinlock_t	lock;
 
-	struct sk_buff		*rx_skb;
-	__u32			rx_len;
-	__u8			tx_ident;
+	struct sk_buff *rx_skb;
+	__u32		rx_len;
+	__u8		tx_ident;
 
-	__u8			disc_reason;
+	__u8		disc_reason;
 
-	struct delayed_work	security_timer;
-	struct smp_chan		*smp_chan;
+	struct timer_list security_timer;
+	struct smp_chan *smp_chan;
 
-	struct list_head	chan_l;
-	struct mutex		chan_lock;
+	struct list_head chan_l;
+	rwlock_t	chan_lock;
 };
 
 #define L2CAP_INFO_CL_MTU_REQ_SENT	0x01
@@ -556,9 +554,9 @@ struct l2cap_conn {
 #define l2cap_pi(sk) ((struct l2cap_pinfo *) sk)
 
 struct l2cap_pinfo {
-	struct bt_sock		bt;
+	struct bt_sock	bt;
 	struct l2cap_chan	*chan;
-	struct sk_buff		*rx_busy_skb;
+	struct sk_buff	*rx_busy_skb;
 };
 
 enum {
@@ -600,60 +598,16 @@ enum {
 	FLAG_EFS_ENABLE,
 };
 
-static inline void l2cap_chan_hold(struct l2cap_chan *c)
-{
-	atomic_inc(&c->refcnt);
-}
-
-static inline void l2cap_chan_put(struct l2cap_chan *c)
-{
-	if (atomic_dec_and_test(&c->refcnt))
-		kfree(c);
-}
-
-static inline void l2cap_chan_lock(struct l2cap_chan *chan)
-{
-	mutex_lock(&chan->lock);
-}
-
-static inline void l2cap_chan_unlock(struct l2cap_chan *chan)
-{
-	mutex_unlock(&chan->lock);
-}
-
-static inline void l2cap_set_timer(struct l2cap_chan *chan,
-					struct delayed_work *work, long timeout)
-{
-	BT_DBG("chan %p state %s timeout %ld", chan,
-					state_to_string(chan->state), timeout);
-
-	if (!cancel_delayed_work(work))
-		l2cap_chan_hold(chan);
-	schedule_delayed_work(work, timeout);
-}
-
-static inline bool l2cap_clear_timer(struct l2cap_chan *chan,
-					struct delayed_work *work)
-{
-	bool ret;
-
-	ret = cancel_delayed_work(work);
-	if (ret)
-		l2cap_chan_put(chan);
-
-	return ret;
-}
-
 #define __set_chan_timer(c, t) l2cap_set_timer(c, &c->chan_timer, (t))
 #define __clear_chan_timer(c) l2cap_clear_timer(c, &c->chan_timer)
 #define __set_retrans_timer(c) l2cap_set_timer(c, &c->retrans_timer, \
-		msecs_to_jiffies(L2CAP_DEFAULT_RETRANS_TO));
+		L2CAP_DEFAULT_RETRANS_TO);
 #define __clear_retrans_timer(c) l2cap_clear_timer(c, &c->retrans_timer)
 #define __set_monitor_timer(c) l2cap_set_timer(c, &c->monitor_timer, \
-		msecs_to_jiffies(L2CAP_DEFAULT_MONITOR_TO));
+		L2CAP_DEFAULT_MONITOR_TO);
 #define __clear_monitor_timer(c) l2cap_clear_timer(c, &c->monitor_timer)
 #define __set_ack_timer(c) l2cap_set_timer(c, &chan->ack_timer, \
-		msecs_to_jiffies(L2CAP_DEFAULT_ACK_TO));
+		L2CAP_DEFAULT_ACK_TO);
 #define __clear_ack_timer(c) l2cap_clear_timer(c, &c->ack_timer)
 
 static inline int __seq_offset(struct l2cap_chan *chan, __u16 seq1, __u16 seq2)
@@ -841,7 +795,8 @@ static inline __u8 __ctrl_size(struct l2cap_chan *chan)
 		return L2CAP_ENH_HDR_SIZE - L2CAP_HDR_SIZE;
 }
 
-extern bool disable_ertm;
+extern int disable_ertm;
+extern int enable_hs;
 
 int l2cap_init_sockets(void);
 void l2cap_cleanup_sockets(void);
@@ -855,11 +810,9 @@ int l2cap_add_scid(struct l2cap_chan *chan,  __u16 scid);
 struct l2cap_chan *l2cap_chan_create(struct sock *sk);
 void l2cap_chan_close(struct l2cap_chan *chan, int reason);
 void l2cap_chan_destroy(struct l2cap_chan *chan);
-int l2cap_chan_connect(struct l2cap_chan *chan, __le16 psm, u16 cid,
-								bdaddr_t *dst);
+int l2cap_chan_connect(struct l2cap_chan *chan);
 int l2cap_chan_send(struct l2cap_chan *chan, struct msghdr *msg, size_t len,
 								u32 priority);
 void l2cap_chan_busy(struct l2cap_chan *chan, int busy);
-int l2cap_chan_check_security(struct l2cap_chan *chan);
 
 #endif /* __L2CAP_H */

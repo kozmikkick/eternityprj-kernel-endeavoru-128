@@ -36,11 +36,6 @@
 #define PF_BLUETOOTH	AF_BLUETOOTH
 #endif
 
-/* Bluetooth versions */
-#define BLUETOOTH_VER_1_1	1
-#define BLUETOOTH_VER_1_2	2
-#define BLUETOOTH_VER_2_0	3
-
 /* Reserv for core and drivers use */
 #define BT_SKB_RESERVE	8
 
@@ -84,6 +79,7 @@ struct bt_power {
 
 #define BT_CHANNEL_POLICY	10
 
+
 /* BR/EDR only (default policy)
  *   AMP controllers cannot be used.
  *   Channel move requests from the remote device are denied.
@@ -109,14 +105,20 @@ struct bt_power {
  */
 #define BT_CHANNEL_POLICY_AMP_PREFERRED		2
 
-__printf(1, 2)
-int bt_info(const char *fmt, ...);
-__printf(1, 2)
-int bt_err(const char *fmt, ...);
+#define BT_ADDR_TYPE 1000
 
-#define BT_INFO(fmt, ...)	bt_info(fmt "\n", ##__VA_ARGS__)
-#define BT_ERR(fmt, ...)	bt_err(fmt "\n", ##__VA_ARGS__)
-#define BT_DBG(fmt, ...)	pr_debug(fmt "\n", ##__VA_ARGS__)
+#define BT_ADDR_BREDR			0x00
+#define BT_ADDR_LE_PUBLIC		0x01
+#define BT_ADDR_LE_RANDOM		0x02
+#define BT_ADDR_INVALID			0xff
+
+
+__attribute__((format (printf, 2, 3)))
+int bt_printk(const char *level, const char *fmt, ...);
+
+#define BT_INFO(fmt, arg...)   bt_printk(KERN_INFO, pr_fmt(fmt), ##arg)
+#define BT_ERR(fmt, arg...)    bt_printk(KERN_ERR, pr_fmt(fmt), ##arg)
+#define BT_DBG(fmt, arg...)    pr_debug(fmt "\n", ##arg)
 
 /* Connection and socket states */
 enum {
@@ -130,33 +132,6 @@ enum {
 	BT_DISCONN,
 	BT_CLOSED
 };
-
-/* If unused will be removed by compiler */
-static inline const char *state_to_string(int state)
-{
-	switch (state) {
-	case BT_CONNECTED:
-		return "BT_CONNECTED";
-	case BT_OPEN:
-		return "BT_OPEN";
-	case BT_BOUND:
-		return "BT_BOUND";
-	case BT_LISTEN:
-		return "BT_LISTEN";
-	case BT_CONNECT:
-		return "BT_CONNECT";
-	case BT_CONNECT2:
-		return "BT_CONNECT2";
-	case BT_CONFIG:
-		return "BT_CONFIG";
-	case BT_DISCONN:
-		return "BT_DISCONN";
-	case BT_CLOSED:
-		return "BT_CLOSED";
-	}
-
-	return "invalid state";
-}
 
 /* BD Address */
 typedef struct {
@@ -191,7 +166,6 @@ struct bt_sock {
 	struct list_head accept_q;
 	struct sock *parent;
 	u32 defer_setup;
-	bool suspended;
 };
 
 struct bt_sock_list {
@@ -223,6 +197,7 @@ struct bt_skb_cb {
 	__u16 tx_seq;
 	__u8 retries;
 	__u8 sar;
+	unsigned short channel;
 	__u8 force_active;
 };
 #define bt_cb(skb) ((struct bt_skb_cb *)((skb)->cb))
@@ -279,12 +254,32 @@ extern void bt_sysfs_cleanup(void);
 
 extern struct dentry *bt_debugfs;
 
+#ifdef CONFIG_BT_L2CAP
 int l2cap_init(void);
 void l2cap_exit(void);
+#else
+static inline int l2cap_init(void)
+{
+	return 0;
+}
 
+static inline void l2cap_exit(void)
+{
+}
+#endif
+
+#ifdef CONFIG_BT_SCO
 int sco_init(void);
 void sco_exit(void);
+#else
+static inline int sco_init(void)
+{
+	return 0;
+}
 
-void bt_sock_reclassify_lock(struct sock *sk, int proto);
+static inline void sco_exit(void)
+{
+}
+#endif
 
 #endif /* __BLUETOOTH_H */

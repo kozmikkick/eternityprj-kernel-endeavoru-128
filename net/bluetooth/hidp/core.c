@@ -398,6 +398,7 @@ err:
 	return ret;
 }
 
+
 static int hidp_output_raw_report(struct hid_device *hid, unsigned char *data, size_t count,
 		unsigned char report_type)
 {
@@ -456,6 +457,7 @@ err:
 	mutex_unlock(&session->report_mutex);
 	return ret;
 }
+
 
 static void hidp_idle_timeout(unsigned long arg)
 {
@@ -759,6 +761,7 @@ static int hidp_session(void *arg)
 	if (session->hid) {
 		hid_destroy_device(session->hid);
 		session->hid = NULL;
+
 	}
 
 	/* Wakeup user-space polling for socket errors */
@@ -795,11 +798,11 @@ static struct hci_conn *hidp_get_connection(struct hidp_session *session)
 	if (!hdev)
 		return NULL;
 
-	hci_dev_lock(hdev);
+	hci_dev_lock_bh(hdev);
 	conn = hci_conn_hash_lookup_ba(hdev, ACL_LINK, dst);
 	if (conn)
 		hci_conn_hold_device(conn);
-	hci_dev_unlock(hdev);
+	hci_dev_unlock_bh(hdev);
 
 	hci_dev_put(hdev);
 
@@ -868,6 +871,8 @@ static int hidp_open(struct hid_device *hid)
 static void hidp_close(struct hid_device *hid)
 {
 }
+
+
 
 static int hidp_parse(struct hid_device *hid)
 {
@@ -956,6 +961,7 @@ static int hidp_setup_hid(struct hidp_session *session,
 	hid->dev.parent = &session->conn->dev;
 	hid->ll_driver = &hidp_hid_driver;
 
+
 	hid->hid_get_raw_report = hidp_get_raw_report;
 	hid->hid_output_raw_report = hidp_output_raw_report;
 
@@ -967,6 +973,7 @@ fault:
 
 	return err;
 }
+
 
 int hidp_add_connection(struct hidp_connadd_req *req, struct socket *ctrl_sock, struct socket *intr_sock)
 {
@@ -981,6 +988,8 @@ int hidp_add_connection(struct hidp_connadd_req *req, struct socket *ctrl_sock, 
 		return -ENOTUNIQ;
 
 	BT_DBG("rd_data %p rd_size %d", req->rd_data, req->rd_size);
+
+
 
 	down_write(&hidp_session_sem);
 
@@ -1029,6 +1038,7 @@ int hidp_add_connection(struct hidp_connadd_req *req, struct socket *ctrl_sock, 
 
 	__hidp_link_session(session);
 
+
 	if (req->rd_size > 0) {
 		err = hidp_setup_hid(session, req);
 		if (err)
@@ -1040,6 +1050,7 @@ int hidp_add_connection(struct hidp_connadd_req *req, struct socket *ctrl_sock, 
 		if (err < 0)
 			goto purge;
 	}
+
 
 	hidp_set_timer(session);
 
@@ -1098,6 +1109,7 @@ unlink:
 		session->input = NULL;
 	}
 
+
 	if (session->hid) {
 		hid_destroy_device(session->hid);
 		session->hid = NULL;
@@ -1112,8 +1124,10 @@ purge:
 	skb_queue_purge(&session->ctrl_transmit);
 	skb_queue_purge(&session->intr_transmit);
 
+
 failed:
 	up_write(&hidp_session_sem);
+
 
 	kfree(session);
 	return err;
@@ -1195,6 +1209,7 @@ int hidp_get_conninfo(struct hidp_conninfo *ci)
 	return err;
 }
 
+
 static const struct hid_device_id hidp_table[] = {
 	{ HID_BLUETOOTH_DEVICE(HID_ANY_ID, HID_ANY_ID) },
 	{ }
@@ -1204,6 +1219,7 @@ static struct hid_driver hidp_driver = {
 	.name = "generic-bluetooth",
 	.id_table = hidp_table,
 };
+
 
 static int __init hidp_init(void)
 {
@@ -1216,6 +1232,7 @@ static int __init hidp_init(void)
 		goto err;
 
 	ret = hidp_init_sockets();
+
 	if (ret)
 		goto err_drv;
 
@@ -1223,13 +1240,16 @@ static int __init hidp_init(void)
 err_drv:
 	hid_unregister_driver(&hidp_driver);
 err:
+
 	return ret;
 }
 
 static void __exit hidp_exit(void)
 {
 	hidp_cleanup_sockets();
+
 	hid_unregister_driver(&hidp_driver);
+
 }
 
 module_init(hidp_init);

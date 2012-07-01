@@ -43,12 +43,10 @@
 #ifdef CONFIG_ANDROID_PARANOID_NETWORK
 #include <linux/android_aid.h>
 #endif
-
 #ifndef CONFIG_BT_SOCK_DEBUG
 #undef  BT_DBG
 #define BT_DBG(D...)
 #endif
-
 #define VERSION "2.16"
 
 /* Bluetooth sockets */
@@ -80,16 +78,19 @@ static const char *const bt_slock_key_strings[BT_MAX_PROTO] = {
 	"slock-AF_BLUETOOTH-BTPROTO_AVDTP",
 };
 
-void bt_sock_reclassify_lock(struct sock *sk, int proto)
+static inline void bt_sock_reclassify_lock(struct socket *sock, int proto)
 {
-	BUG_ON(!sk);
+	struct sock *sk = sock->sk;
+
+	if (!sk)
+		return;
+
 	BUG_ON(sock_owned_by_user(sk));
 
 	sock_lock_init_class_and_name(sk,
 			bt_slock_key_strings[proto], &bt_slock_key[proto],
 				bt_key_strings[proto], &bt_lock_key[proto]);
 }
-EXPORT_SYMBOL(bt_sock_reclassify_lock);
 
 int bt_sock_register(int proto, const struct net_proto_family *ops)
 {
@@ -146,18 +147,15 @@ static inline int current_has_bt_admin(void)
 {
 	return 1;
 }
-
 static inline int current_has_bt(void)
 {
 	return 1;
 }
 #endif
-
 static int bt_sock_create(struct net *net, struct socket *sock, int proto,
 			  int kern)
 {
 	int err;
-
 	if (proto == BTPROTO_RFCOMM || proto == BTPROTO_SCO ||
 			proto == BTPROTO_L2CAP) {
 		if (!current_has_bt())
@@ -180,8 +178,7 @@ static int bt_sock_create(struct net *net, struct socket *sock, int proto,
 
 	if (bt_proto[proto] && try_module_get(bt_proto[proto]->owner)) {
 		err = bt_proto[proto]->create(net, sock, proto, kern);
-		if (!err)
-			bt_sock_reclassify_lock(sock->sk, proto);
+		bt_sock_reclassify_lock(sock, proto);
 		module_put(bt_proto[proto]->owner);
 	}
 
@@ -192,17 +189,17 @@ static int bt_sock_create(struct net *net, struct socket *sock, int proto,
 
 void bt_sock_link(struct bt_sock_list *l, struct sock *sk)
 {
-	write_lock(&l->lock);
+	write_lock_bh(&l->lock);
 	sk_add_node(sk, &l->head);
-	write_unlock(&l->lock);
+	write_unlock_bh(&l->lock);
 }
 EXPORT_SYMBOL(bt_sock_link);
 
 void bt_sock_unlink(struct bt_sock_list *l, struct sock *sk)
 {
-	write_lock(&l->lock);
+	write_lock_bh(&l->lock);
 	sk_del_node_init(sk);
-	write_unlock(&l->lock);
+	write_unlock_bh(&l->lock);
 }
 EXPORT_SYMBOL(bt_sock_unlink);
 
@@ -235,14 +232,15 @@ struct sock *bt_accept_dequeue(struct sock *parent, struct socket *newsock)
 
 	BT_DBG("parent %p", parent);
 
+	local_bh_disable();
 	list_for_each_safe(p, n, &bt_sk(parent)->accept_q) {
 		sk = (struct sock *) list_entry(p, struct bt_sock, accept_q);
 
-		lock_sock(sk);
+		bh_lock_sock(sk);
 
 		/* FIXME: Is this check still needed */
 		if (sk->sk_state == BT_CLOSED) {
-			release_sock(sk);
+			bh_unlock_sock(sk);
 			bt_accept_unlink(sk);
 			continue;
 		}
@@ -253,12 +251,14 @@ struct sock *bt_accept_dequeue(struct sock *parent, struct socket *newsock)
 			if (newsock)
 				sock_graft(sk, newsock);
 
-			release_sock(sk);
+			bh_unlock_sock(sk);
+			local_bh_enable();
 			return sk;
 		}
 
-		release_sock(sk);
+		bh_unlock_sock(sk);
 	}
+	local_bh_enable();
 
 	return NULL;
 }
@@ -488,7 +488,7 @@ unsigned int bt_sock_poll(struct file *file, struct socket *sock, poll_table *wa
 			sk->sk_state == BT_CONFIG)
 		return mask;
 
-	if (!bt_sk(sk)->suspended && sock_writeable(sk))
+	if (sock_writeable(sk))
 		mask |= POLLOUT | POLLWRNORM | POLLWRBAND;
 	else
 		set_bit(SOCK_ASYNC_NOSPACE, &sk->sk_socket->flags);

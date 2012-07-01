@@ -43,7 +43,8 @@
 #include "bnep.h"
 
 #define BNEP_TX_QUEUE_LEN 20
-
+#define IFF_TX_SKB_SHARING      0x10000 /* The interface supports sharing
+                                         * skbs on transmit */
 static int bnep_net_open(struct net_device *dev)
 {
 	netif_start_queue(dev);
@@ -232,7 +233,7 @@ void bnep_net_setup(struct net_device *dev)
 
 	ether_setup(dev);
 	dev->priv_flags &= ~IFF_TX_SKB_SHARING;
+	//netdev_attach_ops(dev, &bnep_netdev_ops);
 	dev->netdev_ops = &bnep_netdev_ops;
-
 	dev->watchdog_timeo  = HZ * 2;
 }
