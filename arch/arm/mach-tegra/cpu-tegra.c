@@ -67,6 +67,11 @@ static int suspend_index;
 
 static bool force_policy_max;
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#define BOOST_CPU_FREQ_MIN 1500000
+#define CAP_CPU_FREQ_MAX 475000
+#endif
+
 static int force_policy_max_set(const char *arg, const struct kernel_param *kp)
 {
 	int ret;
@@ -771,8 +776,6 @@ struct early_suspend tegra_cpufreq_powersave_early_suspender;
 struct early_suspend tegra_cpufreq_performance_early_suspender;
 static struct pm_qos_request_list boost_cpu_freq_req;
 static struct pm_qos_request_list cap_cpu_freq_req;
-#define BOOST_CPU_FREQ_MIN 1500000
-#define CAP_CPU_FREQ_MAX 475000
 #endif
 
 
