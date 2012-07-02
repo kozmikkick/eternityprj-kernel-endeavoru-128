@@ -706,7 +706,7 @@ int tegra_cpu_set_speed_cap(unsigned int *speed_cap)
 int tegra_cpu_resume_boost(unsigned int *speed_cap)
 {
 	int ret = 0;
-	unsigned int new_speed = 1500000;
+	unsigned int new_speed = BOOST_CPU_FREQ_MIN;
 
 	if (is_suspended)
 		return -EBUSY;
@@ -900,7 +900,7 @@ static int tegra_cpufreq_resume(struct cpufreq_policy *policy)
 {
 	/*if it's a power key wakeup, uncap the cpu powersave mode for future boost*/
 	if (wake_reason_resume == 0x80)
-		policy->max = 1500000;
+		policy->max = BOOST_CPU_FREQ_MIN;
 	return 0;
 }
 
