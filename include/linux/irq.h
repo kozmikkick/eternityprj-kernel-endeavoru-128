@@ -65,6 +65,7 @@ typedef	void (*irq_preflow_handler_t)(struct irq_data *data);
  * IRQ_NO_BALANCING		- Interrupt cannot be balanced (affinity set)
  * IRQ_MOVE_PCNTXT		- Interrupt can be migrated from process context
  * IRQ_NESTED_TRHEAD		- Interrupt nests into another thread
+ * IRQ_PER_CPU_DEVID		- Dev_id is a per-cpu variable
  */
 enum {
 	IRQ_TYPE_NONE		= 0x00000000,
@@ -86,6 +87,8 @@ enum {
 	IRQ_NO_BALANCING	= (1 << 13),
 	IRQ_MOVE_PCNTXT		= (1 << 14),
 	IRQ_NESTED_THREAD	= (1 << 15),
+	IRQ_NOTHREAD		= (1 << 16),
+	IRQ_PER_CPU_DEVID	= (1 << 17),
 };
 
 #define IRQF_MODIFY_MASK	\
@@ -372,6 +375,8 @@ enum {
 struct irqaction;
 extern int setup_irq(unsigned int irq, struct irqaction *new);
 extern void remove_irq(unsigned int irq, struct irqaction *act);
+extern int setup_percpu_irq(unsigned int irq, struct irqaction *new);
+extern void remove_percpu_irq(unsigned int irq, struct irqaction *act);
 
 extern void irq_cpu_online(void);
 extern void irq_cpu_offline(void);
@@ -399,6 +404,7 @@ extern void handle_edge_irq(unsigned int irq, struct irq_desc *desc);
 extern void handle_edge_eoi_irq(unsigned int irq, struct irq_desc *desc);
 extern void handle_simple_irq(unsigned int irq, struct irq_desc *desc);
 extern void handle_percpu_irq(unsigned int irq, struct irq_desc *desc);
+extern void handle_percpu_devid_irq(unsigned int irq, struct irq_desc *desc);
 extern void handle_bad_irq(unsigned int irq, struct irq_desc *desc);
 extern void handle_nested_irq(unsigned int irq);
 
@@ -426,6 +432,8 @@ static inline void irq_set_chip_and_handler(unsigned int irq, struct irq_chip *c
 {
 	irq_set_chip_and_handler_name(irq, chip, handle, NULL);
 }
+
+extern int irq_set_percpu_devid(unsigned int irq);
 
 extern void
 __irq_set_handler(unsigned int irq, irq_flow_handler_t handle, int is_chained,
@@ -476,6 +484,13 @@ static inline void irq_set_nested_thread(unsigned int irq, bool nest)
 		irq_set_status_flags(irq, IRQ_NESTED_THREAD);
 	else
 		irq_clear_status_flags(irq, IRQ_NESTED_THREAD);
+}
+
+static inline void irq_set_percpu_devid_flags(unsigned int irq)
+{
+	irq_set_status_flags(irq,
+			     IRQ_NOAUTOEN | IRQ_PER_CPU | IRQ_NOTHREAD |
+			     IRQ_NOPROBE | IRQ_PER_CPU_DEVID);
 }
 
 /* Handle dynamic irq creation and destruction */
