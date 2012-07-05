@@ -690,6 +690,9 @@ size_t wl12xx_copy_fwlog(struct wl1271 *wl, u8 *memblock, size_t maxlen);
 /* Older firmwares did not implement the FW logger over bus feature */
 #define WL12XX_QUIRK_FWLOG_NOT_IMPLEMENTED	BIT(4)
 
+/* separate probe response templates for one-shot and sched scans */
+#define WLCORE_QUIRK_DUAL_PROBE_TMPL		BIT(10)
+
 #define WL12XX_HW_BLOCK_SIZE	256
 
 #endif
