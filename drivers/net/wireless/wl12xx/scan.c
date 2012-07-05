@@ -714,8 +714,23 @@ int wl1271_scan_sched_scan_start(struct wl1271 *wl, struct wl12xx_vif *wlvif)
 	if (wlvif->bss_type != BSS_TYPE_STA_BSS)
 		return -EOPNOTSUPP;
 
-	if (test_bit(WLVIF_FLAG_IN_USE, &wlvif->flags))
-		return -EBUSY;
+/*
+ * EternityProject, 05/07/2012:
+ * wl1283 uses the same driver and consequently this function.
+ * The chip we're using (wl1283) supports background scanning
+ * by hardware, so we need to implement a better check.
+ * We need to check if the chip supports background scanning
+ * while connected and there are two ways for doing that:
+ *
+ * 1. Detect the chip (wl12??)       ---- or ----
+ * 2. Detect quirks on the chip [if (wl->quirks & NO_SCHED_SCAN_WHILE_CONNECTED]
+ *
+ * Since we need a fast solution for our issue, we'll comment
+ * out the offending code until we write something better.
+ *
+ *	if (test_bit(WLVIF_FLAG_IN_USE, &wlvif->flags))
+ *		return -EBUSY;
+ */
 
 	start = kzalloc(sizeof(*start), GFP_KERNEL);
 	if (!start)
