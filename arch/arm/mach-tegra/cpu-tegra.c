@@ -944,8 +944,6 @@ static void tegra_cpufreq_powersave_early_suspend(struct early_suspend *h)
 					GO_MAXSPEED_LOAD_VALUE);
 	cpufreq_set_governor_param(INTERACTIVE_GOVERNOR, MAX_BOOST,
 					MAX_BOOST_VALUE);
-	cpufreq_set_governor_param(INTERACTIVE_GOVERNOR, SUSTAIN_LOAD,
-					SUSTAIN_LOAD_VALUE);
 #endif
 
 }

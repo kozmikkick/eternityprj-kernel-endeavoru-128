@@ -1217,7 +1217,6 @@ static char cpufreq_gov_default[32];
 static char saved_boost_factor[32];
 static char saved_go_maxspeed_load[32];
 static char saved_max_boost[32];
-static char saved_sustain_load[32];
 
 static char saved_up_threshold[32];
 static char saved_down_threshold[32];
@@ -1399,8 +1398,6 @@ void cpufreq_save_governor(void)
 					saved_go_maxspeed_load);
 		cpufreq_read_governor_param(INTERACTIVE_GOVERNOR, MAX_BOOST,
 					saved_max_boost);	
-		cpufreq_read_governor_param(INTERACTIVE_GOVERNOR, SUSTAIN_LOAD,
-					saved_sustain_load);
 	} else if (strncmp(cpufreq_gov_default, CONSERVATIVE_GOVERNOR,
 				strlen(CONSERVATIVE_GOVERNOR)) == 0) {
 		cpufreq_read_governor_param(CONSERVATIVE_GOVERNOR, UP_THRESHOLD,
@@ -1461,8 +1458,6 @@ void cpufreq_restore_governor(void)
 					saved_go_maxspeed_load);
 		set_governor_param(INTERACTIVE_GOVERNOR, MAX_BOOST,
 					saved_max_boost);	
-		set_governor_param(INTERACTIVE_GOVERNOR, SUSTAIN_LOAD,
-					saved_sustain_load);
 	} else if (strncmp(cpufreq_gov_default, CONSERVATIVE_GOVERNOR,
 				strlen(CONSERVATIVE_GOVERNOR)) == 0) {
 		set_governor_param(CONSERVATIVE_GOVERNOR, UP_THRESHOLD,

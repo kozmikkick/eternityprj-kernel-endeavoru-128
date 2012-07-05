@@ -125,16 +125,14 @@ void tegra_get_camera_board_info(struct board_info *bi);
 #define FREQ_STEP_VALUE		3
 
 #define INTERACTIVE_GOVERNOR	"interactive"
-#define BOOST_FACTOR 		"boost_factor"
-#define GO_MAXSPEED_LOAD 	"go_maxspeed_load"
-#define MAX_BOOST		"max_boost"
+#define BOOST_FACTOR 		"boost"
+#define GO_MAXSPEED_LOAD 	"go_hispeed_load"
+#define MAX_BOOST		"hispeed_freq"
 #define MIN_SAMPLE_TIME		"min_sample_time"
-#define SUSTAIN_LOAD 		"sustain_load"
 #define BOOST_FACTOR_VALUE	2
 #define GO_MAXSPEED_LOAD_VALUE 	97
 #define MAX_BOOST_VALUE		180000
 #define MIN_SAMPLE_TIME_VALUE	20000
-#define SUSTAIN_LOAD_VALUE 	95
 
 #define ONDEMAND_GOVERNOR	"ondemand"
 #define SAMPRATE		"sampling_rate"
