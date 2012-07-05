@@ -753,13 +753,34 @@ static void dbs_refresh_callback(struct work_struct *unused)
 	switch (nr_cpus) {
 	case 1:
 		if (policy->cur < policy->max) {
-			__cpufreq_driver_target(policy, policy->max,
-				CPUFREQ_RELATION_L);
+			/* 
+			 * __cpufreq_driver_target(policy, policy->max,
+ 			 *	CPUFREQ_RELATION_L);
+			 *
+			 * EternityProject, 05/07/2012:
+			 * Why ramp up frequency to 1.5GHz (if one core online)
+			 * at a touchscreen press? Yeah, that would surely
+			 * be fast, but do we really need all this power?
+			 * I don't think so. If one core is online, we're probably
+			 * on the lockscreen!
+			 * 880MHz are enough.
+			 */
+			__cpufreq_driver_target(policy, 880000,
+			     CPUFREQ_RELATION_L);
 			this_dbs_info->prev_cpu_idle = get_cpu_idle_time(0,
 				&this_dbs_info->prev_cpu_wall);
 		}
 		break;
 	case 2:
+		/*
+		 * EternityProject, 05/07/2012:
+		 * After modifying the case 1, this should be almost useless.
+		 * If we reach that AGAIN after case 1, that will be always
+		 * false, so, we won't do anything.
+		 *
+		 * TODO: Verify the behavior of that switch: we may be only
+		 *       wasting CPU time on an always-false if statement.
+		 */
 		if (policy->cur < policy->max && policy->cur < 880000) {
 			__cpufreq_driver_target(policy, 880000,
 				CPUFREQ_RELATION_L);
