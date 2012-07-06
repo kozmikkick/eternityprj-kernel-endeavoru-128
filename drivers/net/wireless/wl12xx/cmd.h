@@ -177,8 +177,8 @@ enum cmd_templ {
 	CMD_TEMPL_PS_POLL,
 	CMD_TEMPL_KLV,
 	CMD_TEMPL_DISCONNECT,
-	CMD_TEMPL_PROBE_REQ_2_4,
-	CMD_TEMPL_PROBE_REQ_5,
+	CMD_TEMPL_APP_PROBE_REQ_2_4,
+	CMD_TEMPL_APP_PROBE_REQ_5,
 	CMD_TEMPL_BAR,           /* for firmware internal use only */
 	CMD_TEMPL_CTS,           /*
 				  * For CTS-to-self (FastCTS) mechanism
