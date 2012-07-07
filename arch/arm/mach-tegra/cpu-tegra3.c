@@ -47,17 +47,10 @@
 #endif
 #define PWR_DEVICE_TAG "CPUHP"
 
-// #define ONDEMAND_FINE_TUNE // No, I don't want that, thanks.
-
 #define INITIAL_STATE		TEGRA_HP_DISABLED
 #define UP2G0_DELAY_MS		70
-#ifdef ONDEMAND_FINE_TUNE
-#define UP2Gn_DELAY_MS		2000
-#define DOWN_DELAY_MS		3000
-#else
 #define UP2Gn_DELAY_MS		100
 #define DOWN_DELAY_MS		2000
-#endif
 
 #define CPU_HOTPLUG_TAG "[CPUHP]"
 
@@ -88,11 +81,7 @@ module_param(idle_bottom_freq, uint, 0644);
 static int mp_overhead = 10;
 module_param(mp_overhead, int, 0644);
 
-#ifdef ONDEMAND_FINE_TUNE
-static int balance_level = 60;
-#else
 static int balance_level = 75;
-#endif
 module_param(balance_level, int, 0644);
 
 static int up_time = 100;
@@ -337,9 +326,8 @@ static void tegra_auto_hotplug_work_func(struct work_struct *work)
 {
 	bool up = false;
 	unsigned int cpu = nr_cpu_ids;
-#ifdef ONDEMAND_FINE_TUNE
-    unsigned long up_delay = up2gn_delay;
-#endif
+	unsigned long now = jiffies;
+	static unsigned long last_change_time;
 
 	mutex_lock(tegra3_cpu_lock);
 	if (mp_policy && !is_lp_cluster()) {
@@ -355,24 +343,17 @@ static void tegra_auto_hotplug_work_func(struct work_struct *work)
 		cpu = tegra_get_slowest_cpu_n();
 		if (cpu < nr_cpu_ids) {
 			up = false;
-#ifdef ONDEMAND_FINE_TUNE
-            queue_delayed_work(
-                hotplug_wq, &hotplug_work, up_delay);
-#else
-			queue_delayed_work(
-				hotplug_wq, &hotplug_work, down_delay);
-#endif
-			hp_stats_update(cpu, false);
 		} else if (!is_lp_cluster() && !no_lp) {
 			if(!clk_set_parent(cpu_clk, cpu_lp_clk)) {
 				hp_stats_update(CONFIG_NR_CPUS, true);
 				hp_stats_update(0, false);
 				/* catch-up with governor target speed */
 				tegra_cpu_set_speed_cap(NULL);
-			} else
-				queue_delayed_work(
-					hotplug_wq, &hotplug_work, down_delay);
+				break;
+			}
 		}
+		queue_delayed_work(
+			hotplug_wq, &hotplug_work, down_delay);
 		break;
 	case TEGRA_HP_UP:
 		if (is_lp_cluster() && !no_lp) {
@@ -382,26 +363,19 @@ static void tegra_auto_hotplug_work_func(struct work_struct *work)
 				/* catch-up with governor target speed */
 				tegra_cpu_set_speed_cap(NULL);
 			}
-#ifdef ONDEMAND_FINE_TUNE
-           up_delay *= 5;
-#endif
 		} else {
 			switch (tegra_cpu_speed_balance()) {
 			/* cpu speed is up and balanced - one more on-line */
 			case TEGRA_CPU_SPEED_BALANCED:
 				cpu = cpumask_next_zero(0, cpu_online_mask);
-				if (cpu < nr_cpu_ids) {
+				if (cpu < nr_cpu_ids)
 					up = true;
-					hp_stats_update(cpu, true);
-				}
 				break;
 			/* cpu speed is up, but skewed - remove one core */
 			case TEGRA_CPU_SPEED_SKEWED:
 				cpu = tegra_get_slowest_cpu_n();
-				if (cpu < nr_cpu_ids) {
+				if (cpu < nr_cpu_ids)
 					up = false;
-					hp_stats_update(cpu, false);
-				}
 				break;
 			/* cpu speed is up, but under-utilized - do nothing */
 			case TEGRA_CPU_SPEED_BIASED:
@@ -409,19 +383,21 @@ static void tegra_auto_hotplug_work_func(struct work_struct *work)
 				break;
 			}
 		}
-#ifdef ONDEMAND_FINE_TUNE
-        queue_delayed_work(
-            hotplug_wq, &hotplug_work, up_delay);
-#else
 		queue_delayed_work(
 			hotplug_wq, &hotplug_work, up2gn_delay);
-#endif
 		break;
 	default:
 		pr_err(CPU_HOTPLUG_TAG"%s: invalid tegra hotplug state %d\n",
 		       __func__, hp_state);
 	}
 
+	if (!up && ((now - last_change_time) < down_delay))
+			cpu = nr_cpu_ids;
+
+	if (cpu < nr_cpu_ids) {
+		last_change_time = now;
+		hp_stats_update(cpu, up);
+	}
 	mutex_unlock(tegra3_cpu_lock);
 
 	if (system_state > SYSTEM_RUNNING) {
