@@ -667,6 +667,7 @@ struct avp_svc_info *avp_svc_init(struct platform_device *pdev,
 		}
 		avp_svc->clks[mod->clk_req] = clk;
 	}
+	clk_set_rate(avp_svc->sclk, ULONG_MAX);
 
 	avp_svc->sclk = clk_get(&pdev->dev, "sclk");
 	if (IS_ERR(avp_svc->sclk)) {
