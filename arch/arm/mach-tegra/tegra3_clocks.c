@@ -836,10 +836,6 @@ static int tegra3_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 {
 	int ret = 0;
 
-	/* Hardware clock control is not possible on FPGA platforms.
-	   Report success so that upper level layers don't complain
-	   needlessly. */
-#ifndef CONFIG_TEGRA_FPGA_PLATFORM
 	if (c->dvfs) {
 		if (!c->dvfs->dvfs_rail)
 			return -ENOSYS;
@@ -897,7 +893,6 @@ static int tegra3_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 
 out:
 	clk_disable(c->u.cpu.main);
-#endif
 	return ret;
 }
 
