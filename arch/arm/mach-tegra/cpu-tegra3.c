@@ -3,7 +3,7 @@
  *
  * CPU auto-hotplug for Tegra3 CPUs
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,36 +32,21 @@
 #include <linux/clk.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
-#include <linux/pm_qos.h>
-#include <linux/fs.h>
-#include <linux/uaccess.h>
+#include <linux/pm_qos_params.h>
 
 #include "pm.h"
 #include "cpu-tegra.h"
 #include "clock.h"
-
-#ifdef PWR_DEVICE_TAG
-
-#undef PWR_DEVICE_TAG
-
-#endif
-#define PWR_DEVICE_TAG "CPUHP"
 
 #define INITIAL_STATE		TEGRA_HP_DISABLED
 #define UP2G0_DELAY_MS		70
 #define UP2Gn_DELAY_MS		100
 #define DOWN_DELAY_MS		500
 
-#define CPU_HOTPLUG_TAG "[CPUHP]"
-
 static struct mutex *tegra3_cpu_lock;
 
 static struct workqueue_struct *hotplug_wq;
 static struct delayed_work hotplug_work;
-
-static struct workqueue_struct *cpuplug_wq;
-static struct work_struct cpuplug_work;
-static bool is_plugging;
 
 static bool no_lp;
 module_param(no_lp, bool, 0644);
@@ -84,25 +69,11 @@ module_param(mp_overhead, int, 0644);
 static int balance_level = 75;
 module_param(balance_level, int, 0644);
 
-static int up_time = 100;
-module_param(up_time, int, 0644);
-static int down_time = 200;
-module_param(down_time, int, 0644);
-
 static struct clk *cpu_clk;
 static struct clk *cpu_g_clk;
 static struct clk *cpu_lp_clk;
 
-
-ktime_t active_start_time;
-
 static unsigned long last_change_time;
-
-static struct {
-	cputime64_t total_active_Time;
-	cputime64_t this_active_Time;
-} cpu_hp_active_time_stats[CONFIG_NR_CPUS];
-
 
 static struct {
 	cputime64_t time_up_total;
@@ -145,7 +116,7 @@ static void hp_stats_update(unsigned int cpu, bool up)
 		hp_stats[cpu].up_down_count++;
 		if ((hp_stats[cpu].up_down_count & 0x1) != up) {
 			/* FIXME: sysfs user space CPU control breaks stats */
-			pr_err(CPU_HOTPLUG_TAG"tegra hotplug stats out of sync with %s CPU%d",
+			pr_err("tegra hotplug stats out of sync with %s CPU%d",
 			       (cpu < CONFIG_NR_CPUS) ? "G" : "LP",
 			       (cpu < CONFIG_NR_CPUS) ?  cpu : 0);
 			hp_stats[cpu].up_down_count ^=  0x1;
@@ -162,8 +133,6 @@ enum {
 	TEGRA_HP_UP,
 };
 static int hp_state;
-static int mp_state;
-static int last_state;
 
 static int hp_state_set(const char *arg, const struct kernel_param *kp)
 {
@@ -184,18 +153,17 @@ static int hp_state_set(const char *arg, const struct kernel_param *kp)
 			mutex_unlock(tegra3_cpu_lock);
 			cancel_delayed_work_sync(&hotplug_work);
 			mutex_lock(tegra3_cpu_lock);
- 			pr_info("Tegra auto-hotplug disabled\n");
+			pr_info("Tegra auto-hotplug disabled\n");
 		} else if (hp_state != TEGRA_HP_DISABLED) {
 			if (old_state == TEGRA_HP_DISABLED) {
 				pr_info("Tegra auto-hotplug enabled\n");
 				hp_init_stats();
 			}
-			active_start_time = ktime_get();
 			/* catch-up with governor target speed */
 			tegra_cpu_set_speed_cap(NULL);
 		}
 	} else
-		pr_warn(CPU_HOTPLUG_TAG" %s: unable to set tegra hotplug state %s\n",
+		pr_warn("%s: unable to set tegra hotplug state %s\n",
 				__func__, arg);
 
 	mutex_unlock(tegra3_cpu_lock);
@@ -213,55 +181,6 @@ static struct kernel_param_ops tegra_hp_state_ops = {
 };
 module_param_cb(auto_hotplug, &tegra_hp_state_ops, &hp_state, 0644);
 
-static unsigned int NwNs_Threshold[] = {19, 30, 19, 11, 19, 11, 0, 11};
-static unsigned int TwTs_Threshold[] = {140, 0, 140, 190, 140, 190, 0, 190};
-extern unsigned int get_rq_info(void);
-
-static unsigned int NwNs[8] = {19, 30, 19, 11, 19, 11, 0, 11};
-module_param_array(NwNs, uint, NULL, 0644);
-static unsigned int TwTs[8] = {140, 0, 140, 190, 140, 190, 0, 190};
-module_param_array(TwTs, uint, NULL, 0644);
-extern unsigned int set_rq_poll_ms(unsigned int poll_ms);
-
-static int mp_policy = 0;
-
-static int mp_policy_set(const char *arg, const struct kernel_param *kp)
-{
-	int ret = 0;
-
-	if (!tegra3_cpu_lock)
-		return ret;
-
-	mutex_lock(tegra3_cpu_lock);
-
-	ret = param_set_int(arg, kp);
-	if (ret == 0) {
-		if (mp_policy > 0) {
-			memcpy(NwNs_Threshold, NwNs, sizeof(unsigned int)*8);
-			memcpy(TwTs_Threshold, TwTs, sizeof(unsigned int)*8);
-			set_rq_poll_ms(9);
-		} else {
-			mp_policy = 0;
-			pr_info(CPU_HOTPLUG_TAG" mp_policy is off\n");
-		}
-	} else
-		pr_warn(CPU_HOTPLUG_TAG" %s: unable to set tegra mp_policy %s\n",
-				__func__, arg);
-
-	mutex_unlock(tegra3_cpu_lock);
-	return ret;
-}
-
-static int mp_policy_get(char *buffer, const struct kernel_param *kp)
-{
-	return param_get_int(buffer, kp);
-}
-
-static struct kernel_param_ops tegra_mp_policy_ops = {
-	.set = mp_policy_set,
-	.get = mp_policy_get,
-};
-module_param_cb(mp_policy, &tegra_mp_policy_ops, &mp_policy, 0644);
 
 enum {
 	TEGRA_CPU_SPEED_BALANCED,
@@ -323,34 +242,6 @@ static noinline int tegra_cpu_speed_balance(void)
 	return TEGRA_CPU_SPEED_BALANCED;
 }
 
-
-void updateCurrentCPUTotalActiveTime(void)
-{
-	int active_cpus_count = 0;
-
-	ktime_t current_kt = ktime_get();
-	active_cpus_count = (cpu_online(0) + cpu_online(1) + cpu_online(2) + cpu_online(3)) - 1;
-
-	cpu_hp_active_time_stats[active_cpus_count].this_active_Time = ktime_to_us(ktime_sub(current_kt,
-						active_start_time));
-
-	cpu_hp_active_time_stats[active_cpus_count].total_active_Time += cpu_hp_active_time_stats[active_cpus_count].this_active_Time;
-	active_start_time = current_kt;
-}
-
-
-void printCPUTotalActiveTime(void)
-{
-	updateCurrentCPUTotalActiveTime();
-
-	pr_pwr_story("CPUs total active time:%llu,%llu,%llu,%llu",
-					cpu_hp_active_time_stats[0].total_active_Time,
-					cpu_hp_active_time_stats[1].total_active_Time,
-					cpu_hp_active_time_stats[2].total_active_Time,
-					cpu_hp_active_time_stats[3].total_active_Time);
-}
-
-
 static void tegra_auto_hotplug_work_func(struct work_struct *work)
 {
 	bool up = false;
@@ -358,10 +249,6 @@ static void tegra_auto_hotplug_work_func(struct work_struct *work)
 	unsigned long now = jiffies;
 
 	mutex_lock(tegra3_cpu_lock);
-	if (mp_policy && !is_lp_cluster()) {
-		mutex_unlock(tegra3_cpu_lock);
-		return;
-	}
 
 	switch (hp_state) {
 	case TEGRA_HP_DISABLED:
@@ -417,7 +304,7 @@ static void tegra_auto_hotplug_work_func(struct work_struct *work)
 			hotplug_wq, &hotplug_work, up2gn_delay);
 		break;
 	default:
-		pr_err(CPU_HOTPLUG_TAG"%s: invalid tegra hotplug state %d\n",
+		pr_err("%s: invalid tegra hotplug state %d\n",
 		       __func__, hp_state);
 	}
 
@@ -430,241 +317,12 @@ static void tegra_auto_hotplug_work_func(struct work_struct *work)
 	}
 	mutex_unlock(tegra3_cpu_lock);
 
-	if (system_state > SYSTEM_RUNNING) {
-		pr_info(CPU_HOTPLUG_TAG" system is not running\n");
-	} else if (cpu < nr_cpu_ids) {
-		if (up) {
-			updateCurrentCPUTotalActiveTime();
+	if (cpu < nr_cpu_ids) {
+		if (up)
 			cpu_up(cpu);
-			pr_info(CPU_HOTPLUG_TAG" turn on CPU %d, online CPU 0-3=[%d%d%d%d]\n",
-					cpu, cpu_online(0), cpu_online(1), cpu_online(2), cpu_online(3));
-		} else {
-			updateCurrentCPUTotalActiveTime();
+		else
 			cpu_down(cpu);
-
-			pr_info(CPU_HOTPLUG_TAG" turn off CPU %d, online CPU 0-3=[%d%d%d%d]\n",
-					cpu, cpu_online(0), cpu_online(1), cpu_online(2), cpu_online(3));
-		}
 	}
-}
-
-static void tegra_auto_cpuplug_work_func(struct work_struct *work)
-{
-	bool up = false;
-	unsigned int cpu = nr_cpu_ids;
-
-	mutex_lock(tegra3_cpu_lock);
-	if (hp_state != TEGRA_HP_DISABLED) {
-		switch (last_state) {
-		case TEGRA_HP_UP:
-			cpu = cpumask_next_zero(0, cpu_online_mask);
-			if (cpu < nr_cpu_ids) {
-				up = true;
-				hp_stats_update(cpu, true);
-			}
-			break;
-		case TEGRA_HP_DOWN:
-			cpu = tegra_get_slowest_cpu_n();
-			if (cpu < nr_cpu_ids) {
-				up = false;
-				hp_stats_update(cpu, false);
-			} else if (!is_lp_cluster() && !no_lp) {
-
-				/* For some reason this sometimes results in a null
-				   pointer dereference. Set the clocks again if this
-				   case occurs.
-				   start show-p1984, 2012.05.13
-				 */
-				if (!cpu_clk) {
-					printk(KERN_INFO "[cpu-tegra3]: re setting cpu_clk");
-					cpu_clk = clk_get_sys(NULL, "cpu");
-				}
-				if (!cpu_lp_clk) {
-					printk(KERN_INFO "[cpu-tegra3]: re setting cpu_lp_clk");
-					cpu_lp_clk = clk_get_sys(NULL, "cpu_lp");
-				}
-				if (IS_ERR(cpu_clk) || IS_ERR(cpu_lp_clk)) {
-					printk(KERN_INFO "[cpu-tegra3]: Error, cpu_clk/cpu_lp_lck not set");
-					break;
-				}
-				/* end show-p1984, 2012.05.13 */
-
-				if (!clk_set_parent(cpu_clk, cpu_lp_clk)) {
-					hp_stats_update(CONFIG_NR_CPUS, true);
-					hp_stats_update(0, false);
-					/* catch-up with governor target speed */
-					tegra_cpu_set_speed_cap(NULL);
-				} else
-					pr_err(CPU_HOTPLUG_TAG" clk_set_parent fail\n");
-			}
-			break;
-		}
-	}
-	mutex_unlock(tegra3_cpu_lock);
-
-	if (system_state > SYSTEM_RUNNING) {
-		pr_info(CPU_HOTPLUG_TAG" SYSTEM is not running\n");
-	} else if (cpu < nr_cpu_ids) {
-		if (up) {
-			updateCurrentCPUTotalActiveTime();
-			cpu_up(cpu);
-			pr_info(CPU_HOTPLUG_TAG" TURN ON CPU %d, online CPU 0-3=[%d%d%d%d]\n",
-					cpu, cpu_online(0), cpu_online(1), cpu_online(2), cpu_online(3));
-		} else {
-			updateCurrentCPUTotalActiveTime();
-			cpu_down(cpu);
-			pr_info(CPU_HOTPLUG_TAG" TURN OFF CPU %d, online CPU 0-3=[%d%d%d%d]\n",
-					cpu, cpu_online(0), cpu_online(1), cpu_online(2), cpu_online(3));
-		}
-	}
-
-	mutex_lock(tegra3_cpu_lock);
-	is_plugging = false;
-	mutex_unlock(tegra3_cpu_lock);
-}
-
-static int mp_decision(void)
-{
-	static bool first_call = true;
-	int new_state = TEGRA_HP_IDLE;
-	int nr_cpu_online;
-	int index;
-	unsigned int rq_depth;
-	static cputime64_t total_time = 0;
-	static cputime64_t last_time;
-	cputime64_t current_time;
-	cputime64_t this_time = 0;
-
-	current_time = ktime_to_ms(ktime_get());
-	if (first_call) {
-		first_call = false;
-	} else {
-		this_time = current_time - last_time;
-	}
-	total_time += this_time;
-
-	rq_depth = get_rq_info();
-	nr_cpu_online = num_online_cpus();
-
-	if (nr_cpu_online) {
-		index = (nr_cpu_online - 1) * 2;
-		if ((nr_cpu_online < 4) && (rq_depth >= NwNs_Threshold[index])) {
-			if (total_time >= TwTs_Threshold[index]) {
-				new_state = TEGRA_HP_UP;
-			}
-		} else if (rq_depth <= NwNs_Threshold[index+1]) {
-			if (total_time >= TwTs_Threshold[index+1] ) {
-				new_state = TEGRA_HP_DOWN;
-			}
-		} else {
-			total_time = 0;
-		}
-	} else {
-		total_time = 0;
-	}
-
-	if (new_state != TEGRA_HP_IDLE) {
-		total_time = 0;
-	}
-
-	last_time = ktime_to_ms(ktime_get());
-
-	return new_state;
-}
-
-void gcpu_plug(unsigned int cpu_freq)
-{
-	unsigned long up_delay, top_freq, bottom_freq;
-	static bool first_call = true;
-	static cputime64_t total_time = 0;
-	static cputime64_t last_time;
-	cputime64_t current_time;
-	cputime64_t this_time = 0;
-
-	if (is_plugging) {
-		return;
-	}
-
-	current_time = ktime_to_ms(ktime_get());
-	if (first_call) {
-		first_call = false;
-	} else {
-		this_time = current_time - last_time;
-	}
-	total_time += this_time;
-
-	up_delay = up2gn_delay;
-	top_freq = idle_bottom_freq;
-	bottom_freq = idle_bottom_freq;
-
-	if (smp_processor_id() == 0)
-		mp_state = mp_decision();
-	else
-		mp_state = TEGRA_HP_IDLE;
-
-	switch (hp_state) {
-	case TEGRA_HP_DISABLED:
-		total_time = 0;
-		break;
-	case TEGRA_HP_IDLE:
-		if (cpu_freq > top_freq) {
-			hp_state = TEGRA_HP_UP;
-		} else if (cpu_freq <= bottom_freq) {
-			hp_state = TEGRA_HP_DOWN;
-		}
-		total_time = 0;
-		break;
-	case TEGRA_HP_DOWN:
-		if (cpu_freq > top_freq) {
-			hp_state = TEGRA_HP_UP;
-			total_time = 0;
-		}
-		break;
-	case TEGRA_HP_UP:
-		if (cpu_freq <= bottom_freq) {
-			hp_state = TEGRA_HP_DOWN;
-			total_time = 0;
-		}
-		break;
-	}
-
-	if (hp_state == TEGRA_HP_UP) {
-		switch (tegra_cpu_speed_balance()) {
-		/* cpu speed is up and balanced - one more on-line */
-		case TEGRA_CPU_SPEED_BALANCED:
-			if ((total_time >= up_time) && (mp_state == TEGRA_HP_UP)) {
-				is_plugging = true;
-				last_state = TEGRA_HP_UP;
-				queue_work(cpuplug_wq, &cpuplug_work);
-				total_time = 0;
-			}
-			break;
-		/* cpu speed is up, but skewed - remove one core */
-		case TEGRA_CPU_SPEED_SKEWED:
-			if ((total_time >= down_time) && (mp_state == TEGRA_HP_DOWN)) {
-				is_plugging = true;
-				last_state = TEGRA_HP_DOWN;
-				queue_work(cpuplug_wq, &cpuplug_work);
-				total_time = 0;
-			}
-			break;
-		/* cpu speed is up, but under-utilized - do nothing */
-		case TEGRA_CPU_SPEED_BIASED:
-			if (total_time >= up_time)
-				total_time = 0;
-		default:
-			break;
-		}
-	} else if (hp_state == TEGRA_HP_DOWN) {
-		if ((total_time >= down_time) && (mp_state == TEGRA_HP_DOWN))  {
-			is_plugging = true;
-			last_state = TEGRA_HP_DOWN;
-			queue_work(cpuplug_wq, &cpuplug_work);
-			total_time = 0;
-		}
-	}
-
-	last_time = ktime_to_ms(ktime_get());
 }
 
 static int min_cpus_notify(struct notifier_block *nb, unsigned long n, void *p)
@@ -724,13 +382,8 @@ void tegra_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 		up_delay = up2gn_delay;
 		top_freq = idle_bottom_freq;
 		bottom_freq = idle_bottom_freq;
-		if (mp_policy) {
-			gcpu_plug(cpu_freq);
-			return;
-		}
 	}
 
-	/* G cluster: UP/DOWN hysteresis loop */
 	if (pm_qos_request(PM_QOS_MIN_ONLINE_CPUS) >= 2) {
 		if (hp_state != TEGRA_HP_UP) {
 			hp_state = TEGRA_HP_UP;
@@ -771,8 +424,8 @@ void tegra_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 		}
 		break;
 	default:
-		pr_err(CPU_HOTPLUG_TAG" %s: invalid tegra hotplug state %d\n",
-				__func__, hp_state);
+		pr_err("%s: invalid tegra hotplug state %d\n",
+		       __func__, hp_state);
 		BUG();
 	}
 }
@@ -783,18 +436,11 @@ int tegra_auto_hotplug_init(struct mutex *cpu_lock)
 	 * Not bound to the issuer CPU (=> high-priority), has rescue worker
 	 * task, single-threaded, freezable.
 	 */
-	int i = 0;
 	hotplug_wq = alloc_workqueue(
 		"cpu-tegra3", WQ_UNBOUND | WQ_RESCUER | WQ_FREEZABLE, 1);
 	if (!hotplug_wq)
 		return -ENOMEM;
 	INIT_DELAYED_WORK(&hotplug_work, tegra_auto_hotplug_work_func);
-
-	cpuplug_wq = alloc_workqueue(
-		"cpu-tegra3-plug", WQ_UNBOUND | WQ_RESCUER | WQ_FREEZABLE, 1);
-	if (!cpuplug_wq)
-		return -ENOMEM;
-	INIT_WORK(&cpuplug_work, tegra_auto_cpuplug_work_func);
 
 	cpu_clk = clk_get_sys(NULL, "cpu");
 	cpu_g_clk = clk_get_sys(NULL, "cpu_g");
@@ -809,19 +455,11 @@ int tegra_auto_hotplug_init(struct mutex *cpu_lock)
 	up2gn_delay = msecs_to_jiffies(UP2Gn_DELAY_MS);
 	down_delay = msecs_to_jiffies(DOWN_DELAY_MS);
 
-	is_plugging = false;
-
 	tegra3_cpu_lock = cpu_lock;
 	hp_state = INITIAL_STATE;
-	mp_state = TEGRA_HP_IDLE;
 	hp_init_stats();
-	pr_info(CPU_HOTPLUG_TAG"Tegra auto-hotplug initialized: %s\n",
+	pr_info("Tegra auto-hotplug initialized: %s\n",
 		(hp_state == TEGRA_HP_DISABLED) ? "disabled" : "enabled");
-	for (i = 0; i <= CONFIG_NR_CPUS; i++) {
-		cpu_hp_active_time_stats[i].this_active_Time = 0;
-		cpu_hp_active_time_stats[i].total_active_Time = 0;
-	}
-	pm_debug_cpu_hotplug = printCPUTotalActiveTime;
 
 	if (pm_qos_add_notifier(PM_QOS_MIN_ONLINE_CPUS, &min_cpus_notifier))
 		pr_err("%s: Failed to register min cpus PM QoS notifier\n",
@@ -953,7 +591,6 @@ late_initcall(tegra_auto_hotplug_debug_init);
 void tegra_auto_hotplug_exit(void)
 {
 	destroy_workqueue(hotplug_wq);
-	destroy_workqueue(cpuplug_wq);
 #ifdef CONFIG_DEBUG_FS
 	debugfs_remove_recursive(hp_debugfs_root);
 	pm_qos_remove_request(&min_cpu_req);
