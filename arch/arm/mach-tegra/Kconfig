@@ -580,6 +580,16 @@ config RESET_REASON
     depends on MACH_ENDEAVORU || MACH_ENDEAVORTD || MACH_BLUE || MACH_VERTEXF || MACH_QUATTRO_U
     default n
 
+config ETERNITYPROJECT_GPUBOOST
+	bool "[DANGEROUS] Boost Tegra 3 Speedo 0/1 GPU clocks"
+	default n
+	help
+	  Boost the GPU clocks. 
+	  Specifically: 2D/3D max to 520MHz - host1x to 300MHz
+	  -- IMPORTANT --
+	  Not all the chips are made equal. That implies this
+	  option may work for you, but not for your friend.
+
 config TEGRA_PLLM_RESTRICTED
 	bool "Restrict PLLM usage as module clock source"
 	depends on !ARCH_TEGRA_2x_SOC
