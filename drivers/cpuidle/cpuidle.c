@@ -153,10 +153,8 @@ int cpuidle_idle_call(void)
 	if (dev->last_state)
 		target_state = dev->last_state;
 
-/*it might be redirect from LP2 to LP3
-* move these to mach-tegra/cpuidle.c */
-//	target_state->time += (unsigned long long)dev->last_residency;
-//	target_state->usage++;
+	target_state->time += (unsigned long long)dev->last_residency;
+	target_state->usage++;
 
 	/* give the governor an opportunity to reflect on the outcome */
 	if (cpuidle_curr_governor->reflect)
@@ -174,8 +172,6 @@ void cpuidle_install_idle_handler(void)
 		/* Make sure all changes finished before we switch to new idle */
 		smp_wmb();
 		initialized = 1;
-		/* for CPUidle profile*/
-		pm_debug_idle = cpu_idle_debug_show;
 	}
 }
 
