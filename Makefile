@@ -343,7 +343,7 @@ CFLAGS_MODULE   =
 AFLAGS_MODULE   =
 LDFLAGS_MODULE  =
 CFLAGS_KERNEL	=
-AFLAGS_KERNEL	=
+AFLAGS_KERNEL	= -mfpu=neon
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
 
 
