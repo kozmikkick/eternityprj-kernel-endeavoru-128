@@ -1,6 +1,9 @@
 /*
  * Copyright (C) 2011 NVIDIA, Inc.
  *
+ * Further modifications made by the EternityProject Team
+ * Angelo G. Del Regno <kholk11@gmail.com>
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
@@ -21,8 +24,6 @@
 
 #include "board-endeavoru.h"
 #include "tegra3_emc.h"
-//#include "clock.h"
-//#include <linux/clk.h>
 
 
 static const struct tegra_emc_table enterprise_emc_tables_h5tc2g_400[] = {
@@ -1227,23 +1228,71 @@ static const struct tegra_emc_table enterprise_emc_tables_h5tc2g_533[] =
 	},
 };
 
+static const u32 endeavoru_bit_swap_map[32] = {
+      /* DDR bit #    SoC bit # */
+	[0]  = 0x1 << 1,
+	[1]  = 0x1 << 2,
+	[2]  = 0x1 << 3,
+	[3]  = 0x1 << 0,
+	[4]  = 0x1 << 7,
+	[5]  = 0x1 << 5,
+	[6]  = 0x1 << 6,
+	[7]  = 0x1 << 4,
+
+	[8]  = 0x1 << 13,
+	[9]  = 0x1 << 9,
+	[10] = 0x1 << 8,
+	[11] = 0x1 << 12,
+	[12] = 0x1 << 11,
+	[13] = 0x1 << 10,
+	[14] = 0x1 << 14,
+	[15] = 0x1 << 15,
+
+	[16] = 0x1 << 20,
+	[17] = 0x1 << 23,
+	[18] = 0x1 << 16,
+	[19] = 0x1 << 19,
+	[20] = 0x1 << 18,
+	[21] = 0x1 << 21,
+	[22] = 0x1 << 22,
+	[23] = 0x1 << 17,
+
+	[24] = 0x1 << 27,
+	[25] = 0x1 << 30,
+	[26] = 0x1 << 31,
+	[27] = 0x1 << 28,
+	[28] = 0x1 << 26,
+	[29] = 0x1 << 25,
+	[30] = 0x1 << 24,
+	[31] = 0x1 << 29,
+};
+
+
+/*
+ * EternityProject: Add EMC clock init check prior
+ * initializing the EMC table in enterprise_emc_init
+ * and rename the function to endeavoru_emc_init.
+ * We can also detect the max rate and choose automatically
+ * between the various timing tables, but since we are
+ * on a known board that uses 533MHz LPDDR2, we can avoid
+ * the max_rate check.
+ *
+ * Hints:
+ * struct clk *emc; emc = tegra_get_clock_by_name("emc");
+ * BUG_ON(!emc);
+ * max_rate = clk_get_max_rate(emc) / 1000;
+ * if (max_rate == --DDR CLOCK--)
+ *     tegra_init_emc(blahblah)
+ */
+
 int enterprise_emc_init(void)
 {
-//    struct clk *emc;
-//	unsigned long  max_rate;
-//	emc = tegra_get_clock_by_name("emc");
-//	BUG_ON(!emc);
-//	max_rate = clk_get_max_rate(emc) / 1000;
+	tegra_init_dram_bit_map(endeavoru_bit_swap_map,
+			ARRAY_SIZE(endeavoru_bit_swap_map));
 
-//    printk("max_rate : %d\n" ,max_rate);
-//    if (max_rate == 400000){
-//        printk("init 400MHz Timing table\n");
-//        tegra_init_emc(enterprise_emc_tables_h5tc2g_400,
-//          ARRAY_SIZE(enterprise_emc_tables_h5tc2g_400));
-//    } else if (max_rate == 533000){
-        printk("init 533MHz Timing table\n");
+        printk("Using 533MHz Timing table\n");
         tegra_init_emc(enterprise_emc_tables_h5tc2g_533,
-          ARRAY_SIZE(enterprise_emc_tables_h5tc2g_533));
-//    } 
+		ARRAY_SIZE(enterprise_emc_tables_h5tc2g_533));
+
 	return 0;
 }
