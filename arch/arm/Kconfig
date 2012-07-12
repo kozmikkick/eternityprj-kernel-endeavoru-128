@@ -620,6 +620,7 @@ config ARCH_NUC93X
 config ARCH_TEGRA
 	bool "NVIDIA Tegra"
 	select CLKDEV_LOOKUP
+	select CLKSRC_MMIO
 	select GENERIC_TIME
 	select GENERIC_CLOCKEVENTS
 	select GENERIC_GPIO
