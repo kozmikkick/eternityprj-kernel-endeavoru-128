@@ -31,9 +31,9 @@
 #include <linux/random.h>
 #include <linux/hw_breakpoint.h>
 #include <linux/cpuidle.h>
+#include <linux/console.h>
 
 #include <asm/cacheflush.h>
-#include <asm/leds.h>
 #include <asm/processor.h>
 #include <asm/system.h>
 #include <asm/thread_notify.h>
@@ -163,8 +163,37 @@ void soft_restart(unsigned long addr)
 	BUG();
 }
 
+#ifdef CONFIG_ARM_FLUSH_CONSOLE_ON_RESTART
+void arm_machine_flush_console(void)
+{
+	printk("\n");
+	pr_emerg("Restarting %s\n", linux_banner);
+	if (console_trylock()) {
+		console_unlock();
+		return;
+	}
+
+	mdelay(50);
+
+	local_irq_disable();
+	if (!console_trylock())
+		pr_emerg("arm_restart: Console was locked! Busting\n");
+	else
+		pr_emerg("arm_restart: Console was locked!\n");
+	console_unlock();
+}
+#else
+void arm_machine_flush_console(void)
+{
+}
+#endif
+
 void arm_machine_restart(char mode, const char *cmd)
 {
+	/* Flush the console to make sure all the relevant messages make it
+	 * out to the console drivers */
+	arm_machine_flush_console();
+
 	/* Disable interrupts first */
 	local_irq_disable();
 	local_fiq_disable();
