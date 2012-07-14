@@ -202,7 +202,6 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 	bit = 1 << (cpu_logical_map(cpu) + shift);
 
 	spin_lock(&irq_controller_lock);
-	d->node = cpu;
 	val = readl_relaxed(reg) & ~mask;
 	val |= bit;
 #ifdef CONFIG_GIC_SET_MULTIPLE_CPUS
