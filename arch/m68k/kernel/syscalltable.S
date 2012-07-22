@@ -362,6 +362,7 @@ ENTRY(sys_call_table)
 	.long sys_open_by_handle_at
 	.long sys_clock_adjtime
 	.long sys_syncfs
+	.long sys_setns
 
 	.rept NR_syscalls-(.-sys_call_table)/4
 		.long sys_ni_syscall
