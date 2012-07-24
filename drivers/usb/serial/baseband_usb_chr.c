@@ -42,8 +42,8 @@
 #include <mach/htc_hostdbg.h>
 
 /* HTC variables */
-//extern unsigned int host_dbg_flag;
-int host_dbg_flag = 1;
+/* extern unsigned int host_dbg_flag; // EternityProject: Redefine that variable. */
+unsigned int host_dbg_flag = 0;
 #define MODULE_NAME "[USBCHRv1] "
 
 /* HTC: debug flag */
@@ -405,6 +405,7 @@ static ssize_t baseband_ipc_file_read(struct baseband_ipc *ipc,
 	}
 
 	/* acquire rx buffer semaphores */
+/* retry: //EternityProject, 24/07/2012: We aren't using this label actually. Remove it. */
 	if (down_interruptible(&ipc->buf_sem)) {
 		pr_err("baseband_ipc_file_read - "
 			"cannot acquire buffer semaphore\n");
@@ -595,13 +596,11 @@ static void baseband_ipc_close(struct baseband_ipc *ipc)
 	if (!ipc)
 		return;
 
-	/* destroy work queue */
+	/* cancel work queue */
 	if (ipc->workqueue) {
-		pr_debug("destroy workqueue {\n");
+		chrlog4("cancel workqueue {\n");
 		cancel_work_sync(&ipc->work);
-		destroy_workqueue(ipc->workqueue);
-		ipc->workqueue = (struct workqueue_struct *) 0;
-		pr_debug("destroy workqueue }\n");
+		chrlog4("cancel workqueue }\n");
 	}
 	memset(&ipc->work, 0, sizeof(ipc->work));
 
@@ -949,7 +948,6 @@ static void baseband_usb_driver_disconnect(struct usb_interface *intf)
 		if (baseband_usb_chr && baseband_usb_chr->ipc
 			&& baseband_usb_chr->ipc->workqueue)
 			flush_workqueue(baseband_usb_chr->ipc->workqueue);
-			msleep(2000);
 		/* delete device file */
 		device_remove_file(&usb_dev->dev, &dev_attr_bbusb_ioctl);
 		usb_device_connection = false;
@@ -1320,6 +1318,10 @@ static struct baseband_usb *baseband_usb_open(unsigned int vid,
 	err = baseband_usb_chr_rx_urb_submit(usb);
 	if (err < 0) {
 		pr_err("submit rx failed - err %d\n", err);
+		/* return -ENODEV;
+		 * EternityProject, 24/07/2012:
+		 * Why aren't we exiting from that correctly?!?
+		 */
 		goto error_exit;
 	}
 
