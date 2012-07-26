@@ -118,9 +118,8 @@ static int br_dump_ifinfo(struct sk_buff *skb, struct netlink_callback *cb)
 	int idx;
 
 	idx = 0;
-	rcu_read_lock();
-	for_each_netdev_rcu(net, dev) {
-		struct net_bridge_port *port = br_port_get_rcu(dev);
+	for_each_netdev(net, dev) {
+		struct net_bridge_port *port = br_port_get_rtnl(dev);
 
 		/* not a bridge port */
 		if (!port || idx < cb->args[0])
@@ -134,7 +133,7 @@ static int br_dump_ifinfo(struct sk_buff *skb, struct netlink_callback *cb)
 skip:
 		++idx;
 	}
-	rcu_read_unlock();
+
 	cb->args[0] = idx;
 
 	return skb->len;
