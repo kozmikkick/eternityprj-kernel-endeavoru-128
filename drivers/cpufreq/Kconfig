@@ -107,6 +107,10 @@ config CPU_FREQ_DEFAULT_GOV_INTERACTIVE
 	  loading your cpufreq low-level hardware driver, using the
 	  'interactive' governor for latency-sensitive workloads.
 
+config CPU_FREQ_DEFAULT_GOV_EPRJDEMAND
+	bool "eprjdemand"
+	select CPU_FREQ_GOV_EPRJDEMAND
+
 endchoice
 
 config CPU_FREQ_GOV_PERFORMANCE
@@ -190,6 +194,21 @@ config CPU_FREQ_GOV_CONSERVATIVE
 	  module will be called cpufreq_conservative.
 
 	  For details, take a look at linux/Documentation/cpu-freq.
+
+	  If in doubt, say N.
+
+config CPU_FREQ_GOV_EPRJDEMAND
+	tristate "'eprjdemand' cpufreq policy governor"
+	select CPU_FREQ_TABLE
+	help
+	  'eprjdemand' - This driver adds a dynamic cpufreq policy governor.
+	  This governor is based on the Samsung's 'pegasusq' governor,
+	  adapted to the EternityProject's 3.4 kernel for Tegra 3 platforms.
+	  The suppot for this governor depends on CPU capability to do
+	  fast frequency switching (i.e, low latelcy frequency transitions).
+
+	  To compile this driver as a module, chose M here: the module
+	  will be called cpufreq_eprjdemand.
 
 	  If in doubt, say N.
 
