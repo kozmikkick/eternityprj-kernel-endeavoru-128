@@ -152,7 +152,7 @@ static unsigned int get_nr_run_avg(void)
 #define MIN_FREQUENCY_UP_THRESHOLD		(11)
 #define MAX_FREQUENCY_UP_THRESHOLD		(100)
 #define DEF_SAMPLING_RATE			(50000)
-#define MIN_SAMPLING_RATE			(10000)
+#define MIN_SAMPLING_RATE			(30000)
 #define MAX_HOTPLUG_RATE			(40u)
 
 #define DEF_MAX_CPU_LOCK			(0)
@@ -162,7 +162,7 @@ static unsigned int get_nr_run_avg(void)
 #define DEF_FREQ_STEP				(40)
 #define DEF_START_DELAY				(0)
 
-#define UP_THRESHOLD_AT_MIN_FREQ		(40)
+#define UP_THRESHOLD_AT_MIN_FREQ		(50)
 #define FREQ_FOR_RESPONSIVENESS			(500000)
 
 #define HOTPLUG_DOWN_INDEX			(0)
@@ -179,7 +179,19 @@ static int hotplug_freq[4][2] = {
 	{400000, 800000},
 	{600000, 0}
 };
+#elif defined(CONFIG_MACH_TEGRA)
+static int hotplug_rq[4][2] = [
+	{0, 100}, {100, 200}, {200, 300}, {300, 0}
+};
+
+static int hotplug_freq[4][2] = {
+	{0, 640000},
+	{475000, 640000},
+	{475000, 860000},
+	{760000, 0}
+};
 #else
+#warning EternityProject: Using a generic hotplug table.
 static int hotplug_rq[4][2] = {
 	{0, 100}, {100, 200}, {200, 300}, {300, 0}
 };
@@ -700,7 +712,7 @@ static ssize_t store_hotplug_lock(struct kobject *a, struct attribute *b,
 
 	ret = cpufreq_eprjdemand_cpu_lock(input);
 	if (ret) {
-		printk(KERN_ERR "[HOTPLUG] already locked with smaller value %d < %d\n",
+		pr_info("[EPRJDEMAND] [HOTPLUG] already locked with smaller value %d < %d\n",
 			atomic_read(&g_hotplug_lock), input);
 		return ret;
 	}
@@ -919,7 +931,7 @@ static int check_up(void)
 	}
 
 	if (min_freq >= up_freq && min_rq_avg > up_rq) {
-		printk(KERN_ERR "[HOTPLUG IN] %s %d>=%d && %d>%d\n",
+		pr_info("[EPRJDEMAND] [HOTPLUG IN] %s %d>=%d && %d>%d\n",
 			__func__, min_freq, up_freq, min_rq_avg, up_rq);
 		hotplug_history->num_hist = 0;
 		return 1;
@@ -971,7 +983,7 @@ static int check_down(void)
 	}
 
 	if (max_freq <= down_freq && max_rq_avg <= down_rq) {
-		printk(KERN_ERR "[HOTPLUG OUT] %s %d<=%d && %d<%d\n",
+		pr_info("[EPRJDEMAND] [HOTPLUG OUT] %s %d<=%d && %d<%d\n",
 			__func__, max_freq, down_freq, max_rq_avg, down_rq);
 		hotplug_history->num_hist = 0;
 		return 1;
@@ -1093,6 +1105,7 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 	/* Check for frequency decrease */
 #ifndef CONFIG_ARCH_EXYNOS4
 	/* if we cannot reduce the frequency anymore, break out early */
+
 	if (policy->cur == policy->min)
 		return;
 #endif
