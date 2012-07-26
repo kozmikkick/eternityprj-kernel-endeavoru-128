@@ -1403,7 +1403,7 @@ static void __exit cpufreq_gov_dbs_exit(void)
 	kfree(rq_data);
 }
 
-MODULE_AUTHOR("ByungChang Cha <bc.cha@samsung.com>");
+MODULE_AUTHOR("Angelo G. Del Regno <kholk11@gmail.com>");
 MODULE_DESCRIPTION("'cpufreq_eprjdemand' - A dynamic cpufreq/cpuhotplug governor");
 MODULE_LICENSE("GPL");
 
