@@ -182,16 +182,14 @@ SECTIONS
 		ARM_EXIT_KEEP(EXIT_DATA)
 	}
 #endif
-#ifdef CONFIG_SMP
+
 	PERCPU_SECTION(L1_CACHE_BYTES)
-#endif
 
 #ifdef CONFIG_XIP_KERNEL
 	__data_loc = ALIGN(4);		/* location in binary */
 	. = PAGE_OFFSET + TEXT_OFFSET;
 #else
 	__init_end = .;
-	. = 0xC0D00000;
 	. = ALIGN(THREAD_SIZE);
 	__data_loc = .;
 #endif
