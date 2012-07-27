@@ -364,8 +364,8 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -marm -march=armv7-a -mtune=cortex-a9 -mfpu=neon \
 		   -funswitch-loops -fpredictive-commoning \
 		   -fmodulo-sched -fmodulo-sched-allow-regmoves \
-		   -ftree-vectorize -floop-interchange \
-		   -floop-strip-mine -floop-block
+		   -ftree-vectorize 
+#		   -floop-interchange -floop-strip-mine -floop-block
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
 KBUILD_AFLAGS   := -D__ASSEMBLY__
