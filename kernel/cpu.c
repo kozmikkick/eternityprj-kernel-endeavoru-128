@@ -330,6 +330,9 @@ int __cpuinit cpu_up(unsigned int cpu)
 {
 	int err = 0;
 
+	if(cpu_online(cpu))
+		return err;
+
 #ifdef	CONFIG_MEMORY_HOTPLUG
 	int nid;
 	pg_data_t	*pgdat;
