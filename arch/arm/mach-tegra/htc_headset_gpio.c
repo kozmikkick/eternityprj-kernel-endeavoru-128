@@ -116,6 +116,7 @@ static void hs_key_irq_enable_func(struct work_struct *work)
 
 static void cancel_button_work_func(struct work_struct *work)
 {
+	int counter = 10, ret = 0;
 	HS_DBG();
 
 	ret = cancel_delayed_work(&button_gpio_work);
