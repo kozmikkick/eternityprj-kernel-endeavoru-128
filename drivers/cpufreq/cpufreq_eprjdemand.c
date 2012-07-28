@@ -168,23 +168,31 @@ static unsigned int get_nr_run_avg(void)
 #define HOTPLUG_DOWN_INDEX			(0)
 #define HOTPLUG_UP_INDEX			(1)
 
-#ifdef CONFIG_MACH_MIDAS
-static int hotplug_rq[4][2] = {
+/* 
+ * ADDON_CORES: If you  have  features  like  HyperThreading
+ * 		or more than 4 cores, then raise this value.
+ */
+#define ADDON_CORES				(0)
+#define EPRJ_NCORES				(4 + ADDON_CORES)
+#define EPRJ_RQ					(2)
+
+#if defined(CONFIG_MACH_MIDAS)
+static int hotplug_rq[EPRJ_NCORES][EPRJ_RQ] = {
 	{0, 200}, {200, 300}, {300, 400}, {400, 0}
 };
 
-static int hotplug_freq[4][2] = {
+static int hotplug_freq[EPRJ_NCORES][EPRJ_RQ] = {
 	{0, 500000},
 	{400000, 500000},
 	{400000, 800000},
 	{600000, 0}
 };
-#elif defined(CONFIG_MACH_TEGRA)
-static int hotplug_rq[4][2] = [
+#elif defined(CONFIG_MACH_ENDEAVORU)
+static int hotplug_rq[EPRJ_NCORES][EPRJ_RQ] = {
 	{0, 100}, {100, 200}, {200, 300}, {300, 0}
 };
 
-static int hotplug_freq[4][2] = {
+static int hotplug_freq[EPRJ_NCORES][EPRJ_RQ] = {
 	{0, 640000},
 	{475000, 640000},
 	{475000, 860000},
@@ -192,11 +200,11 @@ static int hotplug_freq[4][2] = {
 };
 #else
 #warning EternityProject: Using a generic hotplug table.
-static int hotplug_rq[4][2] = {
+static int hotplug_rq[EPRJ_NCORES][EPRJ_RQ] = {
 	{0, 100}, {100, 200}, {200, 300}, {300, 0}
 };
 
-static int hotplug_freq[4][2] = {
+static int hotplug_freq[EPRJ_NCORES][EPRJ_RQ] = {
 	{0, 500000},
 	{200000, 500000},
 	{200000, 500000},
