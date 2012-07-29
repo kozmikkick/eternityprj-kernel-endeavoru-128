@@ -169,7 +169,7 @@ static int wl12xx_sdio_power_off(struct wl12xx_sdio_glue *glue)
 	/* Power off the card manually in case it wasn't powered off above */
 	ret = mmc_power_save_host(card->host);
 	if (ret < 0)
-		goto out
+		goto out;
 
 	/* Let runtime PM know the card is powered off */
 	pm_runtime_put_sync(&card->dev);
@@ -353,6 +353,12 @@ static int wl1271_resume(struct device *dev)
 
 //	printk("[EternityProject WiFi] Resuming SDIO.\n");
 //	set_wifi_is_on(1);
+
+	struct sdio_func *func = dev_to_sdio_func(dev);
+	struct wl12xx_sdio_glue *glue = sdio_get_drvdata(func);
+	struct wl1271 *wl = platform_get_drvdata(glue->core);
+
+	wl->wow_enabled = 0;
 
 	return 0;
 }
