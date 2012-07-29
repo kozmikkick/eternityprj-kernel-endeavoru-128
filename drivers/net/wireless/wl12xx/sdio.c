@@ -315,8 +315,9 @@ static int wl1271_suspend(struct device *dev)
 		wl->wow_enabled);
 
 	/* check whether sdio should keep power */
-/*	if (wl->wow_enabled) {*/
-	if (stop_wifi_driver_flag) {
+/*	if (wl->wow_enabled) {		*/
+/*	if (stop_wifi_driver_flag) {	*/
+	if ( (wl->wow_enabled) || (stop_wifi_driver_flag) ) {
 		sdio_flags = sdio_get_host_pm_caps(func);
 
 		if (!(sdio_flags & MMC_PM_KEEP_POWER)) {
@@ -354,12 +355,12 @@ static int wl1271_resume(struct device *dev)
 //	printk("[EternityProject WiFi] Resuming SDIO.\n");
 //	set_wifi_is_on(1);
 
-	struct sdio_func *func = dev_to_sdio_func(dev);
+/*	struct sdio_func *func = dev_to_sdio_func(dev);
 	struct wl12xx_sdio_glue *glue = sdio_get_drvdata(func);
 	struct wl1271 *wl = platform_get_drvdata(glue->core);
 
 	wl->wow_enabled = 0;
-
+*/
 	return 0;
 }
 
