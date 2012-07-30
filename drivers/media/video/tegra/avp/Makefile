@@ -4,7 +4,7 @@
 CONFIG_TEGRA_RPC=y
 CONFIG_TEGRA_AVP=y
 
-GCOV_PROFILE := y
+# GCOV_PROFILE := y
 obj-$(CONFIG_TEGRA_RPC)		+= tegra_rpc.o
 obj-$(CONFIG_TEGRA_RPC)		+= trpc_local.o
 obj-$(CONFIG_TEGRA_RPC)		+= trpc_sema.o

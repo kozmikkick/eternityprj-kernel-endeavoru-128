@@ -1,4 +1,4 @@
-GCOV_PROFILE := y
+# GCOV_PROFILE := y
 
 # Tegra platform Support
 snd-soc-tegra-pcm-objs := tegra_pcm.o

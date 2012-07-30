@@ -1,4 +1,4 @@
-GCOV_PROFILE := y
+# GCOV_PROFILE := y
 nvhost-objs = \
 	nvhost_acm.o \
 	nvhost_syncpt.o \

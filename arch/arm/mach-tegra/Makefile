@@ -1,4 +1,4 @@
-GCOV_PROFILE := y
+# GCOV_PROFILE := y
 
 obj-y                                   += ahb.o
 obj-y                                   += apbio.o
