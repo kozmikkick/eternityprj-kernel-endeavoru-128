@@ -23,6 +23,8 @@
 
 #include <trace/events/ext4.h>
 
+static unsigned ext4_num_base_meta_clusters(struct super_block *sb,
+					    ext4_group_t block_group);
 /*
  * balloc.c contains the blocks allocation and deallocation routines
  */
@@ -334,10 +336,10 @@ err_out:
  * Return buffer_head on success or NULL in case of failure.
  */
 struct buffer_head *
-ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
+ext4_read_block_bitmap_nowait(struct super_block *sb, ext4_group_t block_group)
 {
 	struct ext4_group_desc *desc;
-	struct buffer_head *bh = NULL;
+	struct buffer_head *bh;
 	ext4_fsblk_t bitmap_blk;
 
 	desc = ext4_get_group_desc(sb, block_group, NULL);
@@ -346,9 +348,9 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
 	bitmap_blk = ext4_block_bitmap(sb, desc);
 	bh = sb_getblk(sb, bitmap_blk);
 	if (unlikely(!bh)) {
-		ext4_error(sb, "Cannot read block bitmap - "
-			    "block_group = %u, block_bitmap = %llu",
-			    block_group, bitmap_blk);
+		ext4_error(sb, "Cannot get buffer for block bitmap - "
+			   "block_group = %u, block_bitmap = %llu",
+			   block_group, bitmap_blk);
 		return NULL;
 	}
 
@@ -380,25 +382,50 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
 		return bh;
 	}
 	/*
-	 * submit the buffer_head for read. We can
-	 * safely mark the bitmap as uptodate now.
-	 * We do it here so the bitmap uptodate bit
-	 * get set with buffer lock held.
+	 * submit the buffer_head for reading
 	 */
+	set_buffer_new(bh);
 	trace_ext4_read_block_bitmap_load(sb, block_group);
-	set_bitmap_uptodate(bh);
-	if (bh_submit_read(bh) < 0) {
-		put_bh(bh);
+	bh->b_end_io = ext4_end_bitmap_read;
+	get_bh(bh);
+	submit_bh(READ, bh);
+	return bh;
+}
+
+/* Returns 0 on success, 1 on error */
+int ext4_wait_block_bitmap(struct super_block *sb, ext4_group_t block_group,
+			   struct buffer_head *bh)
+{
+	struct ext4_group_desc *desc;
+
+	if (!buffer_new(bh))
+		return 0;
+	desc = ext4_get_group_desc(sb, block_group, NULL);
+	if (!desc)
+		return 1;
+	wait_on_buffer(bh);
+	if (!buffer_uptodate(bh)) {
 		ext4_error(sb, "Cannot read block bitmap - "
-			    "block_group = %u, block_bitmap = %llu",
-			    block_group, bitmap_blk);
+			   "block_group = %u, block_bitmap = %llu",
+			   block_group, (unsigned long long) bh->b_blocknr);
+		return 1;
+	}
+	clear_buffer_new(bh);
+	/* Panic or remount fs read-only if block bitmap is invalid */
+	ext4_valid_block_bitmap(sb, desc, block_group, bh);
+	return 0;
+}
+
+struct buffer_head *
+ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
+{
+	struct buffer_head *bh;
+
+	bh = ext4_read_block_bitmap_nowait(sb, block_group);
+	if (ext4_wait_block_bitmap(sb, block_group, bh)) {
+		put_bh(bh);
 		return NULL;
 	}
-	ext4_valid_block_bitmap(sb, desc, block_group, bh);
-	/*
-	 * file system mounted not to panic on error,
-	 * continue with corrupt bitmap
-	 */
 	return bh;
 }
 
@@ -412,7 +439,7 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
  * On success return 1, return 0 on failure.
  */
 static int ext4_has_free_clusters(struct ext4_sb_info *sbi,
-				s64 nclusters, unsigned int flags)
+				  s64 nclusters, unsigned int flags)
 {
 	s64 free_clusters, dirty_clusters, root_clusters;
 	struct percpu_counter *fcc = &sbi->s_freeclusters_counter;
@@ -423,7 +450,7 @@ static int ext4_has_free_clusters(struct ext4_sb_info *sbi,
 	root_clusters = EXT4_B2C(sbi, ext4_r_blocks_count(sbi->s_es));
 
 	if (free_clusters - (nclusters + root_clusters + dirty_clusters) <
-						EXT4_FREECLUSTERS_WATERMARK) {
+					EXT4_FREECLUSTERS_WATERMARK) {
 		free_clusters  = EXT4_C2B(sbi, percpu_counter_sum_positive(fcc));
 		dirty_clusters = percpu_counter_sum_positive(dcc);
 	}
@@ -524,31 +551,6 @@ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
 	return ret;
 }
 
-/*
- * This function returns the number of file system metadata clusters at
- * the beginning of a block group, including the reserved gdt blocks.
- */
-unsigned ext4_num_base_meta_clusters(struct super_block *sb,
-				     ext4_group_t block_group)
-{
-	struct ext4_sb_info *sbi = EXT4_SB(sb);
-	unsigned num;
-
-	/* Check for superblock and gdt backups in this group */
-	num = ext4_bg_has_super(sb, block_group);
-
-	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG) ||
-	    block_group < le32_to_cpu(sbi->s_es->s_first_meta_bg) *
-			  sbi->s_desc_per_block) {
-		if (num) {
-			num += ext4_bg_num_gdb(sb, block_group);
-			num += le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks);
-		}
-	} else { /* For META_BG_BLOCK_GROUPS */
-		num += ext4_bg_num_gdb(sb, block_group);
-	}
-	return EXT4_NUM_B2C(sbi, num);
-}
 /**
  * ext4_count_free_clusters() -- count filesystem free clusters
  * @sb:		superblock
@@ -590,7 +592,7 @@ ext4_fsblk_t ext4_count_free_clusters(struct super_block *sb)
 	brelse(bitmap_bh);
 	printk(KERN_DEBUG "ext4_count_free_clusters: stored = %llu"
 	       ", computed = %llu, %llu\n",
-	       EXT4_B2C(sbi, ext4_free_blocks_count(es)),
+	       EXT4_B2C(EXT4_SB(sb), ext4_free_blocks_count(es)),
 	       desc_count, bitmap_count);
 	return bitmap_count;
 #else
@@ -689,6 +691,31 @@ unsigned long ext4_bg_num_gdb(struct super_block *sb, ext4_group_t group)
 
 }
 
+/*
+ * This function returns the number of file system metadata clusters at
+ * the beginning of a block group, including the reserved gdt blocks.
+ */
+static unsigned ext4_num_base_meta_clusters(struct super_block *sb,
+				     ext4_group_t block_group)
+{
+	struct ext4_sb_info *sbi = EXT4_SB(sb);
+	unsigned num;
+
+	/* Check for superblock and gdt backups in this group */
+	num = ext4_bg_has_super(sb, block_group);
+
+	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG) ||
+	    block_group < le32_to_cpu(sbi->s_es->s_first_meta_bg) *
+			  sbi->s_desc_per_block) {
+		if (num) {
+			num += ext4_bg_num_gdb(sb, block_group);
+			num += le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks);
+		}
+	} else { /* For META_BG_BLOCK_GROUPS */
+		num += ext4_bg_num_gdb(sb, block_group);
+	}
+	return EXT4_NUM_B2C(sbi, num);
+}
 /**
  *	ext4_inode_to_goal_block - return a hint for block allocation
  *	@inode: inode for block allocation

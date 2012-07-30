@@ -36,7 +36,7 @@
 
 static void dump_completed_IO(struct inode * inode)
 {
-#ifdef	EXT4_DEBUG
+#ifdef	EXT4FS_DEBUG
 	struct list_head *cur, *before, *after;
 	ext4_io_end_t *io, *io0, *io1;
 	unsigned long flags;
@@ -83,14 +83,13 @@ int ext4_flush_completed_IO(struct inode *inode)
 	int ret = 0;
 	int ret2 = 0;
 
-	if (list_empty(&ei->i_completed_io_list))
-		return ret;
-
 	dump_completed_IO(inode);
 	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
 	while (!list_empty(&ei->i_completed_io_list)){
 		io = list_entry(ei->i_completed_io_list.next,
 				ext4_io_end_t, list);
+		list_del_init(&io->list);
+		io->flag |= EXT4_IO_END_IN_FSYNC;
 		/*
 		 * Calling ext4_end_io_nolock() to convert completed
 		 * IO to written.
@@ -107,11 +106,10 @@ int ext4_flush_completed_IO(struct inode *inode)
 		 */
 		spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
 		ret = ext4_end_io_nolock(io);
-		spin_lock_irqsave(&ei->i_completed_io_lock, flags);
 		if (ret < 0)
 			ret2 = ret;
-		else
-			list_del_init(&io->list);
+		spin_lock_irqsave(&ei->i_completed_io_lock, flags);
+		io->flag &= ~EXT4_IO_END_IN_FSYNC;
 	}
 	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
 	return (ret2 < 0) ? ret2 : 0;
@@ -129,15 +127,30 @@ static int ext4_sync_parent(struct inode *inode)
 {
 	struct writeback_control wbc;
 	struct dentry *dentry = NULL;
+	struct inode *next;
 	int ret = 0;
 
-	while (inode && ext4_test_inode_state(inode, EXT4_STATE_NEWENTRY)) {
+	if (!ext4_test_inode_state(inode, EXT4_STATE_NEWENTRY))
+		return 0;
+	inode = igrab(inode);
+	while (ext4_test_inode_state(inode, EXT4_STATE_NEWENTRY)) {
 		ext4_clear_inode_state(inode, EXT4_STATE_NEWENTRY);
-		dentry = list_entry(inode->i_dentry.next,
-				    struct dentry, d_alias);
-		if (!dentry || !dentry->d_parent || !dentry->d_parent->d_inode)
+		dentry = NULL;
+		spin_lock(&inode->i_lock);
+		if (!list_empty(&inode->i_dentry)) {
+			dentry = list_first_entry(&inode->i_dentry,
+						  struct dentry, d_alias);
+			dget(dentry);
+		}
+		spin_unlock(&inode->i_lock);
+		if (!dentry)
 			break;
-		inode = dentry->d_parent->d_inode;
+		next = igrab(dentry->d_parent->d_inode);
+		dput(dentry);
+		if (!next)
+			break;
+		iput(inode);
+		inode = next;
 		ret = sync_mapping_buffers(inode->i_mapping);
 		if (ret)
 			break;
@@ -148,6 +161,7 @@ static int ext4_sync_parent(struct inode *inode)
 		if (ret)
 			break;
 	}
+	iput(inode);
 	return ret;
 }
 
@@ -198,6 +212,7 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
 	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
 	int ret;
 	tid_t commit_tid;
+	bool needs_barrier = false;
 
 	J_ASSERT(ext4_journal_current_handle() == NULL);
 
@@ -242,22 +257,12 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
 	}
 
 	commit_tid = datasync ? ei->i_datasync_tid : ei->i_sync_tid;
-	if (jbd2_log_start_commit(journal, commit_tid)) {
-		/*
-		 * When the journal is on a different device than the
-		 * fs data disk, we need to issue the barrier in
-		 * writeback mode.  (In ordered mode, the jbd2 layer
-		 * will take care of issuing the barrier.  In
-		 * data=journal, all of the data blocks are written to
-		 * the journal device.)
-		 */
-		if (ext4_should_writeback_data(inode) &&
-		    (journal->j_fs_dev != journal->j_dev) &&
-		    (journal->j_flags & JBD2_BARRIER))
-			blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL,
-					NULL);
-		ret = jbd2_log_wait_commit(journal, commit_tid);
-	} else if (journal->j_flags & JBD2_BARRIER)
+	if (journal->j_flags & JBD2_BARRIER &&
+	    !jbd2_trans_will_send_data_barrier(journal, commit_tid))
+		needs_barrier = true;
+	jbd2_log_start_commit(journal, commit_tid);
+	ret = jbd2_log_wait_commit(journal, commit_tid);
+	if (needs_barrier)
 		blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
  out:
 	mutex_unlock(&inode->i_mutex);
