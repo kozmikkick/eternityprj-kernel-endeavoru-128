@@ -2563,7 +2563,6 @@ static void shmem_put_super(struct super_block *sb)
 int shmem_fill_super(struct super_block *sb, void *data, int silent)
 {
 	struct inode *inode;
-	struct dentry *root;
 	struct shmem_sb_info *sbinfo;
 	int err = -ENOMEM;
 
@@ -2620,10 +2619,9 @@ int shmem_fill_super(struct super_block *sb, void *data, int silent)
 		goto failed;
 	inode->i_uid = sbinfo->uid;
 	inode->i_gid = sbinfo->gid;
-	root = d_make_root(inode);
-	if (!root)
+	sb->s_root = d_make_root(inode);
+	if (!sb->s_root)
 		goto failed;
-	sb->s_root = root;
 	return 0;
 
 failed:

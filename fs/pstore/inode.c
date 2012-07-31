@@ -243,9 +243,7 @@ fail:
 
 int pstore_fill_super(struct super_block *sb, void *data, int silent)
 {
-	struct inode *inode = NULL;
-	struct dentry *root;
-	int err;
+	struct inode *inode;
 
 	save_mount_options(sb, data);
 
