@@ -114,6 +114,8 @@ xfs_get_acl(struct inode *inode, int type)
 	if (acl != ACL_NOT_CACHED)
 		return acl;
 
+	trace_xfs_get_acl(ip);
+
 	switch (type) {
 	case ACL_TYPE_ACCESS:
 		ea_name = SGI_ACL_FILE;
