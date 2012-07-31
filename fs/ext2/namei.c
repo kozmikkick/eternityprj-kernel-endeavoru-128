@@ -195,9 +195,6 @@ static int ext2_link (struct dentry * old_dentry, struct inode * dir,
 	struct inode *inode = old_dentry->d_inode;
 	int err;
 
-	if (inode->i_nlink >= EXT2_LINK_MAX)
-		return -EMLINK;
-
 	dquot_initialize(dir);
 
 	inode->i_ctime = CURRENT_TIME_SEC;
@@ -217,10 +214,7 @@ static int ext2_link (struct dentry * old_dentry, struct inode * dir,
 static int ext2_mkdir(struct inode * dir, struct dentry * dentry, umode_t mode)
 {
 	struct inode * inode;
-	int err = -EMLINK;
-
-	if (dir->i_nlink >= EXT2_LINK_MAX)
-		goto out;
+	int err;
 
 	dquot_initialize(dir);
 
@@ -292,8 +286,6 @@ static int ext2_rmdir (struct inode * dir, struct dentry *dentry)
 	struct inode * inode = dentry->d_inode;
 	int err = -ENOTEMPTY;
 
-	dentry_unhash(dentry);
-
 	if (ext2_empty_dir(inode)) {
 		err = ext2_unlink(dir, dentry);
 		if (!err) {
@@ -315,9 +307,6 @@ static int ext2_rename (struct inode * old_dir, struct dentry * old_dentry,
 	struct page * old_page;
 	struct ext2_dir_entry_2 * old_de;
 	int err = -ENOENT;
-
-	if (new_dentry->d_inode && S_ISDIR(new_dentry->d_inode->i_mode))
-		dentry_unhash(new_dentry);
 
 	dquot_initialize(old_dir);
 	dquot_initialize(new_dir);
@@ -351,11 +340,6 @@ static int ext2_rename (struct inode * old_dir, struct dentry * old_dentry,
 			drop_nlink(new_inode);
 		inode_dec_link_count(new_inode);
 	} else {
-		if (dir_de) {
-			err = -EMLINK;
-			if (new_dir->i_nlink >= EXT2_LINK_MAX)
-				goto out_dir;
-		}
 		err = ext2_add_link(new_dentry, old_inode);
 		if (err)
 			goto out_dir;

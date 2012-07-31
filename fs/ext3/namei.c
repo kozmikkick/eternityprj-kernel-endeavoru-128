@@ -24,19 +24,8 @@
  *	Theodore Ts'o, 2002
  */
 
-#include <linux/fs.h>
-#include <linux/pagemap.h>
-#include <linux/jbd.h>
-#include <linux/time.h>
-#include <linux/ext3_fs.h>
-#include <linux/ext3_jbd.h>
-#include <linux/fcntl.h>
-#include <linux/stat.h>
-#include <linux/string.h>
 #include <linux/quotaops.h>
-#include <linux/buffer_head.h>
-#include <linux/bio.h>
-
+#include "ext3.h"
 #include "namei.h"
 #include "xattr.h"
 #include "acl.h"
@@ -287,7 +276,7 @@ static struct stats dx_show_leaf(struct dx_hash_info *hinfo, struct ext3_dir_ent
 				while (len--) printk("%c", *name++);
 				ext3fs_dirhash(de->name, de->name_len, &h);
 				printk(":%x.%u ", h.hash,
-				       ((char *) de - base));
+				       (unsigned) ((char *) de - base));
 			}
 			space += EXT3_DIR_REC_LEN(de->name_len);
 			names++;
@@ -920,8 +909,12 @@ restart:
 				num++;
 				bh = ext3_getblk(NULL, dir, b++, 0, &err);
 				bh_use[ra_max] = bh;
-				if (bh)
-					ll_rw_block(READ_META, 1, &bh);
+				if (bh && !bh_uptodate_or_lock(bh)) {
+					get_bh(bh);
+					bh->b_end_io = end_buffer_read_sync;
+					submit_bh(READ | REQ_META | REQ_PRIO,
+						  bh);
+				}
 			}
 		}
 		if ((bh = bh_use[ra_ptr++]) == NULL)
@@ -1013,7 +1006,7 @@ static struct buffer_head * ext3_dx_find_entry(struct inode *dir,
 
 	*err = -ENOENT;
 errout:
-	dxtrace(printk("%s not found\n", name));
+	dxtrace(printk("%s not found\n", entry->name));
 	dx_release (frames);
 	return NULL;
 }
@@ -2079,8 +2072,6 @@ static int ext3_rmdir (struct inode * dir, struct dentry *dentry)
 	struct ext3_dir_entry_2 * de;
 	handle_t *handle;
 
-	dentry_unhash(dentry);
-
 	/* Initialize quotas before so that eventual writes go in
 	 * separate transaction */
 	dquot_initialize(dir);
@@ -2142,6 +2133,7 @@ static int ext3_unlink(struct inode * dir, struct dentry *dentry)
 	struct ext3_dir_entry_2 * de;
 	handle_t *handle;
 
+	trace_ext3_unlink_enter(dir, dentry);
 	/* Initialize quotas before so that eventual writes go
 	 * in separate transaction */
 	dquot_initialize(dir);
@@ -2187,6 +2179,7 @@ static int ext3_unlink(struct inode * dir, struct dentry *dentry)
 end_unlink:
 	ext3_journal_stop(handle);
 	brelse (bh);
+	trace_ext3_unlink_exit(dentry, retval);
 	return retval;
 }
 
@@ -2196,6 +2189,7 @@ static int ext3_symlink (struct inode * dir,
 	handle_t *handle;
 	struct inode * inode;
 	int l, err, retries = 0;
+	int credits;
 
 	l = strlen(symname)+1;
 	if (l > dir->i_sb->s_blocksize)
@@ -2203,10 +2197,28 @@ static int ext3_symlink (struct inode * dir,
 
 	dquot_initialize(dir);
 
+	if (l > EXT3_N_BLOCKS * 4) {
+		/*
+		 * For non-fast symlinks, we just allocate inode and put it on
+		 * orphan list in the first transaction => we need bitmap,
+		 * group descriptor, sb, inode block, quota blocks, and
+		 * possibly selinux xattr blocks.
+		 */
+		credits = 4 + EXT3_MAXQUOTAS_INIT_BLOCKS(dir->i_sb) +
+			  EXT3_XATTR_TRANS_BLOCKS;
+	} else {
+		/*
+		 * Fast symlink. We have to add entry to directory
+		 * (EXT3_DATA_TRANS_BLOCKS + EXT3_INDEX_EXTRA_TRANS_BLOCKS),
+		 * allocate new inode (bitmap, group descriptor, inode block,
+		 * quota blocks, sb is already counted in previous macros).
+		 */
+		credits = EXT3_DATA_TRANS_BLOCKS(dir->i_sb) +
+			  EXT3_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+			  EXT3_MAXQUOTAS_INIT_BLOCKS(dir->i_sb);
+	}
 retry:
-	handle = ext3_journal_start(dir, EXT3_DATA_TRANS_BLOCKS(dir->i_sb) +
-					EXT3_INDEX_EXTRA_TRANS_BLOCKS + 5 +
-					EXT3_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
+	handle = ext3_journal_start(dir, credits);
 	if (IS_ERR(handle))
 		return PTR_ERR(handle);
 
@@ -2218,21 +2230,45 @@ retry:
 	if (IS_ERR(inode))
 		goto out_stop;
 
-	if (l > sizeof (EXT3_I(inode)->i_data)) {
+	if (l > EXT3_N_BLOCKS * 4) {
 		inode->i_op = &ext3_symlink_inode_operations;
 		ext3_set_aops(inode);
 		/*
-		 * page_symlink() calls into ext3_prepare/commit_write.
-		 * We have a transaction open.  All is sweetness.  It also sets
-		 * i_size in generic_commit_write().
+		 * We cannot call page_symlink() with transaction started
+		 * because it calls into ext3_write_begin() which acquires page
+		 * lock which ranks below transaction start (and it can also
+		 * wait for journal commit if we are running out of space). So
+		 * we have to stop transaction now and restart it when symlink
+		 * contents is written. 
+		 *
+		 * To keep fs consistent in case of crash, we have to put inode
+		 * to orphan list in the mean time.
 		 */
+		drop_nlink(inode);
+		err = ext3_orphan_add(handle, inode);
+		ext3_journal_stop(handle);
+		if (err)
+			goto err_drop_inode;
 		err = __page_symlink(inode, symname, l, 1);
+		if (err)
+			goto err_drop_inode;
+		/*
+		 * Now inode is being linked into dir (EXT3_DATA_TRANS_BLOCKS
+		 * + EXT3_INDEX_EXTRA_TRANS_BLOCKS), inode is also modified
+		 */
+		handle = ext3_journal_start(dir,
+				EXT3_DATA_TRANS_BLOCKS(dir->i_sb) +
+				EXT3_INDEX_EXTRA_TRANS_BLOCKS + 1);
+		if (IS_ERR(handle)) {
+			err = PTR_ERR(handle);
+			goto err_drop_inode;
+		}
+		set_nlink(inode, 1);
+		err = ext3_orphan_del(handle, inode);
 		if (err) {
+			ext3_journal_stop(handle);
 			drop_nlink(inode);
-			unlock_new_inode(inode);
-			ext3_mark_inode_dirty(handle, inode);
-			iput (inode);
-			goto out_stop;
+			goto err_drop_inode;
 		}
 	} else {
 		inode->i_op = &ext3_fast_symlink_inode_operations;
@@ -2245,6 +2281,10 @@ out_stop:
 	ext3_journal_stop(handle);
 	if (err == -ENOSPC && ext3_should_retry_alloc(dir->i_sb, &retries))
 		goto retry;
+	return err;
+err_drop_inode:
+	unlock_new_inode(inode);
+	iput(inode);
 	return err;
 }
 
@@ -2302,9 +2342,6 @@ static int ext3_rename (struct inode * old_dir, struct dentry *old_dentry,
 	struct buffer_head * old_bh, * new_bh, * dir_bh;
 	struct ext3_dir_entry_2 * old_de, * new_de;
 	int retval, flush_file = 0;
-
-	if (new_dentry->d_inode && S_ISDIR(new_dentry->d_inode->i_mode))
-		dentry_unhash(new_dentry);
 
 	dquot_initialize(old_dir);
 	dquot_initialize(new_dir);
