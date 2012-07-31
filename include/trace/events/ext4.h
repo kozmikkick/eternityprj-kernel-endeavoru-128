@@ -26,7 +26,7 @@ TRACE_EVENT(ext4_free_inode,
 	TP_STRUCT__entry(
 		__field(	dev_t,	dev			)
 		__field(	ino_t,	ino			)
-		__field(	umode_t, mode			)
+		__field(	__u16, mode			)
 		__field(	uid_t,	uid			)
 		__field(	gid_t,	gid			)
 		__field(	__u64, blocks			)
@@ -55,7 +55,7 @@ TRACE_EVENT(ext4_request_inode,
 	TP_STRUCT__entry(
 		__field(	dev_t,	dev			)
 		__field(	ino_t,	dir			)
-		__field(	umode_t, mode			)
+		__field(	__u16, mode			)
 	),
 
 	TP_fast_assign(
@@ -78,7 +78,7 @@ TRACE_EVENT(ext4_allocate_inode,
 		__field(	dev_t,	dev			)
 		__field(	ino_t,	ino			)
 		__field(	ino_t,	dir			)
-		__field(	umode_t, mode			)
+		__field(	__u16,	mode			)
 	),
 
 	TP_fast_assign(
@@ -573,9 +573,9 @@ TRACE_EVENT(ext4_mb_release_inode_pa,
 );
 
 TRACE_EVENT(ext4_mb_release_group_pa,
-	TP_PROTO(struct ext4_prealloc_space *pa),
+	TP_PROTO(struct super_block *sb, struct ext4_prealloc_space *pa),
 
-	TP_ARGS(pa),
+	TP_ARGS(sb, pa),
 
 	TP_STRUCT__entry(
 		__field(	dev_t,	dev			)
@@ -585,7 +585,7 @@ TRACE_EVENT(ext4_mb_release_group_pa,
 	),
 
 	TP_fast_assign(
-		__entry->dev		= pa->pa_inode->i_sb->s_dev;
+		__entry->dev		= sb->s_dev;
 		__entry->pa_pstart	= pa->pa_pstart;
 		__entry->pa_len		= pa->pa_len;
 	),
@@ -728,7 +728,7 @@ TRACE_EVENT(ext4_free_blocks,
 	TP_STRUCT__entry(
 		__field(	dev_t,	dev			)
 		__field(	ino_t,	ino			)
-		__field(	umode_t, mode			)
+		__field(	__u16,	mode			)
 		__field(	__u64,	block			)
 		__field(	unsigned long,	count		)
 		__field(	int,	flags			)
@@ -1015,7 +1015,7 @@ TRACE_EVENT(ext4_forget,
 	TP_STRUCT__entry(
 		__field(	dev_t,	dev			)
 		__field(	ino_t,	ino			)
-		__field(	umode_t, mode			)
+		__field(	__u16,	mode			)
 		__field(	int,	is_metadata		)
 		__field(	__u64,	block			)
 	),
@@ -1042,7 +1042,7 @@ TRACE_EVENT(ext4_da_update_reserve_space,
 	TP_STRUCT__entry(
 		__field(	dev_t,	dev			)
 		__field(	ino_t,	ino			)
-		__field(	umode_t, mode			)
+		__field(	__u16,	mode			)
 		__field(	__u64,	i_blocks		)
 		__field(	int,	used_blocks		)
 		__field(	int,	reserved_data_blocks	)
@@ -1085,7 +1085,7 @@ TRACE_EVENT(ext4_da_reserve_space,
 	TP_STRUCT__entry(
 		__field(	dev_t,	dev			)
 		__field(	ino_t,	ino			)
-		__field(	umode_t, mode			)
+		__field(	__u16,  mode			)
 		__field(	__u64,	i_blocks		)
 		__field(	int,	md_needed		)
 		__field(	int,	reserved_data_blocks	)
@@ -1119,7 +1119,7 @@ TRACE_EVENT(ext4_da_release_space,
 	TP_STRUCT__entry(
 		__field(	dev_t,	dev			)
 		__field(	ino_t,	ino			)
-		__field(	umode_t, mode			)
+		__field(	__u16,  mode			)
 		__field(	__u64,	i_blocks		)
 		__field(	int,	freed_blocks		)
 		__field(	int,	reserved_data_blocks	)
@@ -1608,6 +1608,28 @@ TRACE_EVENT(ext4_load_inode,
 		  (unsigned long) __entry->ino)
 );
 
+TRACE_EVENT(ext4_journal_start,
+	TP_PROTO(struct super_block *sb, int nblocks, unsigned long IP),
+
+	TP_ARGS(sb, nblocks, IP),
+
+	TP_STRUCT__entry(
+		__field(	dev_t,	dev			)
+		__field(	  int, 	nblocks			)
+		__field(unsigned long,	ip			)
+	),
+
+	TP_fast_assign(
+		__entry->dev	 = sb->s_dev;
+		__entry->nblocks = nblocks;
+		__entry->ip	 = IP;
+	),
+
+	TP_printk("dev %d,%d nblocks %d caller %pF",
+		  MAJOR(__entry->dev), MINOR(__entry->dev),
+		  __entry->nblocks, (void *)__entry->ip)
+);
+
 DECLARE_EVENT_CLASS(ext4__trim,
 	TP_PROTO(struct super_block *sb,
 		 ext4_group_t group,
@@ -1655,28 +1677,6 @@ DEFINE_EVENT(ext4__trim, ext4_trim_all_free,
 		 ext4_grpblk_t len),
 
 	TP_ARGS(sb, group, start, len)
-);
-
-TRACE_EVENT(ext4_journal_start,
-	TP_PROTO(struct super_block *sb, int nblocks, unsigned long IP),
-
-	TP_ARGS(sb, nblocks, IP),
-
-	TP_STRUCT__entry(
-		__field(	dev_t,	dev			)
-		__field(	  int, 	nblocks			)
-		__field(unsigned long,	ip			)
-	),
-
-	TP_fast_assign(
-		__entry->dev	 = sb->s_dev;
-		__entry->nblocks = nblocks;
-		__entry->ip	 = IP;
-	),
-
-	TP_printk("dev %d,%d nblocks %d caller %pF",
-		  MAJOR(__entry->dev), MINOR(__entry->dev),
-		  __entry->nblocks, (void *)__entry->ip)
 );
 
 TRACE_EVENT(ext4_ext_handle_uninitialized_extents,
