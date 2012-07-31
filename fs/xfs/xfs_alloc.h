@@ -25,6 +25,8 @@ struct xfs_perag;
 struct xfs_trans;
 struct xfs_busy_extent;
 
+extern struct workqueue_struct *xfs_alloc_wq;
+
 /*
  * Freespace allocation types.  Argument to xfs_alloc_[v]extent.
  */
@@ -119,6 +121,9 @@ typedef struct xfs_alloc_arg {
 	char		isfl;		/* set if is freelist blocks - !acctg */
 	char		userdata;	/* set if this is user data */
 	xfs_fsblock_t	firstblock;	/* io first block allocated */
+	struct completion *done;
+	struct work_struct work;
+	int		result;
 } xfs_alloc_arg_t;
 
 /*
@@ -137,14 +142,28 @@ xfs_alloc_longest_free_extent(struct xfs_mount *mp,
 #ifdef __KERNEL__
 void
 xfs_alloc_busy_insert(struct xfs_trans *tp, xfs_agnumber_t agno,
-	xfs_agblock_t bno, xfs_extlen_t len);
+	xfs_agblock_t bno, xfs_extlen_t len, unsigned int flags);
 
 void
-xfs_alloc_busy_clear(struct xfs_mount *mp, struct xfs_busy_extent *busyp);
+xfs_alloc_busy_clear(struct xfs_mount *mp, struct list_head *list,
+	bool do_discard);
 
 int
 xfs_alloc_busy_search(struct xfs_mount *mp, xfs_agnumber_t agno,
 	xfs_agblock_t bno, xfs_extlen_t len);
+
+void
+xfs_alloc_busy_reuse(struct xfs_mount *mp, xfs_agnumber_t agno,
+	xfs_agblock_t fbno, xfs_extlen_t flen, bool userdata);
+
+int
+xfs_busy_extent_ag_cmp(void *priv, struct list_head *a, struct list_head *b);
+
+static inline void xfs_alloc_busy_sort(struct list_head *list)
+{
+	list_sort(NULL, list, xfs_busy_extent_ag_cmp);
+}
+
 #endif	/* __KERNEL__ */
 
 /*
@@ -224,6 +243,13 @@ xfs_free_extent(
 
 int					/* error */
 xfs_alloc_lookup_le(
+	struct xfs_btree_cur	*cur,	/* btree cursor */
+	xfs_agblock_t		bno,	/* starting block of extent */
+	xfs_extlen_t		len,	/* length of extent */
+	int			*stat);	/* success/failure */
+
+int				/* error */
+xfs_alloc_lookup_ge(
 	struct xfs_btree_cur	*cur,	/* btree cursor */
 	xfs_agblock_t		bno,	/* starting block of extent */
 	xfs_extlen_t		len,	/* length of extent */
