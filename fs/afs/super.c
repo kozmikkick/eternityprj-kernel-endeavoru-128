@@ -296,7 +296,6 @@ static int afs_fill_super(struct super_block *sb, void *data)
 	struct afs_mount_params *params = data;
 	struct afs_super_info *as = NULL;
 	struct afs_fid fid;
-	struct dentry *root = NULL;
 	struct inode *inode = NULL;
 	int ret;
 
