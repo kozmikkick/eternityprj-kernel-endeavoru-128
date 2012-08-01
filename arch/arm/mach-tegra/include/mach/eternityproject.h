@@ -19,22 +19,27 @@
 
 #ifndef __MACH_TEGRA_ETERNITYPROJECT_H
 #define __MACH_TEGRA_ETERNITYPROJECT_H
+#endif
 
 /*
  * CPU Clocks Management
+ *
+ * TODO: Make everything better and use the code in there
+ *	 to simplify Tegra clocks management.
  */
-#define BASEFREQ 	51
-#define FIXED1		(BASEFREQ * 2)
-#define FIXED2		(BASEFREQ * 4)
-#define eprj_ctegra(c)	(BASEFREQ * c)		/* For cpu-tegra */
-#define eprj_tables(c)	(BASEFREQ * c * 1000);	/* For cpufreq tables */
+#define BASEFREQ	51
+#define eprjc(c)	(BASEFREQ * c)		/* For cpu-tegra's CPU_DVFS */
+#define eprjf(c)	(BASEFREQ * c * 1000)	/* For cpufreq tables */
 
-#define eprjf(is_cpufreq, mult)				\
-(							\
-	{						\
-		if (is_cpufreq == 1)			\
-			eprj_tables(mult);		\
-		else					\
-			eprj_ctegra(mult);		\
-	}						\
-)
+
+/*
+ * TODO: GPU Clocks Management
+ */
+
+
+/*
+ * TODO: EternityProject CPUFREQ Governor (eprjdemand)
+ *	 -> Tegra highly specific things has to be there
+ *	    to mantain the cpufreq governor code clean
+ *	    and GENERIC!
+ */
