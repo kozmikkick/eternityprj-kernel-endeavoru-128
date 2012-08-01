@@ -35,10 +35,10 @@
  * EDP Management
  */
 #define FAC		100000
-#define EDP_MAX 	1700000			/* Normal EDP Clocks */
-#define EPRJEDP1	(EDP_MAX - FAC)
-#define EPRJEDP2	(EDP1 - FAC)
-#define EPRJEDP3	(EDP2 - FAC)
+#define EEDP_MAX 	1700000			/* Normal EDP Clocks */
+#define EPRJEDP1	(EEDP_MAX - FAC)
+#define EPRJEDP2	(EPRJEDP1 - FAC)
+#define EPRJEDP3	(EPRJEDP2 - FAC)
 
 #define COOLDWN0	1000000			/* CPU is HOT! */
 #define COOLDWN1	(COOLDWN0 + FAC)
