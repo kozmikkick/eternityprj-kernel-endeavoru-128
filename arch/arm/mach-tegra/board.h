@@ -139,15 +139,15 @@ void tegra_get_camera_board_info(struct board_info *bi);
 #define SAMPRATE_MIN		"sampling_rate_min"
 #define SAMPDN_FACTOR		"sampling_down_factor"
 
+void cpufreq_save_governor(void);
+void cpufreq_restore_governor(void);
+void cpufreq_set_governor_param(char *governor, char *name, int value);
+#endif
+
 #define CPUFREQ_SYSFS_PLACE_HOLDER \
 		"/sys/devices/system/cpu/cpu%i/cpufreq/scaling_governor"
 #define CPUFREQ_GOV_PARAM "/sys/devices/system/cpu/cpufreq/%s/%s"
-
-void cpufreq_save_governor(void);
-void cpufreq_restore_governor(void);
 void cpufreq_set_governor(char *governor);
-void cpufreq_set_governor_param(char *governor, char *name, int value);
-#endif
 
 int get_core_edp(void);
 enum panel_type get_panel_type(void);

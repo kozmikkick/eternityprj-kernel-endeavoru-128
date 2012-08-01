@@ -66,6 +66,7 @@
 #include <mach/thermal.h>
 #include <mach/mhl.h>
 #include <mach/cable_detect.h>
+#include <mach/eternityproject.h>
 #include <linux/tps80032_adc.h>
 #include <linux/disp_debug.h>
 #include <linux/keyreset.h>
@@ -2232,14 +2233,6 @@ static void __init tegra_enterprise_init(void)
 	} else {
 		printk(KERN_ALERT "[mtd] mount /proc/emmc failed\n");
 	}
-
-// EPRJ HACK: START
-// Why should we see which processes are dying?
-// Who cares? Our system is stable. Go away, debugging $h!t. 24/05/2012
-//	proc = create_proc_read_entry("dying_processes", 0, NULL, dying_processors_read_proc, NULL);
-//	if (!proc)
-//		printk(KERN_ERR"Create /proc/dying_processes FAILED!\n");
-// EPRJ HACK: END
 
 	BOOT_DEBUG_LOG_LEAVE("<machine>.init_machine");
 }

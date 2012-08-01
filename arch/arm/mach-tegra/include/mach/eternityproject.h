@@ -21,6 +21,10 @@
 #define __MACH_TEGRA_ETERNITYPROJECT_H
 #endif
 
+#include "../../board.h"	/* Thanks for the bad hacks, nVidia! */
+
+#define EPRJ_DEBUGGING	1
+
 /*
  * CPU Clocks Management
  *
@@ -58,3 +62,11 @@
  *	    to mantain the cpufreq governor code clean
  *	    and GENERIC!
  */
+#define EPRJDEMAND_GOVERNOR	"eprjdemand"
+static void eternityproject_governor_enable(void)
+{
+#if EPRJ_DEBUGGING
+	printk("EternityProject: Setting eprjdemand governor...\n");
+#endif
+	cpufreq_set_governor(EPRJDEMAND_GOVERNOR);
+}

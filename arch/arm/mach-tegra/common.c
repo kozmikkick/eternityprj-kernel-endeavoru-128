@@ -1211,7 +1211,7 @@ void __init tegra_release_bootloader_fb(void)
 						tegra_bootloader_fb_size))
 			pr_err("Failed to free bootloader fb.\n");
 }
-#if defined CONFIG_TEGRA_INTERACTIVE_GOV_ON_EARLY_SUSPEND \
+/*#if defined CONFIG_TEGRA_INTERACTIVE_GOV_ON_EARLY_SUSPEND \
 	|| defined CONFIG_TEGRA_CONSERVATIVE_GOV_ON_EARLY_SUSPEND
 static char cpufreq_gov_default[32];
 static char saved_boost_factor[32];
@@ -1225,7 +1225,7 @@ static char saved_freq_step[32];
 static char od_saved_up_threshold[32];
 static char od_saved_sampling_rate[32];
 static char od_saved_sampling_rate_min[32];
-static char od_saved_sampling_down_factor[32];
+static char od_saved_sampling_down_factor[32];*/
 
 void cpufreq_set_governor(char *governor)
 {
@@ -1264,6 +1264,22 @@ void cpufreq_set_governor(char *governor)
 	}
 	set_fs(old_fs);
 }
+
+#if defined CONFIG_TEGRA_INTERACTIVE_GOV_ON_EARLY_SUSPEND \
+        || defined CONFIG_TEGRA_CONSERVATIVE_GOV_ON_EARLY_SUSPEND
+static char cpufreq_gov_default[32];
+static char saved_boost_factor[32];
+static char saved_go_maxspeed_load[32];
+static char saved_max_boost[32];
+
+static char saved_up_threshold[32];
+static char saved_down_threshold[32];
+static char saved_freq_step[32];
+
+static char od_saved_up_threshold[32];
+static char od_saved_sampling_rate[32];
+static char od_saved_sampling_rate_min[32];
+static char od_saved_sampling_down_factor[32];
 
 static void cpufreq_read_governor_param(char *param_path, char *name, char *value)
 {
