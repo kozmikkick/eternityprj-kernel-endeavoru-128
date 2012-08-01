@@ -1442,8 +1442,13 @@ void cpufreq_restore_governor(void)
  */
 	if (strncmp(cpufreq_gov_default, ONDEMAND_GOVERNOR,
 			strlen(ONDEMAND_GOVERNOR)) == 0) {
+#ifdef CONFIG_ETERNITYPROJECT_CPUFMAN
+		set_sysfs_param("/sys/devices/system/cpu/cpu0/cpufreq/",
+				"scaling_max_freq", "1700000");
+#else
 		set_sysfs_param("/sys/devices/system/cpu/cpu0/cpufreq/",
 				"scaling_max_freq", "1500000");
+#endif
 		set_governor_param(ONDEMAND_GOVERNOR, UP_THRESHOLD,
 					od_saved_up_threshold);
 /*		set_governor_param(ONDEMAND_GOVERNOR, SAMPRATE,
