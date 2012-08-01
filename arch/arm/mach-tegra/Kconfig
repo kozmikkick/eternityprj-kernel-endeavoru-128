@@ -590,6 +590,19 @@ config ETERNITYPROJECT_GPUBOOST
 	  Not all the chips are made equal. That implies this
 	  option may work for you, but not for your friend.
 
+config ETERNITYPROJECT_CPUFMAN
+	bool "[DANGEROUS] Boost Tegra3 CPU_G ID4 CPU clocks"
+	default n
+	help
+	  Boost the CPU clocks.
+	  Specifically: G Mode max to 1734MHz, with any core
+	  up count.
+	  This option is not recommended on Tegra3 chips in
+	  phones, as those are poorly cooled down.
+	  -- IMPORTANT --
+	  Not all the chips are made equal. That implies this
+	  option may work for you, but not for your friend.
+
 config TEGRA_PLLM_RESTRICTED
 	bool "Restrict PLLM usage as module clock source"
 	depends on !ARCH_TEGRA_2x_SOC

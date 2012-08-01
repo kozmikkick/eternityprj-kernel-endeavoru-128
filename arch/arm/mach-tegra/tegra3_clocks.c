@@ -34,6 +34,7 @@
 
 #include <mach/iomap.h>
 #include <mach/edp.h>
+#include <mach/eternityproject.h>
 
 #include "clock.h"
 #include "fuse.h"
@@ -4456,6 +4457,22 @@ static struct cpufreq_frequency_table freq_table_1p4GHz[] = {
 };
 
 static struct cpufreq_frequency_table freq_table_1p5GHz[] = {
+#ifdef CONFIG_ETERNITYPROJECT_CPUFMAN
+	{ 0, FIXED1      ),
+	{ 1, FIXED2      },
+	{ 2, eprjf(1,7)  }, /* 357 */
+	{ 3, eprjf(1,10) }, /* 510 */
+	{ 4, eprjf(1,13) },
+	{ 5, eprjf(1,15) },
+	{ 6, eprjf(1,18) },
+	{ 7, eprjf(1,22) },
+	{ 8, eprjf(1,25) },
+	{ 9, eprjf(1,27) },
+	{10, eprjf(1,30) },
+	{11, eprjf(1,32) },
+	{12, eprjf(1,34) },
+	{13, CPUFREQ_TABLE_END },
+#else
 	{ 0,  102000 },
 	{ 1,  204000 },
 	{ 2,  340000 },
@@ -4470,6 +4487,7 @@ static struct cpufreq_frequency_table freq_table_1p5GHz[] = {
 	{11, 1400000 },
 	{12, 1500000 },
 	{13, CPUFREQ_TABLE_END },
+#endif
 };
 
 static struct cpufreq_frequency_table freq_table_1p7GHz[] = {
