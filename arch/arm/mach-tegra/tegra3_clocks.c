@@ -4458,19 +4458,25 @@ static struct cpufreq_frequency_table freq_table_1p4GHz[] = {
 
 static struct cpufreq_frequency_table freq_table_1p5GHz[] = {
 #ifdef CONFIG_ETERNITYPROJECT_CPUFMAN
-	{ 0, eprjf(2)  },
-	{ 1, eprjf(4)  },
-	{ 2, eprjf(7)  }, /* 357 */
-	{ 3, eprjf(10) }, /* 510 */
-	{ 4, eprjf(13) },
-	{ 5, eprjf(15) },
-	{ 6, eprjf(18) },
-	{ 7, eprjf(22) },
-	{ 8, eprjf(25) },
-	{ 9, eprjf(27) },
-	{10, eprjf(30) },
-	{11, eprjf(32) },
-	{12, eprjf(34) },
+#warning EternityProject: Using 1.7GHz CPUFREQ table!
+/*
+ * EternityProject:
+ * ToDo: Implement an auto-changing easy frequency
+ *       table calculation.
+ */
+        { 0,  102000 },
+        { 1,  204000 },
+        { 2,  340000 },
+        { 3,  475000 },
+        { 4,  640000 },
+        { 5,  880000 },
+        { 6, 1000000 },
+        { 7, 1150000 },
+        { 8, 1300000 },
+        { 9, 1400000 },
+        {10, 1500000 },
+        {11, 1600000 },
+        {12, 1700000 },
 	{13, CPUFREQ_TABLE_END },
 #else
 	{ 0,  102000 },

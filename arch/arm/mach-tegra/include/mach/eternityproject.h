@@ -31,6 +31,21 @@
 #define eprjc(c)	(BASEFREQ * c)		/* For cpu-tegra's CPU_DVFS */
 #define eprjf(c)	(BASEFREQ * c * 1000)	/* For cpufreq tables */
 
+/*
+ * EDP Management
+ */
+#define FAC		100000
+#define EDP_MAX 	1700000			/* Normal EDP Clocks */
+#define EPRJEDP1	(EDP_MAX - FAC)
+#define EPRJEDP2	(EDP1 - FAC)
+#define EPRJEDP3	(EDP2 - FAC)
+
+#define COOLDWN0	1000000			/* CPU is HOT! */
+#define COOLDWN1	(COOLDWN0 + FAC)
+#define COOLDWN2	(COOLDWN1 + FAC)
+#define COOLDWN3	(COOLDWN2 + FAC)
+
+#define CRITICAL	204000			/* CPU is MELTING! */
 
 /*
  * TODO: GPU Clocks Management

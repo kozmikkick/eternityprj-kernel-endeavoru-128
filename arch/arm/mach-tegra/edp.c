@@ -23,6 +23,7 @@
 #include <linux/seq_file.h>
 #include <linux/slab.h>
 #include <mach/edp.h>
+#include <mach/eternityproject.h>
 
 #include "fuse.h"
 
@@ -259,7 +260,17 @@ static struct system_edp_entry __initdata tegra_system_edp_map[] = {
  * regulator_cur is found; must be the last one
  */
 static struct tegra_edp_limits edp_default_limits[] = {
+#ifdef CONFIG_ETERNITYPROJECT_CPUFMAN
+	{23, {1450000, 1350000, 1350000, 1350000} },
+	{45, {EEDP_MAX, EPRJEDP1, EPRJEDP3, EPRJEDP3} },
+	{60, {EEDP_MAX, EPRJEDP1, EPRJEDP3, EPRJEDP3} },
+	{70, {EEDP_MAX, EPRJEDP2, EPRJEDP3, EPRJEDP3} },
+	{75, {COOLDWN3, COOLDWN2, COOLDWN2, COOLDWN2} },
+	{85, {COOLDWN0, COOLDWN0, COOLDWN0, COOLDWN0} },
+	{90, {CRITICAL, CRITICAL, CRITICAL, CRITICAL} },
+#else
 	{85, {1000000, 1000000, 1000000, 1000000} },
+#endif
 };
 
 
@@ -290,7 +301,12 @@ void __init tegra_init_cpu_edp_limits(unsigned int regulator_mA)
 	}
 
 	/* No entry found in tegra_edp_map */
+#ifndef CONFIG_ETERNITYPROJECT_CPUFMAN
 	if (i >= tsize) {
+#else
+	if (1) {
+		printk("EternityProject: Using custom EDP.\n");
+#endif
 		edp_limits = edp_default_limits;
 		edp_limits_size = ARRAY_SIZE(edp_default_limits);
 		return;
@@ -395,7 +411,7 @@ static int edp_debugfs_show(struct seq_file *s, void *data)
 	int i;
 
 	seq_printf(s, "-- CPU %sEDP table (%umA) --\n",
-		   edp_limits == edp_default_limits ? "default " : "",
+		   edp_limits == edp_default_limits ? "EternityProject " : "",
 		   regulator_cur);
 	for (i = 0; i < edp_limits_size; i++) {
 		seq_printf(s, "%4dC: %10u %10u %10u %10u\n",
