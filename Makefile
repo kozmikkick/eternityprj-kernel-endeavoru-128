@@ -339,7 +339,7 @@ CHECK		= sparse
 
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
-CFLAGS_MODULE   =
+CFLAGS_MODULE   = -fno-pic
 AFLAGS_MODULE   =
 LDFLAGS_MODULE  =
 CFLAGS_KERNEL	=
@@ -361,7 +361,8 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -fno-delete-null-pointer-checks \
-		   -mno-unaligned-access -flto
+		   -mno-unaligned-access \
+#		   -flto
 #		   -marm -march=armv7-a -mtune=cortex-a9 -mfpu=neon \
 #		   -funswitch-loops -fpredictive-commoning \
 #		   -fmodulo-sched -fmodulo-sched-allow-regmoves \
