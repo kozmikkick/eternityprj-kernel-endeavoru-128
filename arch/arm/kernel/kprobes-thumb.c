@@ -10,7 +10,6 @@
 
 #include <linux/kernel.h>
 #include <linux/kprobes.h>
-#include <linux/module.h>
 
 #include "kprobes.h"
 
@@ -140,6 +139,35 @@ t16_decode_it(kprobe_opcode_t insn, struct arch_specific_insn *asi)
 {
 	asi->insn_singlestep = t16_singlestep_it;
 	return INSN_GOOD_NO_SLOT;
+}
+
+static void __kprobes
+t16_simulate_cond_branch(struct kprobe *p, struct pt_regs *regs)
+{
+	kprobe_opcode_t insn = p->opcode;
+	unsigned long pc = thumb_probe_pc(p);
+	long offset = insn & 0x7f;
+	offset -= insn & 0x80; /* Apply sign bit */
+	regs->ARM_pc = pc + (offset * 2);
+}
+
+static enum kprobe_insn __kprobes
+t16_decode_cond_branch(kprobe_opcode_t insn, struct arch_specific_insn *asi)
+{
+	int cc = (insn >> 8) & 0xf;
+	asi->insn_check_cc = kprobe_condition_checks[cc];
+	asi->insn_handler = t16_simulate_cond_branch;
+	return INSN_GOOD_NO_SLOT;
+}
+
+static void __kprobes
+t16_simulate_branch(struct kprobe *p, struct pt_regs *regs)
+{
+	kprobe_opcode_t insn = p->opcode;
+	unsigned long pc = thumb_probe_pc(p);
+	long offset = insn & 0x3ff;
+	offset -= insn & 0x400; /* Apply sign bit */
+	regs->ARM_pc = pc + (offset * 2);
 }
 
 static unsigned long __kprobes
@@ -473,44 +501,14 @@ const union decode_item kprobe_decode_thumb16_table[] = {
 	/* SVC				1101 1111 xxxx xxxx */
 	DECODE_REJECT	(0xfe00, 0xde00),
 
-	DECODE_END
-};
-#ifdef CONFIG_ARM_KPROBES_TEST_MODULE
-EXPORT_SYMBOL_GPL(kprobe_decode_thumb32_table);
-#endif
-#ifdef CONFIG_ARM_KPROBES_TEST_MODULE
-EXPORT_SYMBOL_GPL(kprobe_decode_thumb16_table);
-#endif
-
-static const union decode_item t16_table_1011[] = {
-	/* Miscellaneous 16-bit instructions		    */
+	/* Conditional branch		1101 xxxx xxxx xxxx */
+	DECODE_CUSTOM	(0xf000, 0xd000, t16_decode_cond_branch),
 
 	/*
-	 * If-Then, and hints
-	 *				1011 1111 xxxx xxxx
+	 * Unconditional branch
+	 * B				1110 0xxx xxxx xxxx
 	 */
-
-	/* YIELD			1011 1111 0001 0000 */
-	DECODE_OR	(0xffff, 0xbf10),
-	/* SEV				1011 1111 0100 0000 */
-	DECODE_EMULATE	(0xffff, 0xbf40, kprobe_emulate_none),
-	/* NOP				1011 1111 0000 0000 */
-	/* WFE				1011 1111 0010 0000 */
-	/* WFI				1011 1111 0011 0000 */
-	DECODE_SIMULATE	(0xffcf, 0xbf00, kprobe_simulate_nop),
-	/* Unassigned hints		1011 1111 xxxx 0000 */
-	DECODE_REJECT	(0xff0f, 0xbf00),
-
-	DECODE_END
-};
-
-const union decode_item kprobe_decode_thumb16_table[] = {
-
-	/*
-	 * Miscellaneous 16-bit instructions
-	 *				1011 xxxx xxxx xxxx
-	 */
-	DECODE_TABLE	(0xf000, 0xb000, t16_table_1011),
+	DECODE_SIMULATE	(0xf800, 0xe000, t16_simulate_branch),
 
 	DECODE_END
 };
@@ -549,5 +547,5 @@ thumb32_kprobe_decode_insn(kprobe_opcode_t insn, struct arch_specific_insn *asi)
 {
 	asi->insn_singlestep = thumb32_singlestep;
 	asi->insn_check_cc = thumb_check_cc;
-	return kprobe_decode_insn(insn, asi, kprobe_decode_thumb16_table, true);
+	return INSN_REJECTED;
 }
