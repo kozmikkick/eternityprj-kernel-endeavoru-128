@@ -128,6 +128,9 @@ static inline void __kprobes load_write_pc(long pcv, struct pt_regs *regs)
 void __kprobes kprobe_simulate_nop(struct kprobe *p, struct pt_regs *regs);
 void __kprobes kprobe_emulate_none(struct kprobe *p, struct pt_regs *regs);
 
+enum kprobe_insn __kprobes
+kprobe_decode_ldmstm(kprobe_opcode_t insn, struct arch_specific_insn *asi);
+
 /*
  * The following definitions and macros are used to build instruction
  * decoding tables for use by kprobe_decode_insn.
