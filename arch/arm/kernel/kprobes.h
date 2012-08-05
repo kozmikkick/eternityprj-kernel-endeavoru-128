@@ -76,6 +76,9 @@ void __init find_str_pc_offset(void);
  */
 #define is_writeback(insn) ((insn ^ 0x01000000) & 0x01200000)
 
+void __kprobes kprobe_simulate_nop(struct kprobe *p, struct pt_regs *regs);
+void __kprobes kprobe_emulate_none(struct kprobe *p, struct pt_regs *regs);
+
 /*
  * The following definitions and macros are used to build instruction
  * decoding tables for use by kprobe_decode_insn.
