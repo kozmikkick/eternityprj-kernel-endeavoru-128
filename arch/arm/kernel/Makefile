@@ -40,7 +40,12 @@ obj-$(CONFIG_DYNAMIC_FTRACE)	+= ftrace.o
 obj-$(CONFIG_FUNCTION_GRAPH_TRACER)	+= ftrace.o
 obj-$(CONFIG_JUMP_LABEL)	+= jump_label.o insn.o patch.o
 obj-$(CONFIG_KEXEC)		+= machine_kexec.o relocate_kernel.o
-obj-$(CONFIG_KPROBES)		+= kprobes.o kprobes-decode.o
+obj-$(CONFIG_KPROBES)		+= kprobes.o kprobes-common.o
+ifdef CONFIG_THUMB2_KERNEL
+obj-$(CONFIG_KPROBES)		+= kprobes-thumb.o
+else
+obj-$(CONFIG_KPROBES)		+= kprobes-arm.o
+endif
 obj-$(CONFIG_ATAGS_PROC)	+= atags.o
 obj-$(CONFIG_OABI_COMPAT)	+= sys_oabi-compat.o
 obj-$(CONFIG_ARM_THUMBEE)	+= thumbee.o
