@@ -35,10 +35,15 @@
 
 /* Initial implementation of userspace voltage control */
 #define FREQCOUNT 13
-#define CPUMVMAX 1200
-#define CPUMVMIN 800
+#define CPUMVMAX 1325
+#define CPUMVMIN 700
+#ifdef CONFIG_ETERNITYPROJECT_CPUFMAN
+int cpufrequency[FREQCOUNT] = { 1700000, 1600000, 1500000, 1400000, 1300000, 1150000, 1000000, 880000, 640000, 475000, 340000, 204000, 102000 };
+int cpuvoltage[FREQCOUNT] =   { 1275,    1250,    1225,    1175,    1150,    1075,    1050,    1000,   950,    900,    875,    825,    800 };
+#else
 int cpufrequency[FREQCOUNT] = { 1500000, 1400000, 1300000, 1200000, 1100000, 1000000, 860000, 760000, 640000, 475000, 340000, 204000, 102000 };
-int cpuvoltage[FREQCOUNT] = { 1175, 1150, 1125, 1100, 1075, 1050, 1025, 1000, 950, 900, 875, 825, 800 };
+int cpuvoltage[FREQCOUNT] =   { 1175,    1150,    1125,    1100,    1075,    1050,    1025,   1000,   950,    900,    875,    825,    800 };
+#endif
 int cpuuvoffset[FREQCOUNT] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 
