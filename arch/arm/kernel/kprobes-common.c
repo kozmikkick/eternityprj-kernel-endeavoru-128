@@ -319,6 +319,15 @@ kprobe_decode_ldmstm(kprobe_opcode_t insn, struct arch_specific_insn *asi)
 }
 
 
+void __kprobes kprobe_simulate_nop(struct kprobe *p, struct pt_regs *regs)
+{
+}
+
+void __kprobes kprobe_emulate_none(struct kprobe *p, struct pt_regs *regs)
+{
+	p->ainsn.insn_fn();
+}
+
 /*
  * Prepare an instruction slot to receive an instruction for emulating.
  * This is done by placing a subroutine return after the location where the
