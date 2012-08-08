@@ -162,8 +162,8 @@ static unsigned int get_nr_run_avg(void)
 #define DEF_FREQ_STEP				(40)
 #define DEF_START_DELAY				(0)
 
-#define UP_THRESHOLD_AT_MIN_FREQ		(65)
-#define FREQ_FOR_RESPONSIVENESS			(475000)
+#define UP_THRESHOLD_AT_MIN_FREQ		(50)
+#define FREQ_FOR_RESPONSIVENESS			(500000)
 
 #define HOTPLUG_DOWN_INDEX			(0)
 #define HOTPLUG_UP_INDEX			(1)
@@ -175,11 +175,6 @@ static unsigned int get_nr_run_avg(void)
 #define ADDON_CORES				(0)
 #define EPRJ_NCORES				(4 + ADDON_CORES)
 #define EPRJ_RQ					(2)
-
-/*
- * EternityProject, 08/08/2012, DISP-001
- */
-extern int eprj_display_suspended;
 
 #if defined(CONFIG_MACH_MIDAS)
 static int hotplug_rq[EPRJ_NCORES][EPRJ_RQ] = {
@@ -1152,10 +1147,6 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 		if (freq_next < dbs_tuners_ins.freq_for_responsiveness
 			&& (max_load_freq / freq_next) > down_thres)
 			freq_next = dbs_tuners_ins.freq_for_responsiveness;
-
-		/* EternityProject, 08/08/2012, DISP-001 */
-		if(eprj_display_suspended)
-			freq_next = 340000;
 
 		if (policy->cur == freq_next)
 			return;
