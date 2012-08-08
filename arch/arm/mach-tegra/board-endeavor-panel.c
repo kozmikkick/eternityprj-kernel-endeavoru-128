@@ -3202,6 +3202,8 @@ static void enterprise_panel_late_resume(struct early_suspend *h)
 	DISP_INFO_OUT();
 }
 
+int eprj_display_suspended = 0;
+
 #ifdef CONFIG_HTC_ONMODE_CHARGING
 static void enterprise_panel_onchg_suspend(struct early_suspend *h)
 {
@@ -3219,12 +3221,23 @@ static void enterprise_panel_onchg_suspend(struct early_suspend *h)
 	if (num_registered_fb > 0)
 		fb_blank(registered_fb[0], FB_BLANK_POWERDOWN);
 
+	/* 
+	 * EternityProject, 08/08/2012, DISP-001:
+	 * Introduce a new ugly hack for controlling the clocks
+	 * while on onchg mode.
+	 * I hate myself for this.
+	 */
+	eprj_display_suspended = 1;
+
 	DISP_INFO_OUT();
 }
 
 static void enterprise_panel_onchg_resume(struct early_suspend *h)
 {
 	DISP_INFO_IN();
+
+	/* EternityProject, 08/08/2012, DISP-001 */
+	eprj_display_suspended = 0;
 
 	fb_blank(registered_fb[0], FB_BLANK_UNBLANK);
 
