@@ -29,15 +29,15 @@ bool wifiwakelock_is_allowed = 0;
 struct wake_lock eprj_wifi_lock;
 
 struct eprj_sysfs android_release = {
-	.attr.name = "is_jellybean",
+	.attr.name = "android_apirev",
 	.attr.mode = 0644,
-	.value = 0, /* 0 = ICS -- 1 = JellyBean */
+	.value = ANDROID_API_ICS, /* By default, we assume we are working with ICS */
 };
 
 struct eprj_sysfs wifi_hwbug = {
 	.attr.name = "wifi_wakelock",
-	.attr.mode = 0644,
-	.value = 0, /* 0 = No wakelock -- 1 = Take wakelock */
+	.attr.mode = 0666,
+	.value = 0, /* 0 = Disallow wakelock -- 1 = Allow wakelock */
 };
 
 struct attribute * eprjmanager[] = {
@@ -59,9 +59,9 @@ static ssize_t eprjsysfs_store(struct kobject *kobj, struct attribute *attr,
 	struct eprj_sysfs *entry = container_of(attr, struct eprj_sysfs, attr);
 	sscanf(buf, "%d", &entry->value);
 	/* Is there any better way? */
-	if ( (entry->value == 1 ) && (entry->attr.name == "is_jellybean") ) {
+	if ( (entry->value == ANDROID_API_JB ) && (entry->attr.name == "android_apirev") ) {
 		printk("EternityProject HSMGR: Android Jellybean detected.\n");
-		eprj_hsmgr_35mm_os(1);
+		eprj_hsmgr_35mm_os(ANDROID_API_JB);
 	};
 	/* Okay, now that's getting really tedious .. and ridiculous. */
 	if (entry->attr.name == "wifi_wakelock")

@@ -61,11 +61,11 @@ static DECLARE_WORK(debug_work, debug_work_func);
 static unsigned int BIT_35MM_HEADSET = BIT_35MM_HEADSET_ICS;
 static unsigned int MASK_35MM_HEADSET = (BIT_HEADSET | BIT_HEADSET_NO_MIC | \
 					 BIT_35MM_HEADSET_ICS | BIT_TV_OUT);
-static bool internal_isjb = 0;
+static unsigned short int internal_apiver = 0;
 
-void eprj_hsmgr_35mm_os(bool is_jellybean)
+void eprj_hsmgr_35mm_os(int android_api_revision)
 {
-	if (is_jellybean)
+	if (android_api_revision == ANDROID_API_JB)
 		BIT_35MM_HEADSET = BIT_35MM_HEADSET_JB;
 	else
 		BIT_35MM_HEADSET = BIT_35MM_HEADSET_ICS;
@@ -73,7 +73,7 @@ void eprj_hsmgr_35mm_os(bool is_jellybean)
 	MASK_35MM_HEADSET = (BIT_HEADSET | BIT_HEADSET_NO_MIC | \
 			     BIT_35MM_HEADSET | BIT_TV_OUT);
 
-	internal_isjb = is_jellybean;
+	internal_apiver = android_api_revision;
 }
 #endif
 
@@ -961,7 +961,7 @@ static void insert_detect_work_func(struct work_struct *work)
 	int mic = HEADSET_NO_MIC;
 
 #ifdef CONFIG_EPRJ_SYSFS_TOOLS
-	eprj_hsmgr_35mm_os(internal_isjb); /* Compatibility workaround. Causes no overhead. */
+	eprj_hsmgr_35mm_os(internal_apiver); /* Compatibility workaround. Causes no overhead. */
 #endif
 
 	wake_lock_timeout(&hi->hs_wake_lock, HS_WAKE_LOCK_TIMEOUT);
