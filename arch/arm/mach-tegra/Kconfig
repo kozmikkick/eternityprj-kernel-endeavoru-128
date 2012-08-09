@@ -580,6 +580,18 @@ config RESET_REASON
     depends on MACH_ENDEAVORU || MACH_ENDEAVORTD || MACH_BLUE || MACH_VERTEXF || MACH_QUATTRO_U
     default n
 
+config EPRJ_SYSFS_TOOLS
+	bool "EternityProject sysfs Tools (HTC One X)"
+	default n
+	help
+	  EternityProject sysfs tools will create some sysfs entries
+	  to allow userspace control for HTC Headset Recognition
+	  (for example: JellyBean compatibility for unified ICS/JB
+	  kernel) and WiFi wakelock.
+	  Those are more ugly software hacks, but needed on the HTC
+	  One X (EndeavorU) because of underlying hardware bugs.
+	  If you don't own an HTC EndeavorU, choose "N".
+
 config ETERNITYPROJECT_GPUBOOST
 	bool "[DANGEROUS] Boost Tegra 3 Speedo 0/1 GPU clocks"
 	default n

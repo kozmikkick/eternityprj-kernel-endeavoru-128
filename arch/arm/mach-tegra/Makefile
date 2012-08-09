@@ -241,6 +241,7 @@ obj-${CONFIG_MACH_ENDEAVORTD}                 += htc_wifi_nvs.o
 obj-$(CONFIG_MICROP_COMMON)		+= atmega_microp_common.o
 obj-${CONFIG_HTC_BATT_CORE}             += htc_battery_core.o
 obj-$(CONFIG_BATTERY_TPS80032)          += htc_battery_tps80032.o
+obj-$(CONFIG_EPRJ_SYSFS_TOOLS)          += eprj_sysfs_tools.o
 obj-$(CONFIG_HTC_HEADSET_MGR) += htc_headset_mgr.o
 obj-$(CONFIG_HTC_HEADSET_H2W) += htc_headset_h2w.o
 obj-$(CONFIG_HTC_HEADSET_GPIO) += htc_headset_gpio.o

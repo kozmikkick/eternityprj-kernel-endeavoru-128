@@ -62,6 +62,7 @@
  *	    to mantain the cpufreq governor code clean
  *	    and GENERIC!
  */
+#if 0 /* Silence warnings until the code will be used */
 #define EPRJDEMAND_GOVERNOR	"eprjdemand"
 static void eternityproject_governor_enable(void)
 {
@@ -70,3 +71,16 @@ static void eternityproject_governor_enable(void)
 #endif
 	cpufreq_set_governor(EPRJDEMAND_GOVERNOR);
 }
+#endif
+
+/*
+ * EternityProject sysfs Tools
+ */
+void eprj_hsmgr_35mm_os(bool is_jellybean); 	/* Headset Compatibility 	*/
+extern struct wake_lock eprj_wifi_lock;		/* WiFi Wakelock		*/
+extern bool wifiwakelock_is_allowed;		/* WiFi Wakelock User Control 	*/
+
+struct eprj_sysfs {
+	struct attribute attr;
+	int value;
+};

@@ -1138,10 +1138,21 @@ out:
 }
 // HTC_WIFI_START
 #if defined(CONFIG_MACH_ENDEAVORU) || defined(CONFIG_MACH_ENDEAVORTD)
+#ifdef CONFIG_EPRJ_SYSFS_TOOLS
+#include <linux/wakelock.h>
+#include <mach/eternityproject.h>
+#endif
 static int wifi_is_on = 0;
 extern int enterprise_wifi_power(int on);
 void set_wifi_is_on (int on){
     wifi_is_on = on;
+#ifdef CONFIG_EPRJ_SYSFS_TOOLS
+    if (wifiwakelock_is_allowed)
+	if (on)
+	   wake_lock(&eprj_wifi_lock);
+	else
+	   wake_unlock(&eprj_wifi_lock);
+#endif
 }
 EXPORT_SYMBOL(set_wifi_is_on);
 #endif

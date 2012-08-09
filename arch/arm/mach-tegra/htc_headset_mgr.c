@@ -54,60 +54,28 @@ static DECLARE_WORK(debug_work, debug_work_func);
  * EternityProject, 04/08/2012
  * Android JellyBean compatibility layer
  */
-#include <linux/fs.h>
-
+#ifdef CONFIG_EPRJ_SYSFS_TOOLS
+#include <mach/eternityproject.h>
 #define BIT_35MM_HEADSET_ICS	(1 << 7)
 #define BIT_35MM_HEADSET_JB	0
 static unsigned int BIT_35MM_HEADSET = BIT_35MM_HEADSET_ICS;
 static unsigned int MASK_35MM_HEADSET = (BIT_HEADSET | BIT_HEADSET_NO_MIC | \
 					 BIT_35MM_HEADSET_ICS | BIT_TV_OUT);
+static bool internal_isjb = 0;
 
-struct eprj_headset {
-	struct attribute attr;
-	int value;
-};
-
-static struct eprj_headset android_release = {
-	.attr.name = "is_jellybean",
-	.attr.mode = 0644,
-	.value = 0, /* 0 = ICS -- 1 = JellyBean */
-};
-
-static struct attribute * eprjhsmgr[] = {
-	&android_release.attr,
-	NULL
-};
-
-static ssize_t eprjheadset_show(struct kobject *kobj, struct attribute *attr,
-				char *buf)
+void eprj_hsmgr_35mm_os(bool is_jellybean)
 {
-	struct eprj_headset *hsval = container_of(attr, struct eprj_headset, attr);
-	return scnprintf(buf, PAGE_SIZE, "%d", hsval->value);
-}
-
-static ssize_t eprjheadset_store(struct kobject *kobj, struct attribute *attr,
-				 const char *buf, size_t len)
-{
-	struct eprj_headset *hsval = container_of(attr, struct eprj_headset, attr);
-	sscanf(buf, "%d", &hsval->value);
-	if (hsval->value == 1) {
-		printk("EternityProject HSMGR: Android Jellybean detected.\n");
+	if (is_jellybean)
 		BIT_35MM_HEADSET = BIT_35MM_HEADSET_JB;
-	};
+	else
+		BIT_35MM_HEADSET = BIT_35MM_HEADSET_ICS;
+
 	MASK_35MM_HEADSET = (BIT_HEADSET | BIT_HEADSET_NO_MIC | \
-			     BIT_35MM_HEADSET | BIT_TV_OUT);		
-	return sizeof(int);
+			     BIT_35MM_HEADSET | BIT_TV_OUT);
+
+	internal_isjb = is_jellybean;
 }
-
-static struct sysfs_ops eprjhsmgr_ops = {
-	.show = eprjheadset_show,
-	.store = eprjheadset_store,
-};
-
-static struct kobj_type eprjhsmgr_type = {
-	.sysfs_ops = &eprjhsmgr_ops,
-	.default_attrs = eprjhsmgr,
-};
+#endif
 
 /* FIXME */
 /*
@@ -991,6 +959,10 @@ static void insert_detect_work_func(struct work_struct *work)
 {
 	int state;
 	int mic = HEADSET_NO_MIC;
+
+#ifdef CONFIG_EPRJ_SYSFS_TOOLS
+	eprj_hsmgr_35mm_os(internal_isjb); /* Compatibility workaround. Causes no overhead. */
+#endif
 
 	wake_lock_timeout(&hi->hs_wake_lock, HS_WAKE_LOCK_TIMEOUT);
 
@@ -1928,32 +1900,14 @@ static struct platform_driver htc_headset_mgr_driver = {
 };
 
 
-struct kobject *eprj_headset_compat;
 static int __init htc_headset_mgr_init(void)
 {
-	int st = -1;
 	HS_LOG("INIT");
-	printk("EternityProject: Headset Manager INIT...\n");
-	eprj_headset_compat = kzalloc(sizeof(*eprj_headset_compat), GFP_KERNEL);
-	if (eprj_headset_compat) {
-		kobject_init(eprj_headset_compat, &eprjhsmgr_type);
-		if (kobject_add(eprj_headset_compat, NULL, "%s", "eprjhsmgr")) {
-			printk("EternityProject: sysfs entry: creation failed.\n");
-			kobject_put(eprj_headset_compat);
-			eprj_headset_compat = NULL;
-		}
-	st = 0;
-	}
-	printk("EternityProject HSMGR: Status is %d\n", st);
 	return platform_driver_register(&htc_headset_mgr_driver);
 }
 
 static void __exit htc_headset_mgr_exit(void)
 {
-	if (eprj_headset_compat) {
-		kobject_put(eprj_headset_compat);
-		kfree(eprj_headset_compat);
-	}
 	platform_driver_unregister(&htc_headset_mgr_driver);
 }
 
