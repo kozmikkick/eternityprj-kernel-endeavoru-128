@@ -63,7 +63,7 @@ static unsigned int MASK_35MM_HEADSET = (BIT_HEADSET | BIT_HEADSET_NO_MIC | \
 					 BIT_35MM_HEADSET_ICS | BIT_TV_OUT);
 static unsigned short int internal_apiver = 0;
 
-void eprj_hsmgr_35mm_os(int android_api_revision)
+void eprj_hsmgr_35mm_os(unsigned short int android_api_revision)
 {
 	if (android_api_revision == ANDROID_API_JB)
 		BIT_35MM_HEADSET = BIT_35MM_HEADSET_JB;

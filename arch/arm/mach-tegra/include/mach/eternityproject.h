@@ -78,7 +78,7 @@ static void eternityproject_governor_enable(void)
  */
 #define ANDROID_API_ICS		15
 #define ANDROID_API_JB		16
-void eprj_hsmgr_35mm_os(bool is_jellybean); 	/* Headset Compatibility 	*/
+void eprj_hsmgr_35mm_os(unsigned short int); 	/* Headset Compatibility 	*/
 extern struct wake_lock eprj_wifi_lock;		/* WiFi Wakelock		*/
 extern bool wifiwakelock_is_allowed;		/* WiFi Wakelock User Control 	*/
 
