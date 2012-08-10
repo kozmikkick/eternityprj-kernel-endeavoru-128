@@ -1147,11 +1147,15 @@ extern int enterprise_wifi_power(int on);
 void set_wifi_is_on (int on){
     wifi_is_on = on;
 #ifdef CONFIG_EPRJ_SYSFS_TOOLS
+    int a = 0;
     if (wifiwakelock_is_allowed)
-	if (on)
+	if (on) {
 	   wake_lock(&eprj_wifi_lock);
-	else
-	   wake_unlock(&eprj_wifi_lock);
+	} else {
+	   a = wake_lock_active(&eprj_wifi_lock);
+	   if (a != 0)
+		wake_unlock(&eprj_wifi_lock);
+	}
 #endif
 }
 EXPORT_SYMBOL(set_wifi_is_on);

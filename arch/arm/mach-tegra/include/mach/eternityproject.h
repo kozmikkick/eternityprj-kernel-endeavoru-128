@@ -76,9 +76,28 @@ static void eternityproject_governor_enable(void)
 /*
  * EternityProject sysfs Tools
  */
+/* sysfs names */
+#define T3PARMS			"/sys/module/cpu_tegra3/parameters/"
+#define CLUSTER			"/sys/kernel/cluster/"
+#define HSMGR_APIREV		"android_apirev"
+#define WIFI_WAKELOCK		"wifi_wakelock"
+#define POWER_LOCK		"power_lock"
+
+/* Android API Levels */
 #define ANDROID_API_ICS		15
 #define ANDROID_API_JB		16
+
+/* Debug */
+#define EPRJ_CHATWITHME
+#if defined(EPRJ_CHATWITHME)
+#define EPRJ_PRINT(c) \
+		pr_info(c)
+#else
+#define EPRJ_PRINT(c)
+#endif
+
 void eprj_hsmgr_35mm_os(unsigned short int); 	/* Headset Compatibility 	*/
+void eprj_extreme_powersave(bool);		/* Powersave - LP Cluster Lock	*/
 extern struct wake_lock eprj_wifi_lock;		/* WiFi Wakelock		*/
 extern bool wifiwakelock_is_allowed;		/* WiFi Wakelock User Control 	*/
 

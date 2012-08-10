@@ -51,6 +51,10 @@
 #include <mach/restart.h>
 #endif
 
+#ifdef CONFIG_EPRJ_SYSFS_TOOLS
+#include <mach/eternityproject.h>
+#endif
+
 #define MC_SECURITY_CFG2	0x7c
 
 #define AHB_ARBITRATION_PRIORITY_CTRL		0x4
@@ -1342,7 +1346,7 @@ static void set_governor_param(char *param_path, char *name, char *value)
 	set_fs(old_fs);
 }
 
-static void set_sysfs_param(char *param_path, char *name, char *value)
+void set_sysfs_param(char *param_path, char *name, char *value)
 {
 	struct file *gov_param = NULL;
 	mm_segment_t old_fs;
