@@ -45,7 +45,7 @@ static struct eprj_sysfs android_release = {
 static struct eprj_sysfs wifi_hwbug = {
 	.attr.name = "wifi_wakelock",
 	.attr.mode = 0666,
-	.value = 0, /* 0 = Disallow wakelock -- 1 = Allow wakelock */
+	.value = 1, /* 0 = Disallow wakelock -- 1 = Allow wakelock */
 };
 
 static struct eprj_sysfs pwrmode = {
