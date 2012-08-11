@@ -43,6 +43,7 @@
 #define FREQCOUNT 13
 extern int cpufrequency[FREQCOUNT];
 extern int cpuuvoffset[FREQCOUNT];
+extern int cpulpvoltage[FREQCOUNT];
 
 #define DVFS_RAIL_STATS_BIN	25
 #define DVFS_RAIL_STATS_SCALE	2
@@ -370,7 +371,12 @@ __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
         	j++;
       		mvoffset = cpuuvoffset[j];
     	}
-    	else mvoffset = 0;
+		else if (strcmp(d->clk_name, "cpu_lp") == 0)
+		{
+			while (j < FREQCOUNT && (rate / 1000) < cpufrequency[j]) // TODO: Make more robust
+				j++;
+			mvoffset = (d->millivolts[i] - cpulpvoltage[j]) + cpuuvoffset[j];
+		}
     	d->cur_millivolts = d->millivolts[i] - mvoffset;
 	}
 

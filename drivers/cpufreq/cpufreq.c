@@ -45,7 +45,7 @@ int cpufrequency[FREQCOUNT] = { 1500000, 1400000, 1300000, 1200000, 1100000, 100
 int cpuvoltage[FREQCOUNT] =   { 1175,    1150,    1125,    1100,    1075,    1050,    1025,   1000,   950,    900,    875,    825,    800 };
 #endif
 int cpuuvoffset[FREQCOUNT] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-
+int cpulpvoltage[FREQCOUNT] = { 1175,    1150,    1125,    1100,    1075,    1050,    1025,   1000,   900,    840,    800,    770,    740,    700 };
 
 /**
  * The "cpufreq driver" - the arch- or hardware-dependent low
@@ -592,6 +592,15 @@ static ssize_t show_frequency_voltage_table(struct cpufreq_policy *policy, char 
   return table - buf;
 }
 
+static ssize_t show_lp_frequency_voltage_table(struct cpufreq_policy *policy, char *buf)
+{
+  char *table = buf;
+  int i;
+  for (i = 0; i < FREQCOUNT; i++)
+    table += sprintf(table, "%d %d %d\n", cpufrequency[i], cpulpvoltage[i], (cpulpvoltage[i]-cpuuvoffset[i])); // TODO: Should be frequency, default voltage, current voltage 
+  return table - buf;
+}
+
 static ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf)
 {
   char *table = buf;
@@ -647,6 +656,7 @@ cpufreq_freq_attr_ro(bios_limit);
 cpufreq_freq_attr_ro(related_cpus);
 cpufreq_freq_attr_ro(affected_cpus);
 cpufreq_freq_attr_ro(frequency_voltage_table);
+cpufreq_freq_attr_ro(lp_frequency_voltage_table);
 cpufreq_freq_attr_rw(scaling_min_freq);
 cpufreq_freq_attr_rw(scaling_max_freq);
 cpufreq_freq_attr_rw(scaling_governor);
@@ -663,6 +673,7 @@ static struct attribute *default_attrs[] = {
 	&scaling_max_freq.attr,
 	&affected_cpus.attr,
 	&frequency_voltage_table.attr,
+	&lp_frequency_voltage_table.attr,
 	&related_cpus.attr,
 	&scaling_governor.attr,
 	&scaling_driver.attr,
