@@ -79,9 +79,6 @@ static void eternityproject_governor_enable(void)
 /* sysfs names */
 #define T3PARMS			"/sys/module/cpu_tegra3/parameters/"
 #define CLUSTER			"/sys/kernel/cluster/"
-#define HSMGR_APIREV		"android_apirev"
-#define WIFI_WAKELOCK		"wifi_wakelock"
-#define POWER_LOCK		"power_lock"
 
 /* Android API Levels */
 #define ANDROID_API_ICS		15

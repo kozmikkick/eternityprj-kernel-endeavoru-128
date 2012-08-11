@@ -62,6 +62,26 @@ struct attribute * eprjmanager[] = {
 	NULL
 };
 
+typedef enum
+{
+	EPRJ_INVALID = 0,
+	HSMGR_APIREV,
+	WIFI_WAKELOCK,
+	POWER_LOCK
+} eprj_attribute;
+
+static eprj_attribute calling_attribute(const char *attrname)
+{
+	if (!strcmp(attrname, "android_apirev"))
+		return HSMGR_APIREV;
+	if (!strcmp(attrname, "wifi_wakelock"))
+		return WIFI_WAKELOCK;
+	if (!strcmp(attrname, "power_lock"))
+		return POWER_LOCK;
+
+	return EPRJ_INVALID;
+}
+
 static ssize_t eprjsysfs_show(struct kobject *kobj, struct attribute *attr,
 				char *buf)
 {
@@ -78,25 +98,12 @@ static ssize_t eprjsysfs_store(struct kobject *kobj, struct attribute *attr,
 {
 	struct eprj_sysfs *entry = container_of(attr, struct eprj_sysfs, attr);
 	int a = 0;
+	eprj_attribute mynameis;
+
 	sscanf(buf, "%d", &entry->value);
-	/* Is there any better way? */
-	if ( (entry->value == ANDROID_API_JB ) && (entry->attr.name == "android_apirev") ) {
-		printk("EternityProject HSMGR: Android Jellybean detected.\n");
-		eprj_hsmgr_35mm_os(ANDROID_API_JB);
-	};
-	/* Okay, now that's getting really tedious .. and ridiculous. */
-	if (entry->attr.name == "wifi_wakelock") {
-		a = wake_lock_active(&eprj_wifi_lock);
-		if (a != 0 )
-			wake_unlock(&eprj_wifi_lock);		
-		wifiwakelock_is_allowed = entry->value;
-	}
+	mynameis = calling_attribute(entry->attr.name);
 
-	if (entry->attr.name == "power_lock")
-		eprj_extreme_powersave(entry->value);
-
-#if 0 /* This code will replace the current one. */
-	switch (entry->attr.name)
+	switch (mynameis)
 	{
 		case HSMGR_APIREV:
 			if (entry->value == ANDROID_API_JB) {	
@@ -105,7 +112,7 @@ static ssize_t eprjsysfs_store(struct kobject *kobj, struct attribute *attr,
 			}
 			break;
 		case WIFI_WAKELOCK:
-			a = wakelock_active(&eprj_wifi_lock);
+			a = wake_lock_active(&eprj_wifi_lock);
 			if (a != 0)
 				wake_unlock(&eprj_wifi_lock);
 			wifiwakelock_is_allowed = entry->value;
@@ -116,7 +123,6 @@ static ssize_t eprjsysfs_store(struct kobject *kobj, struct attribute *attr,
 		default:
 			break;
 	}
-#endif
 
 	return sizeof(int);
 }
