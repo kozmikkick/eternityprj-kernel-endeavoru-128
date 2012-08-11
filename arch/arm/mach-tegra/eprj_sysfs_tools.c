@@ -24,6 +24,7 @@
  */
 
 #include <linux/cpu.h>
+#include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -167,11 +168,13 @@ void eprj_extreme_powersave(bool active)
 {
 	/* We can use set_cpu_possible(cpu, possible) for enforcing that, if needed. */
 	if (active) {
-		disable_nonboot_cpus();
+		disable_nonboot_cpus(); /* Unstable here! */
+		do { cpu_relax(); } while (num_online_cpus() > 1);
 		set_sysfs_param(CLUSTER, "active", "lp");
 		set_sysfs_param(T3PARMS, "auto_hotplug", "0");
 	} else {
-		enable_nonboot_cpus(); /* Are we sure we have to re-enable them _prior_ resuming a_hp? */
+		enable_nonboot_cpus();
+		msleep(100);
 		set_sysfs_param(T3PARMS, "auto_hotplug", "1");
 		set_sysfs_param(CLUSTER, "active", "g");
 	};
