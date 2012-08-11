@@ -1043,7 +1043,7 @@ static const struct dev_pm_ops tegra_i2c_dev_pm_ops = {
 
 static struct platform_driver tegra_i2c_driver = {
 	.probe   = tegra_i2c_probe,
-	.remove  = tegra_i2c_remove,
+	.remove  = __devexit_p(tegra_i2c_remove),
 	.driver  = {
 		.name  = "tegra-i2c",
 		.owner = THIS_MODULE,
