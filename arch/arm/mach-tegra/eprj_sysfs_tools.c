@@ -166,7 +166,7 @@ void set_sysfs_param(char *param_path, char *name, char *value)
 	set_fs(old_fs);
 }
 
-void manage_auto-hotplug(bool active)
+void manage_auto_hotplug(bool active)
 {
 	if (active)
 		set_sysfs_param(T3PARMS, "auto_hotplug", "1");
