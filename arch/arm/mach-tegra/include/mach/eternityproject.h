@@ -94,7 +94,7 @@ static void eternityproject_governor_enable(void)
 #endif
 
 void eprj_hsmgr_35mm_os(unsigned short int); 	/* Headset Compatibility 	*/
-void manage_auto-hotplug(bool);			/* Tegra3 Auto-Hotplug manager	*/
+void manage_auto_hotplug(bool);			/* Tegra3 Auto-Hotplug manager	*/
 void eprj_extreme_powersave(bool);		/* Powersave - LP Cluster Lock	*/
 extern struct wake_lock eprj_wifi_lock;		/* WiFi Wakelock		*/
 extern bool wifiwakelock_is_allowed;		/* WiFi Wakelock User Control 	*/

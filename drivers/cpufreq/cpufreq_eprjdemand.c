@@ -1405,7 +1405,7 @@ static int __init cpufreq_gov_dbs_init(void)
 	early_suspend.resume = cpufreq_eprjdemand_late_resume;
 #endif
 #ifdef ARCH_TEGRA_3x_SOC
-	manage_auto-hotplug(0);
+	manage_auto_hotplug(0);
 #endif
 	return ret;
 
@@ -1422,7 +1422,7 @@ static void __exit cpufreq_gov_dbs_exit(void)
 {
 	cpufreq_unregister_governor(&cpufreq_gov_eprjdemand);
 #ifdef ARCH_TEGRA_3x_SOC
-	manage_auto-hotplug(1);
+	manage_auto_hotplug(1);
 #endif
 	destroy_workqueue(dvfs_workqueue);
 	kfree(hotplug_history);
