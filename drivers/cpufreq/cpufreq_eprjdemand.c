@@ -394,15 +394,14 @@ static inline cputime64_t get_cpu_idle_time_jiffy(unsigned int cpu,
 	cputime64_t busy_time;
 
 	cur_wall_time = jiffies64_to_cputime64(get_jiffies_64());
-	busy_time = cputime64_add(kcpustat_cpu(cpu).cpustat[CPUTIME_USER],
-				  kcpustat_cpu(cpu).cpustat[CPUTIME_SYSTEM]);
+	busy_time = kcpustat_cpu(cpu).cpustat[CPUTIME_USER];
+	busy_time += kcpustat_cpu(cpu).cpustat[CPUTIME_SYSTEM];
+	busy_time += kcpustat_cpu(cpu).cpustat[CPUTIME_IRQ];
+	busy_time += kcpustat_cpu(cpu).cpustat[CPUTIME_SOFTIRQ];
+	busy_time += kcpustat_cpu(cpu).cpustat[CPUTIME_STEAL];
+	busy_time += kcpustat_cpu(cpu).cpustat[CPUTIME_NICE];
 
-	busy_time = cputime64_add(busy_time, kcpustat_cpu(cpu).cpustat[CPUTIME_IRQ]);
-	busy_time = cputime64_add(busy_time, kcpustat_cpu(cpu).cpustat[CPUTIME_SOFTIRQ]);
-	busy_time = cputime64_add(busy_time, kcpustat_cpu(cpu).cpustat[CPUTIME_STEAL]);
-	busy_time = cputime64_add(busy_time, kcpustat_cpu(cpu).cpustat[CPUTIME_NICE]);
-
-	idle_time = cputime64_sub(cur_wall_time, busy_time);
+	idle_time = cur_wall_time - busy_time;
 	if (wall)
 		*wall = (cputime64_t)jiffies_to_usecs(cur_wall_time);
 
@@ -1036,23 +1035,23 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 		cur_idle_time = get_cpu_idle_time(j, &cur_wall_time);
 		cur_iowait_time = get_cpu_iowait_time(j, &cur_wall_time);
 
-		wall_time = (unsigned int) cputime64_sub(cur_wall_time,
-							 prev_wall_time);
+		wall_time = (unsigned int)
+			(cur_wall_time - prev_wall_time);
 		j_dbs_info->prev_cpu_wall = cur_wall_time;
 
-		idle_time = (unsigned int) cputime64_sub(cur_idle_time,
-							 prev_idle_time);
+		idle_time = (unsigned int)
+			(cur_idle_time - prev_idle_time);
 		j_dbs_info->prev_cpu_idle = cur_idle_time;
 
-		iowait_time = (unsigned int) cputime64_sub(cur_iowait_time,
-							   prev_iowait_time);
+		iowait_time = (unsigned int)
+			(cur_iowait_time - prev_iowait_time);
 		j_dbs_info->prev_cpu_iowait = cur_iowait_time;
 
 		if (dbs_tuners_ins.ignore_nice) {
 			cputime64_t cur_nice;
 			unsigned long cur_nice_jiffies;
 
-			cur_nice = cputime64_sub(kcpustat_cpu(j).cpustat[CPUTIME_NICE],
+			cur_nice = (kcpustat_cpu(j).cpustat[CPUTIME_NICE] -
 						 j_dbs_info->prev_cpu_nice);
 			/*
 			 * Assumption: nice time between sampling periods will
