@@ -166,6 +166,14 @@ void set_sysfs_param(char *param_path, char *name, char *value)
 	set_fs(old_fs);
 }
 
+void manage_auto-hotplug(bool active)
+{
+	if (active)
+		set_sysfs_param(T3PARMS, "auto_hotplug", "1");
+	else
+		set_sysfs_param(T3PARMS, "auto_hotplug", "0");
+}
+
 /*
  * Tegra 3 - Force LP Cluster
  * TODO: Make a better implementation of that mess.
@@ -185,7 +193,7 @@ void eprj_extreme_powersave(bool active)
 		set_sysfs_param(CLUSTER, "active", "g");
 	};
 };
-	
+
 /*
  * Actual implementation. Start the sysfs entry.
  */
