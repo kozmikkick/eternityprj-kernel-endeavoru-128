@@ -143,7 +143,7 @@ extern int ptrace_set_watch_regs(struct task_struct *child,
 
 extern asmlinkage void do_syscall_trace(struct pt_regs *regs, int entryexit);
 
-extern NORET_TYPE void die(const char *, struct pt_regs *) ATTRIB_NORET;
+extern void die(const char *, struct pt_regs *) ATTRIB_NORET;
 
 static inline void die_if_kernel(const char *str, struct pt_regs *regs)
 {
