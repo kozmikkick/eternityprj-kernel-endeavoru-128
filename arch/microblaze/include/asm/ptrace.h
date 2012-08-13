@@ -63,6 +63,11 @@ struct pt_regs {
 
 void show_regs(struct pt_regs *);
 
+static inline long regs_return_value(struct pt_regs *regs)
+{
+	return regs->r3;
+}
+
 #else /* __KERNEL__ */
 
 /* pt_regs offsets used by gdbserver etc in ptrace syscalls */
