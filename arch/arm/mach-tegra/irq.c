@@ -21,6 +21,7 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/io.h>
+#include <linux/of.h>
 #include <linux/syscore_ops.h>
 
 #include <asm/hardware/gic.h>
@@ -210,7 +211,12 @@ void __init tegra_init_irq(void)
 	gic_arch_extn.irq_set_wake = tegra_set_wake;
 	gic_arch_extn.flags = IRQCHIP_MASK_ON_SUSPEND;
 
-	tegra_gic_init();
+	/*
+	 * Check if there is a devicetree present, since the GIC will be
+	 * initialized elsewhere under DT.
+	 */
+	if (!of_have_populated_dt())
+		tegra_gic_init();
 }
 
 void tegra_init_legacy_irq_cop(void)
