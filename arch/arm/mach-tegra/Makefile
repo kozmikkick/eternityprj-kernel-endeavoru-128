@@ -66,8 +66,8 @@ obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += pm-t2.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += pm-t3.o
 
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += pinmux-t2-tables.o
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += pinmux-t3-tables.o√
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += board-dt-tegra30.o
+obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += pinmux-t3-tables.o
+# obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += board-dt-tegra30.o
 obj-$(CONFIG_LOCAL_TIMERS)              += localtimer.o
 obj-$(CONFIG_SMP)                       += platsmp.o
 obj-$(CONFIG_HOTPLUG_CPU)               += hotplug.o
