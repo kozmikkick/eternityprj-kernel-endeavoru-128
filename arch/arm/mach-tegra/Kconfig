@@ -194,6 +194,12 @@ config BATTERY_TPS80032
 	depends on HTC_BATT_CORE && ADC_TPS80032 && VSYS_ALARM_TPS80032
 	bool "HTC battery driver for tps80032"
 
+config MACH_VENTANA
+       bool "Ventana board"
+       select MACH_TEGRA_DT
+       help
+         Support for the nVidia Ventana development platform
+
 choice
        prompt "Tegra platform type"
        default TEGRA_SILICON_PLATFORM
