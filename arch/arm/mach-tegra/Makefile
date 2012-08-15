@@ -66,7 +66,8 @@ obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += pm-t2.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += pm-t3.o
 
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += pinmux-t2-tables.o
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += pinmux-t3-tables.o
+obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += pinmux-t3-tables.o√
+obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += board-dt-tegra30.o
 obj-$(CONFIG_LOCAL_TIMERS)              += localtimer.o
 obj-$(CONFIG_SMP)                       += platsmp.o
 obj-$(CONFIG_HOTPLUG_CPU)               += hotplug.o
@@ -219,8 +220,8 @@ obj-${CONFIG_MACH_ENDEAVORU}                 += htc-gpio.o
 obj-${CONFIG_MACH_ENDEAVORU}                 += board-endeavoru-audio.o
 obj-${CONFIG_MACH_ENDEAVORU}                 += htc_wifi_nvs.o
 obj-${CONFIG_MACH_ENDEAVORU}                 += null-pokecpu.o
-obj-y                                        += htc_port_list.o
 ifeq (${CONFIG_MACH_ENDEAVORU},y)
+obj-y += htc_port_list.o
 obj-y += baseband-xmm-power.o
 obj-m += baseband-xmm-power2.o
 obj-y += htc_simhotswap.o
