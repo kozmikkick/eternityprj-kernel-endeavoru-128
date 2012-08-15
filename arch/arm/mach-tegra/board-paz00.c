@@ -43,9 +43,9 @@
 
 static struct plat_serial8250_port debug_uart_platform_data[] = {
 	{
-		.membase	= IO_ADDRESS(TEGRA_UARTD_BASE),
-		.mapbase	= TEGRA_UARTD_BASE,
-		.irq		= INT_UARTD,
+		.membase	= IO_ADDRESS(TEGRA_UARTC_BASE),
+		.mapbase	= TEGRA_UARTC_BASE,
+		.irq		= INT_UARTC,
 		.flags		= UPF_BOOT_AUTOCONF,
 		.iotype		= UPIO_MEM,
 		.regshift	= 2,
