@@ -1206,7 +1206,7 @@ static struct platform_device *enterprise_devices[] __initdata = {
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
 #endif
-	&ram_console_device,
+//	&ram_console_device,
 };
 
 /* Touchscreen GPIO addresses   */
@@ -2166,6 +2166,7 @@ static void __init tegra_enterprise_init(void)
 	enterprise_uart_init();
 	enterprise_spi_init();
 	enterprise_usb_init();
+	tegra_ram_console_debug_init();
 //	andusb_plat.serial_number = board_serialno();
 	enterprise_tsensor_init();
 	platform_add_devices(enterprise_devices, ARRAY_SIZE(enterprise_devices));
@@ -2265,7 +2266,7 @@ static void __init tegra_enterprise_reserve(void)
 #else
 	tegra_reserve(SZ_128M, SZ_4M, SZ_8M);
 #endif
-	tegra_enterprise_ramconsole_reserve(SZ_1M);
+	tegra_ram_console_debug_reserve(SZ_1M);
 }
 
 MACHINE_START(ENDEAVORU, "endeavoru")
