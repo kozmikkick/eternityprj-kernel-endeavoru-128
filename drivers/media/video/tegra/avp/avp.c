@@ -42,7 +42,7 @@
 #include <mach/clk.h>
 #include <mach/io.h>
 #include <mach/iomap.h>
-#include <mach/nvmap.h>
+#include <linux/nvmap.h>
 #include <mach/legacy_irq.h>
 #include <mach/hardware.h>
 
@@ -66,10 +66,10 @@ enum {
 
 static u32 avp_debug_mask =
 	AVP_DBG_TRACE_XPC	|
-	AVP_DBG_TRACE_XPC_IRQ	|
-	AVP_DBG_TRACE_XPC_MSG	|
+	/* AVP_DBG_TRACE_XPC_IRQ	| */
+	/* AVP_DBG_TRACE_XPC_MSG	| */
+	/* AVP_DBG_TRACE_TRPC_MSG	| */
 	AVP_DBG_TRACE_XPC_CONN	|
-	AVP_DBG_TRACE_TRPC_MSG	|
 	AVP_DBG_TRACE_TRPC_CONN	|
 	AVP_DBG_TRACE_LIB;
 
@@ -561,7 +561,7 @@ static int avp_node_try_connect(struct trpc_node *node,
 
 	len = strlen(port_name);
 	if (len > XPC_PORT_NAME_LEN) {
-		pr_err("%s: port name (%s) to long\n", __func__, port_name);
+		pr_err("%s: port name (%s) too long\n", __func__, port_name);
 		return -EINVAL;
 	}
 
@@ -909,8 +909,8 @@ static int avp_reset(struct tegra_avp_info *avp, unsigned long reset_addr)
 
 	writel(stub_code_phys, TEGRA_AVP_RESET_VECTOR_ADDR);
 
-	pr_err("%s: TEGRA_AVP_RESET_VECTOR=%x\n", __func__, readl(TEGRA_AVP_RESET_VECTOR_ADDR));
-	pr_err("%s: Resetting AVP: reset_addr=%lx\n", __func__, reset_addr);
+	pr_debug("%s: TEGRA_AVP_RESET_VECTOR=%x\n", __func__, readl(TEGRA_AVP_RESET_VECTOR_ADDR));
+	pr_info("%s: Resetting AVP: reset_addr=%lx\n", __func__, reset_addr);
 
 	tegra_periph_reset_assert(avp->cop_clk);
 	udelay(10);
@@ -922,7 +922,7 @@ static int avp_reset(struct tegra_avp_info *avp, unsigned long reset_addr)
 	 * starts, so a dead kernel can be detected by polling this value */
 	timeout = jiffies + msecs_to_jiffies(2000);
 	while (time_before(jiffies, timeout)) {
-		pr_err("%s: TEGRA_AVP_RESET_VECTOR=%x\n", __func__, readl(TEGRA_AVP_RESET_VECTOR_ADDR));
+		pr_debug("%s: TEGRA_AVP_RESET_VECTOR=%x\n", __func__, readl(TEGRA_AVP_RESET_VECTOR_ADDR));
 		if (readl(TEGRA_AVP_RESET_VECTOR_ADDR) != stub_code_phys)
 			break;
 		cpu_relax();
@@ -931,7 +931,7 @@ static int avp_reset(struct tegra_avp_info *avp, unsigned long reset_addr)
 		pr_err("%s: Timed out waiting for AVP kernel to start\n", __func__);
 		ret = -EINVAL;
 	}
-	pr_err("%s: TEGRA_AVP_RESET_VECTOR=%x\n", __func__, readl(TEGRA_AVP_RESET_VECTOR_ADDR));
+	pr_debug("%s: TEGRA_AVP_RESET_VECTOR=%x\n", __func__, readl(TEGRA_AVP_RESET_VECTOR_ADDR));
 	WARN_ON(ret);
 	dma_unmap_single(NULL, stub_data_phys,
 			 sizeof(_tegra_avp_boot_stub_data),
@@ -1010,7 +1010,6 @@ static int avp_init(struct tegra_avp_info *avp)
 			"to see if nvmem= is defined\n");
 		BUG();
 	}
-
 	pr_info("%s: Using nvmem= carveout at %lx to load AVP kernel\n",
 		__func__, (unsigned long)avp->kernel_phys);
 	sprintf(fw_file, "nvrm_avp_%08lx.bin", (unsigned long)avp->kernel_phys);
@@ -1027,7 +1026,7 @@ static int avp_init(struct tegra_avp_info *avp)
 		fw_file, avp_fw->size);
 
 	pr_info("%s: Loading AVP kernel at vaddr=%p paddr=%lx\n",
-	       __func__, avp->kernel_data, (unsigned long)avp->kernel_phys);
+		__func__, avp->kernel_data, (unsigned long)avp->kernel_phys);
 	memcpy(avp->kernel_data, avp_fw->data, avp_fw->size);
 	memset(avp->kernel_data + avp_fw->size, 0, SZ_1M - avp_fw->size);
 
@@ -1159,7 +1158,7 @@ static int _load_lib(struct tegra_avp_info *avp, struct tegra_avp_lib *lib,
 	}
 
 	lib_handle = nvmap_alloc(avp->nvmap_libs, fw->size, L1_CACHE_BYTES,
-				 NVMAP_HANDLE_UNCACHEABLE);
+				 NVMAP_HANDLE_UNCACHEABLE, 0);
 	if (IS_ERR_OR_NULL(lib_handle)) {
 		pr_err("avp_lib: can't nvmap alloc for lib '%s'\n", lib->name);
 		ret = PTR_ERR(lib_handle);
@@ -1611,18 +1610,18 @@ static int tegra_avp_probe(struct platform_device *pdev)
 #endif
 
 	if (heap_mask == NVMAP_HEAP_IOVMM) {
-		u32 iovmm_addr = 0x0ff00000;
+		int i;
+		/* Tegra3 A01 has different SMMU address in 0xe00000000- */
+		u32 iovmm_addr[] = {0x0ff00000, 0xeff00000};
 
-		/* Tegra3 A01 has different SMMU address */
-		if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA3
-			&& tegra_get_revision() == TEGRA_REVISION_A01) {
-			iovmm_addr = 0xeff00000;
-		}
-
-		avp->kernel_handle = nvmap_alloc_iovm(avp->nvmap_drv, SZ_1M,
-						L1_CACHE_BYTES,
+		for (i = 0; i < ARRAY_SIZE(iovmm_addr); i++) {
+			avp->kernel_handle = nvmap_alloc_iovm(avp->nvmap_drv,
+						SZ_1M, L1_CACHE_BYTES,
 						NVMAP_HANDLE_WRITE_COMBINE,
-						iovmm_addr);
+						iovmm_addr[i]);
+			if (!IS_ERR_OR_NULL(avp->kernel_handle))
+				break;
+		}
 		if (IS_ERR_OR_NULL(avp->kernel_handle)) {
 			pr_err("%s: cannot create handle\n", __func__);
 			ret = PTR_ERR(avp->kernel_handle);
@@ -1650,7 +1649,7 @@ static int tegra_avp_probe(struct platform_device *pdev)
 
 	if (heap_mask == NVMAP_HEAP_CARVEOUT_GENERIC) {
 		avp->kernel_handle = nvmap_alloc(avp->nvmap_drv, SZ_1M, SZ_1M,
-						NVMAP_HANDLE_UNCACHEABLE);
+						NVMAP_HANDLE_UNCACHEABLE, 0);
 		if (IS_ERR_OR_NULL(avp->kernel_handle)) {
 			pr_err("%s: cannot create handle\n", __func__);
 			ret = PTR_ERR(avp->kernel_handle);
@@ -1681,7 +1680,7 @@ static int tegra_avp_probe(struct platform_device *pdev)
 	 */
 	avp->iram_backup_handle =
 		nvmap_alloc(avp->nvmap_drv, TEGRA_IRAM_SIZE + 4,
-				L1_CACHE_BYTES, NVMAP_HANDLE_UNCACHEABLE);
+				L1_CACHE_BYTES, NVMAP_HANDLE_UNCACHEABLE, 0);
 	if (IS_ERR_OR_NULL(avp->iram_backup_handle)) {
 		pr_err("%s: cannot create handle for iram backup\n", __func__);
 		ret = PTR_ERR(avp->iram_backup_handle);

@@ -39,7 +39,7 @@
 #include <asm/tlbflush.h>
 
 #include <mach/iovmm.h>
-#include <mach/nvmap.h>
+#include <linux/nvmap.h>
 
 #include "nvmap.h"
 #include "nvmap_ioctl.h"
@@ -689,7 +689,6 @@ static void destroy_client(struct nvmap_client *client)
 		while (dupes--)
 			nvmap_handle_put(ref->handle);
 
-		NVMAP_MAGIC_FREE(ref);
 		kfree(ref);
 	}
 
@@ -895,7 +894,7 @@ static void nvmap_vma_close(struct vm_area_struct *vma)
 	if (priv) {
 		if (priv->handle) {
 			nvmap_usecount_dec(priv->handle);
-			/* BUG_ON(priv->handle->usecount < 0); */
+			BUG_ON(priv->handle->usecount < 0);
 		}
 		if (!atomic_dec_return(&priv->count)) {
 			if (priv->handle)
@@ -1183,10 +1182,10 @@ static int nvmap_probe(struct platform_device *pdev)
 
 	init_waitqueue_head(&dev->iovmm_master.pin_wait);
 	mutex_init(&dev->iovmm_master.pin_lock);
-	nvmap_page_pool_init(&dev->iovmm_master.uc_pool,
-		NVMAP_HANDLE_UNCACHEABLE);
-	nvmap_page_pool_init(&dev->iovmm_master.wc_pool,
-		NVMAP_HANDLE_WRITE_COMBINE);
+#ifdef CONFIG_NVMAP_PAGE_POOLS
+	for (i = 0; i < NVMAP_NUM_POOLS; i++)
+		nvmap_page_pool_init(&dev->iovmm_master.pools[i], i);
+#endif
 
 	dev->iovmm_master.iovmm =
 		tegra_iovmm_alloc_client(dev_name(&pdev->dev), NULL,
@@ -1314,12 +1313,18 @@ static int nvmap_probe(struct platform_device *pdev)
 				dev, &debug_iovmm_clients_fops);
 			debugfs_create_file("allocations", 0664, iovmm_root,
 				dev, &debug_iovmm_allocations_fops);
-			debugfs_create_u32("uc_page_pool_npages",
-				S_IRUGO|S_IWUSR, iovmm_root,
-				&dev->iovmm_master.uc_pool.npages);
-			debugfs_create_u32("wc_page_pool_npages",
-				S_IRUGO|S_IWUSR, iovmm_root,
-				&dev->iovmm_master.wc_pool.npages);
+#ifdef CONFIG_NVMAP_PAGE_POOLS
+			for (i = 0; i < NVMAP_NUM_POOLS; i++) {
+				char name[40];
+				char *memtype_string[] = {"uc", "wc",
+							  "iwb", "wb"};
+				sprintf(name, "%s_page_pool_available_pages",
+					memtype_string[i]);
+				debugfs_create_u32(name, S_IRUGO|S_IWUSR,
+					iovmm_root,
+					&dev->iovmm_master.pools[i].npages);
+			}
+#endif
 		}
 	}
 

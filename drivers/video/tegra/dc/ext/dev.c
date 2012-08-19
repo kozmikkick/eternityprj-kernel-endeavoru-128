@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/dev.c
  *
- * Copyright (C) 2011, NVIDIA Corporation
+ * Copyright (C) 2011-2012, NVIDIA Corporation
  *
  * Author: Robert Morell <rmorell@nvidia.com>
  * Some code based on fbdev extensions written by:
@@ -27,11 +27,12 @@
 #include <video/tegra_dc_ext.h>
 
 #include <mach/dc.h>
-#include <mach/nvmap.h>
+#include <linux/nvmap.h>
 #include <mach/tegra_dc_ext.h>
 
 /* XXX ew */
 #include "../dc_priv.h"
+#include "../dc_config.h"
 /* XXX ew 2 */
 #include "../../host/dev.h"
 /* XXX ew 3 */
@@ -172,10 +173,39 @@ void tegra_dc_ext_disable(struct tegra_dc_ext *ext)
 	}
 }
 
+int tegra_dc_ext_check_windowattr(struct tegra_dc_ext *ext,
+						struct tegra_dc_win *win)
+{
+	long *addr;
+	struct tegra_dc *dc = ext->dc;
+
+	/* Check the window format */
+	addr = tegra_dc_parse_feature(dc, win->idx, GET_WIN_FORMATS);
+	if (!test_bit(win->fmt, addr)) {
+		dev_err(&dc->ndev->dev, "Color format of window %d is"
+						" invalid.\n", win->idx);
+		goto fail;
+	}
+
+	/* Check window size */
+	addr = tegra_dc_parse_feature(dc, win->idx, GET_WIN_SIZE);
+	if (CHECK_SIZE(win->out_w, addr[MIN_WIDTH], addr[MAX_WIDTH]) ||
+		CHECK_SIZE(win->out_h, addr[MIN_HEIGHT], addr[MAX_HEIGHT])) {
+		dev_err(&dc->ndev->dev, "Size of window %d is"
+						" invalid.\n", win->idx);
+		goto fail;
+	}
+
+	return 0;
+fail:
+	return -EINVAL;
+}
+
 static int tegra_dc_ext_set_windowattr(struct tegra_dc_ext *ext,
 			       struct tegra_dc_win *win,
 			       const struct tegra_dc_ext_flip_win *flip_win)
 {
+	int err = 0;
 	struct tegra_dc_ext_win *ext_win = &ext->win[win->idx];
 
 	if (flip_win->handle[TEGRA_DC_Y] == NULL) {
@@ -195,6 +225,10 @@ static int tegra_dc_ext_set_windowattr(struct tegra_dc_ext *ext,
 		win->flags |= TEGRA_WIN_FLAG_INVERT_H;
 	if (flip_win->attr.flags & TEGRA_DC_EXT_FLIP_FLAG_INVERT_V)
 		win->flags |= TEGRA_WIN_FLAG_INVERT_V;
+	if (flip_win->attr.flags & TEGRA_DC_EXT_FLIP_FLAG_GLOBAL_ALPHA)
+		win->global_alpha = flip_win->attr.global_alpha;
+	else
+		win->global_alpha = 255;
 	win->fmt = flip_win->attr.pixformat;
 	win->x.full = flip_win->attr.x;
 	win->y.full = flip_win->attr.y;
@@ -223,11 +257,17 @@ static int tegra_dc_ext_set_windowattr(struct tegra_dc_ext *ext,
 	win->stride = flip_win->attr.stride;
 	win->stride_uv = flip_win->attr.stride_uv;
 
+	err = tegra_dc_ext_check_windowattr(ext, win);
+	if (err < 0)
+		dev_err(&ext->dc->ndev->dev,
+				"Window atrributes are invalid.\n");
+
 	if ((s32)flip_win->attr.pre_syncpt_id >= 0) {
-		nvhost_syncpt_wait_timeout(&ext->dc->ndev->host->syncpt,
-					   flip_win->attr.pre_syncpt_id,
-					   flip_win->attr.pre_syncpt_val,
-					   msecs_to_jiffies(500), NULL);
+		nvhost_syncpt_wait_timeout(
+				&nvhost_get_host(ext->dc->ndev)->syncpt,
+				flip_win->attr.pre_syncpt_id,
+				flip_win->attr.pre_syncpt_val,
+				msecs_to_jiffies(500), NULL);
 	}
 
 
@@ -255,9 +295,6 @@ static void tegra_dc_ext_flip_worker(struct work_struct *work)
 
 		win = tegra_dc_get_window(ext->dc, index);
 		ext_win = &ext->win[index];
-
-		if (!win)
-			break;
 
 		if (win->flags & TEGRA_WIN_FLAG_ENABLED) {
 			int j;
@@ -401,7 +438,7 @@ static int tegra_dc_ext_flip(struct tegra_dc_ext_user *user,
 {
 	struct tegra_dc_ext *ext = user->ext;
 	struct tegra_dc_ext_flip_data *data;
-	int work_index = 0;
+	int work_index;
 	int i, ret = 0;
 
 #ifdef CONFIG_ANDROID
@@ -490,9 +527,14 @@ static int tegra_dc_ext_flip(struct tegra_dc_ext_user *user,
 	for (i = 0; i < DC_N_WINDOWS; i++) {
 		u32 syncpt_max;
 		int index = args->win[i].index;
+		struct tegra_dc_win *win;
+		struct tegra_dc_ext_win *ext_win;
 
 		if (index < 0)
 			continue;
+
+		win = tegra_dc_get_window(ext->dc, index);
+		ext_win = &ext->win[index];
 
 		syncpt_max = tegra_dc_incr_syncpt_max(ext->dc, index);
 
@@ -505,6 +547,8 @@ static int tegra_dc_ext_flip(struct tegra_dc_ext_user *user,
 		args->post_syncpt_val = syncpt_max;
 		args->post_syncpt_id = tegra_dc_get_syncpt_id(ext->dc, index);
 		work_index = index;
+
+		atomic_inc(&ext->win[work_index].nr_pending_flips);
 	}
 	queue_work(ext->win[work_index].flip_wq, &data->work);
 

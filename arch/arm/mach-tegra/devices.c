@@ -23,12 +23,16 @@
 #include <linux/dma-mapping.h>
 #include <linux/fsl_devices.h>
 #include <linux/serial_8250.h>
+#include <linux/i2c-tegra.h>
+#include <linux/platform_data/tegra_usb.h>
 #include <linux/tegra_avp.h>
 #include <linux/nvhost.h>
+#include <linux/clk.h>
 #include <asm/pmu.h>
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/dma.h>
+#include <mach/usb_phy.h>
 #include <mach/tegra_smmu.h>
 
 #include "gpio-names.h"
@@ -1442,56 +1446,6 @@ struct platform_device tegra_pwfm3_device = {
 	.id		= 3,
 	.num_resources	= 1,
 	.resource	= &tegra_pwfm3_resource,
-};
-
-static struct resource tegra_grhost_resources[] = {
-	{
-		.start = TEGRA_HOST1X_BASE,
-		.end = TEGRA_HOST1X_BASE + TEGRA_HOST1X_SIZE - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	{
-		.start = TEGRA_DISPLAY_BASE,
-		.end = TEGRA_DISPLAY_BASE + TEGRA_DISPLAY_SIZE - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	{
-		.start = TEGRA_DISPLAY2_BASE,
-		.end = TEGRA_DISPLAY2_BASE + TEGRA_DISPLAY2_SIZE - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	{
-		.start = TEGRA_VI_BASE,
-		.end = TEGRA_VI_BASE + TEGRA_VI_SIZE - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	{
-		.start = TEGRA_ISP_BASE,
-		.end = TEGRA_ISP_BASE + TEGRA_ISP_SIZE - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	{
-		.start = TEGRA_MPE_BASE,
-		.end = TEGRA_MPE_BASE + TEGRA_MPE_SIZE - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	{
-		.start = INT_SYNCPT_THRESH_BASE,
-		.end = INT_SYNCPT_THRESH_BASE + INT_SYNCPT_THRESH_NR - 1,
-		.flags = IORESOURCE_IRQ,
-	},
-	{
-		.start = INT_HOST1X_MPCORE_GENERAL,
-		.end = INT_HOST1X_MPCORE_GENERAL,
-		.flags = IORESOURCE_IRQ,
-	},
-};
-
-struct platform_device tegra_grhost_device = {
-	.name = "tegra_grhost",
-	.id = -1,
-	.resource = tegra_grhost_resources,
-	.num_resources = ARRAY_SIZE(tegra_grhost_resources),
 };
 
 static struct tegra_avp_platform_data tegra_avp_pdata = {

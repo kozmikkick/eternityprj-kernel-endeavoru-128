@@ -32,8 +32,6 @@
 #include <linux/wakelock.h>
 #include <mach/mhl.h>
 #include <mach/cable_detect.h>
-//#include <mach/debug_display.h>
-//#include <mach/board.h>
 #include "defs.h"
 #include "sii9234.h"
 #include "TPI.h"
@@ -117,7 +115,7 @@ static DEFINE_MUTEX(mhl_early_suspend_sem);
 bool g_bEnterEarlySuspend = false;
 static bool g_bGotUsbBus = false;
 static bool g_bNeedSimulateCableOut = false;
-//static bool g_bInitCompleted = false;
+
 bool g_bInitCompleted = false;
 static bool sii9244_interruptable = false;
 #define MHL_RCP_KEYEVENT
@@ -135,6 +133,7 @@ static bool g_touch_pressed[MHL_SII9234_TOUCH_FINGER_NUM_MAX] = {false};
 static void Mhl_Proc_Remote_Event(T_MHL_SII9234_INFO *pInfo);
 static void Mhl_Proc_Reset_Key_Status(void);
 #endif
+
 /*********************************************************************
 	Functions
 **********************************************************************/
@@ -379,7 +378,7 @@ static void Mhl_Proc_Remote_Event(T_MHL_SII9234_INFO *pInfo)
 	}
 
 	/* add this sleep to prevent interrupt flood */
-	hr_msleep(1);
+	mdelay(1);
 }
 
 void Mhl_Proc_Reset_Key_Status(void)
@@ -556,7 +555,9 @@ static void init_delay_handler(struct work_struct *w)
 {
 	PR_DISP_INFO("init_delay_handler()\n");
 
+#ifdef CONFIG_CABLE_DETECT_ACCESSORY
 	update_mhl_status(false, CONNECT_TYPE_UNKNOWN);
+#endif
 }
 
 static void init_complete_handler(struct work_struct *w)

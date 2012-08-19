@@ -1,4 +1,4 @@
-# GCOV_PROFILE := y
+GCOV_PROFILE := y
 EXTRA_CFLAGS += -Idrivers/video/tegra/host
 
 nvhost-mpe-objs  = \

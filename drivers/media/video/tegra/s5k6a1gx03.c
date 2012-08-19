@@ -167,6 +167,7 @@ enum {
 
 static struct s5k6a1gx03_reg *mode_table[] = {
 	[s5k6a1gx03_MODE_1296x1040] = mode_1296x1040,
+//	[s5k6a1gx03_MODE_640x480] = mode_640x480,
 };
 
 /* 2 regs to program frame length */
@@ -385,7 +386,7 @@ void greenLED_on_off(bool on)
 static int s5k6a1gx03_set_mode(struct s5k6a1gx03_info *info, struct s5k6a1gx03_mode *mode)
 {
 	int sensor_mode;
-	int err = 0;
+	int err;
 	struct s5k6a1gx03_reg reg_list[6];
 
 /* HTC_START */

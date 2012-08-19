@@ -236,7 +236,7 @@ bool Tri_state_dongle_GPIO0(void)
 
 
 	while (mscCmdInProgress && --timeout)
-		hr_msleep(1);
+		mdelay(1);
 
 	TPI_DEBUG_PRINT(("%s: timeout = %d\n", __func__, timeout));
 

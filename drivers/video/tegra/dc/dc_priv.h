@@ -21,12 +21,14 @@
 #include <linux/io.h>
 #include <linux/mutex.h>
 #include <linux/wait.h>
+#include <linux/fb.h>
 #include <linux/completion.h>
 #include <linux/switch.h>
 
 #include <mach/dc.h>
 
 #include "../host/dev.h"
+#include "../host/nvhost_acm.h"
 #include "../host/host1x/host1x_syncpt.h"
 
 #include <mach/tegra_dc_ext.h>
@@ -63,11 +65,13 @@ struct tegra_dc_out_ops {
 	void (*enable)(struct tegra_dc *dc);
 	/* disable output.  dc clocks are on at this point */
 	void (*disable)(struct tegra_dc *dc);
-
 	/* suspend output.  dc clocks are on at this point */
 	void (*suspend)(struct tegra_dc *dc);
 	/* resume output.  dc clocks are on at this point */
 	void (*resume)(struct tegra_dc *dc);
+	/* mode filter. to provide a list of supported modes*/
+	bool (*mode_filter)(const struct tegra_dc *dc,
+			struct fb_videomode *mode);
 };
 
 struct tegra_dc {
@@ -106,8 +110,6 @@ struct tegra_dc {
 	struct resource			*fb_mem;
 	struct tegra_fb_info		*fb;
 
-	struct tegra_overlay_info	*overlay;
-
 	struct {
 		u32			id;
 		u32			min;
@@ -135,6 +137,8 @@ struct tegra_dc {
 
 	struct tegra_dc_ext		*ext;
 
+	struct tegra_dc_feature		*feature;
+
 #ifdef CONFIG_DEBUG_FS
 	struct dentry			*debugdir;
 #endif
@@ -146,36 +150,31 @@ struct tegra_dc {
 
 static inline void tegra_dc_io_start(struct tegra_dc *dc)
 {
-	nvhost_module_busy(&dc->ndev->host->mod);
+	nvhost_module_busy(nvhost_get_host(dc->ndev)->dev);
 }
 
 static inline void tegra_dc_io_end(struct tegra_dc *dc)
 {
-	nvhost_module_idle(&dc->ndev->host->mod);
+	nvhost_module_idle(nvhost_get_host(dc->ndev)->dev);
 }
 
 static inline unsigned long tegra_dc_readl(struct tegra_dc *dc,
 					   unsigned long reg)
 {
-	//Don't bug on instead of print kernel stack and only allow to read/write dc when dc is power on
-	//BUG_ON(!nvhost_module_powered(&dc->ndev->host->mod));
-	if (nvhost_module_powered(&dc->ndev->host->mod))
-		return readl(dc->base + reg * 4);
-	else {
-		dump_stack();
-		return 0;
-	}
+	unsigned long ret;
+
+	BUG_ON(!nvhost_module_powered(nvhost_get_host(dc->ndev)->dev));
+	ret = readl(dc->base + reg * 4);
+	trace_printk("readl %p=%#08lx\n", dc->base + reg * 4, ret);
+	return ret;
 }
 
 static inline void tegra_dc_writel(struct tegra_dc *dc, unsigned long val,
 				   unsigned long reg)
 {
-	//Don't bug on instead of print kernel stack and only allow to read/write dc when dc is power on
-	//BUG_ON(!nvhost_module_powered(&dc->ndev->host->mod));
-	if (nvhost_module_powered(&dc->ndev->host->mod))
-		writel(val, dc->base + reg * 4);
-	else
-		dump_stack();
+	BUG_ON(!nvhost_module_powered(nvhost_get_host(dc->ndev)->dev));
+	trace_printk("writel %p=%#08lx\n", dc->base + reg * 4, val);
+	writel(val, dc->base + reg * 4);
 }
 
 static inline void _tegra_dc_write_table(struct tegra_dc *dc, const u32 *table,
@@ -219,10 +218,6 @@ void tegra_dc_create_sysfs(struct device *dev);
 /* defined in dc.c, used by dc_sysfs.c */
 void tegra_dc_stats_enable(struct tegra_dc *dc, bool enable);
 bool tegra_dc_stats_get(struct tegra_dc *dc);
-
-/* defined in dc.c, used by overlay.c */
-unsigned int tegra_dc_has_multiple_dc(void);
-unsigned long tegra_dc_get_bandwidth(struct tegra_dc_win *wins[], int n);
 
 /* defined in dc.c, used by dc_sysfs.c */
 u32 tegra_dc_read_checksum_latched(struct tegra_dc *dc);

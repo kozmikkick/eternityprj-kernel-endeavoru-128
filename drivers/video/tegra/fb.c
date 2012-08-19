@@ -37,16 +37,15 @@
 #include <mach/dc.h>
 #include <mach/fb.h>
 #include <linux/nvhost.h>
-#include <mach/nvmap.h>
+#include <linux/nvmap.h>
 
 #include "host/dev.h"
 #include "nvmap/nvmap.h"
 #include "dc/dc_priv.h"
 
 /* Pad pitch to 16-byte boundary. */
-#define TEGRA_LINEAR_PITCH_ALIGNMENT 16
+#define TEGRA_LINEAR_PITCH_ALIGNMENT 32
 
-struct tegra_usb_projector_info usb_pjt_info;
 struct tegra_fb_info {
 	struct tegra_dc_win	*win;
 	struct nvhost_device	*ndev;
@@ -65,11 +64,27 @@ static u32 pseudo_palette[16];
 static int tegra_fb_check_var(struct fb_var_screeninfo *var,
 			      struct fb_info *info)
 {
+	struct tegra_fb_info *tegra_fb = info->par;
+	struct tegra_dc *dc = tegra_fb->win->dc;
+	struct tegra_dc_out_ops *ops = dc->out_ops;
+	struct fb_videomode mode;
+
 	if ((var->yres * var->xres * var->bits_per_pixel / 8 * 2) >
 	    info->screen_size)
 		return -EINVAL;
 
-	/* double yres_virtual to allow double buffering through pan_display */
+	/* Apply mode filter for HDMI only -LVDS supports only fix mode */
+	if (ops && ops->mode_filter) {
+
+		fb_var_to_videomode(&mode, var);
+		if (!ops->mode_filter(dc, &mode))
+			return -EINVAL;
+
+		/* Mode filter may have modified the mode */
+		fb_videomode_to_var(var, &mode);
+	}
+
+	/* Double yres_virtual to allow double buffering through pan_display */
 	var->yres_virtual = var->yres * 2;
 
 	return 0;
@@ -260,12 +275,9 @@ static void tegra_fb_imageblit(struct fb_info *info,
 static int tegra_fb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 {
 	struct tegra_fb_modedb modedb;
-	void __user *argp = (void __user *)arg;
 	struct fb_modelist *modelist;
 	int i;
 
-	int ret = 0;
-	struct tegra_usb_projector_info tmp_info;
 	switch (cmd) {
 	case FBIO_TEGRA_GET_MODEDB:
 		if (copy_from_user(&modedb, (void __user *)arg, sizeof(modedb)))
@@ -305,22 +317,47 @@ static int tegra_fb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long 
 		if (copy_to_user((void __user *)arg, &modedb, sizeof(modedb)))
 			return -EFAULT;
 		break;
-       case FBIO_TEGRA_GET_USB_PROJECTOR_INFO:
-               ret = copy_to_user(argp, &usb_pjt_info, sizeof(usb_pjt_info));
-               if (ret)
-                       return ret;
-               break;
-       case FBIO_TEGRA_SET_USB_PROJECTOR_INFO:
-               ret = copy_from_user(&tmp_info, argp, sizeof(tmp_info));
-               usb_pjt_info.latest_offset = tmp_info.latest_offset;
-               if (ret)
-                       return ret;
-               break;
+
 	default:
 		return -ENOTTY;
 	}
 
 	return 0;
+}
+
+int tegra_fb_get_mode(struct tegra_dc *dc) {
+	return dc->fb->info->mode->refresh;
+}
+
+int tegra_fb_set_mode(struct tegra_dc *dc, int fps) {
+	size_t stereo;
+	struct list_head *pos;
+	struct fb_videomode *best_mode = NULL;
+	int curr_diff = INT_MAX; /* difference of best_mode refresh rate */
+	struct fb_modelist *modelist;
+	struct fb_info *info = dc->fb->info;
+
+	list_for_each(pos, &info->modelist) {
+		struct fb_videomode *mode;
+
+		modelist = list_entry(pos, struct fb_modelist, list);
+		mode = &modelist->mode;
+		if (fps <= mode->refresh && curr_diff > (mode->refresh - fps)) {
+			curr_diff = mode->refresh - fps;
+			best_mode = mode;
+		}
+	}
+	if (best_mode) {
+		info->mode = best_mode;
+		stereo = !!(info->var.vmode & info->mode->vmode &
+#ifndef CONFIG_TEGRA_HDMI_74MHZ_LIMIT
+				FB_VMODE_STEREO_FRAME_PACK);
+#else
+				FB_VMODE_STEREO_LEFT_RIGHT);
+#endif
+		return tegra_dc_set_fb_mode(dc, best_mode, stereo);
+	}
+	return -EIO;
 }
 
 static struct fb_ops tegra_fb_ops = {
@@ -367,6 +404,7 @@ void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 
 	memcpy(&fb_info->info->monspecs, specs,
 	       sizeof(fb_info->info->monspecs));
+	fb_info->info->mode = specs->modedb;
 
 	for (i = 0; i < specs->modedb_len; i++) {
 		if (mode_filter) {
@@ -396,6 +434,7 @@ struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
 	unsigned long fb_size = 0;
 	unsigned long fb_phys = 0;
 	int ret = 0;
+	unsigned stride;
 
 	win = tegra_dc_get_window(dc, fb_data->win);
 	if (!win) {
@@ -429,6 +468,11 @@ struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
 		tegra_fb->valid = true;
 	}
 
+	stride = tegra_dc_get_stride(dc, 0);
+	if (!stride) /* default to pad the stride to 16-byte boundary. */
+		stride = round_up(info->fix.line_length,
+			TEGRA_LINEAR_PITCH_ALIGNMENT);
+
 	info->fbops = &tegra_fb_ops;
 	info->pseudo_palette = pseudo_palette;
 	info->screen_base = fb_base;
@@ -443,9 +487,7 @@ struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
 	info->fix.smem_start	= fb_phys;
 	info->fix.smem_len	= fb_size;
 	info->fix.line_length = fb_data->xres * fb_data->bits_per_pixel / 8;
-	/* Pad the stride to 16-byte boundary. */
-	info->fix.line_length = round_up(info->fix.line_length,
-					TEGRA_LINEAR_PITCH_ALIGNMENT);
+	info->fix.line_length = stride;
 
 	info->var.xres			= fb_data->xres;
 	info->var.yres			= fb_data->yres;

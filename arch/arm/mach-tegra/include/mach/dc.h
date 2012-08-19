@@ -82,11 +82,11 @@ struct tegra_dsi_cmd {
 	union {
 		u16 data_len;
 		u16 delay_ms;
-		struct{
+		struct {
 			u8 data0;
 			u8 data1;
-		}sp;
-	}sp_len_dly;
+		} sp;
+	} sp_len_dly;
 	u8	*pdata;
 };
 
@@ -111,19 +111,28 @@ struct tegra_dsi_cmd {
 struct dsi_phy_timing_ns {
 	u16		t_hsdexit_ns;
 	u16		t_hstrail_ns;
-	u16		t_hsprepr_ns;
 	u16		t_datzero_ns;
+	u16		t_hsprepare_ns;
 
 	u16		t_clktrail_ns;
 	u16		t_clkpost_ns;
 	u16		t_clkzero_ns;
 	u16		t_tlpx_ns;
+
+	u16		t_clkprepare_ns;
+	u16		t_clkpre_ns;
+	u16		t_wakeup_ns;
+
+	u16		t_taget_ns;
+	u16		t_tasure_ns;
+	u16		t_tago_ns;
 };
 
 struct tegra_dsi_out {
 	u8		n_data_lanes;			/* required */
 	u8		pixel_format;			/* required */
 	u8		refresh_rate;			/* required */
+	u8		rated_refresh_rate;
 	u8		panel_reset;			/* required */
 	u8		virtual_channel;		/* required */
 	u8		dsi_instance;
@@ -132,22 +141,22 @@ struct tegra_dsi_out {
 
 	bool		panel_has_frame_buffer;	/* required*/
 
-	struct tegra_dsi_cmd*	osc_off_cmd;
+	struct tegra_dsi_cmd	*osc_off_cmd;
 	u16		n_osc_off_cmd;
 
-	struct tegra_dsi_cmd*	osc_on_cmd;
+	struct tegra_dsi_cmd	*osc_on_cmd;
 	u16		n_osc_on_cmd;
 
-	struct tegra_dsi_cmd*	dsi_init_cmd;		/* required */
+	struct tegra_dsi_cmd	*dsi_init_cmd;		/* required */
 	u16		n_init_cmd;			/* required */
 
-	struct tegra_dsi_cmd*	dsi_early_suspend_cmd;
+	struct tegra_dsi_cmd	*dsi_early_suspend_cmd;
 	u16		n_early_suspend_cmd;
 
-	struct tegra_dsi_cmd*	dsi_late_resume_cmd;
+	struct tegra_dsi_cmd	*dsi_late_resume_cmd;
 	u16		n_late_resume_cmd;
 
-	struct tegra_dsi_cmd*	dsi_suspend_cmd;	/* required */
+	struct tegra_dsi_cmd	*dsi_suspend_cmd;	/* required */
 	u16		n_suspend_cmd;			/* required */
 
 	u8		video_data_type;		/* required */
@@ -195,6 +204,7 @@ struct tegra_stereo_out {
 
 struct tegra_dc_mode {
 	int	pclk;
+	int	rated_pclk;
 	int	h_ref_to_sync;
 	int	v_ref_to_sync;
 	int	h_sync_width;
@@ -330,6 +340,7 @@ struct tegra_dc_out {
 	int				dcc_bus;
 	int				hotplug_gpio;
 	const char			*parent_clk;
+	const char			*parent_clk_backup;
 
 	unsigned			max_pixclock;
 	unsigned			order;
@@ -356,7 +367,6 @@ struct tegra_dc_out {
 
 	int power_wakeup;
 	int performance_tuning;
-	int video_min_bw;
 
 	int	(*enable)(void);
 	int	(*postpoweron)(void);
@@ -364,6 +374,7 @@ struct tegra_dc_out {
 
 	int	(*hotplug_init)(void);
 	int	(*postsuspend)(void);
+
 	int	(*bridge_reset)(void);
 	int	(*ic_reset)(void);
 };
@@ -427,6 +438,7 @@ struct tegra_dc_win {
 	unsigned		out_w;
 	unsigned		out_h;
 	unsigned		z;
+	u8			global_alpha;
 
 	struct tegra_dc_csc	csc;
 
@@ -503,9 +515,12 @@ struct tegra_dc_platform_data {
 
 #define TEGRA_DC_FLAG_ENABLED		(1 << 0)
 
+int tegra_dc_get_stride(struct tegra_dc *dc, unsigned win);
 struct tegra_dc *tegra_dc_get_dc(unsigned idx);
 struct tegra_dc_win *tegra_dc_get_window(struct tegra_dc *dc, unsigned win);
 bool tegra_dc_get_connected(struct tegra_dc *);
+bool tegra_dc_hpd(struct tegra_dc *dc);
+
 
 void tegra_dc_blank(struct tegra_dc *dc);
 
@@ -547,7 +562,9 @@ struct tegra_dc_pwm_params {
 };
 
 void tegra_dc_config_pwm(struct tegra_dc *dc, struct tegra_dc_pwm_params *cfg);
+
 void tegra_dc_turn_off_pwm(struct tegra_dc *dc);
+
 int tegra_dsi_send_panel_short_cmd(struct tegra_dc *dc, u8 *pdata, u8 data_len);
 void tegra_dc_host_trigger(struct tegra_dc *dc);
 

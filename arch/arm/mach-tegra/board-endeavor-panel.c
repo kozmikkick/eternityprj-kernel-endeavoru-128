@@ -3012,7 +3012,6 @@ static struct tegra_dc_out enterprise_disp1_out = {
 
 	.power_wakeup = POWER_WAKEUP_ENR,
 	.performance_tuning = 1,
-	.video_min_bw = 51000000,
 };
 static struct tegra_dc_platform_data enterprise_disp1_pdata = {
 	.flags		= TEGRA_DC_FLAG_ENABLED,
@@ -3131,12 +3130,9 @@ static struct platform_device *enterprise_gfx_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_NVMAP)
 	&enterprise_nvmap_device,
 #endif
-#ifdef CONFIG_TEGRA_GRHOST
-	&tegra_grhost_device,
-#endif
-#ifdef CONFIG_ION_TEGRA
+/*#ifdef CONFIG_ION_TEGRA
 	&tegra_ion_device,
-#endif
+#endif*/
 	&tegra_pwfm0_device,
 };
 

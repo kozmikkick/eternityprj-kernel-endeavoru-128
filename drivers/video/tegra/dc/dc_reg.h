@@ -367,7 +367,6 @@
 #define DC_DISP_MCCIF_DISPLAY1B_HYST		0x484
 #define DC_DISP_DAC_CRT_CTRL			0x4c0
 #define DC_DISP_DISP_MISC_CONTROL		0x4c1
-#define   UF_LINE_FLUSH                         (1 << 1)
 
 #define DC_WIN_COLOR_PALETTE(x)			(0x500 + (x))
 
@@ -431,6 +430,8 @@
 #define DC_WIN_LINE_STRIDE			0x70a
 #define  LINE_STRIDE(x)		(x)
 #define  UV_LINE_STRIDE(x)	(((x) & 0xffff) << 16)
+#define  GET_LINE_STRIDE(x)	((x) & 0xffff)
+#define  GET_UV_LINE_STRIDE(x)	(((x) >> 16) & 0xffff)
 #define DC_WIN_BUF_STRIDE			0x70b
 #define DC_WIN_UV_BUF_STRIDE			0x70c
 #define DC_WIN_BUFFER_ADDR_MODE			0x70d
@@ -460,6 +461,12 @@
 
 
 #define DC_WIN_HP_FETCH_CONTROL			0x714
+
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#define DC_WIN_GLOBAL_ALPHA			0x715
+#define  GLOBAL_ALPHA_ENABLE		0x10000
+#endif
+
 #define DC_WINBUF_START_ADDR			0x800
 #define DC_WINBUF_START_ADDR_NS			0x801
 #define DC_WINBUF_START_ADDR_U			0x802

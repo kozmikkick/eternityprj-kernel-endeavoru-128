@@ -40,9 +40,8 @@
 #include <mach/io.h>
 #include <mach/iomap.h>
 #include <mach/legacy_irq.h>
-#include <mach/nvmap.h>
+#include <linux/nvmap.h>
 
-#include "../../../../video/tegra/nvmap/nvmap.h"
 #include "../../../../video/tegra/host/host1x/host1x_syncpt.h"
 #include "../../../../video/tegra/host/dev.h"
 #include "../../../../video/tegra/host/nvhost_acm.h"
@@ -148,7 +147,7 @@ static struct clk *nvavp_clk_get(struct nvavp_info *nvavp, int id)
 static void nvavp_clk_ctrl(struct nvavp_info *nvavp, u32 clk_en)
 {
 	if (clk_en && !nvavp->clk_enabled) {
-		nvhost_module_busy(&nvavp->nvhost_dev->host->mod);
+		nvhost_module_busy(nvhost_get_host(nvavp->nvhost_dev)->dev);
 		clk_enable(nvavp->bsev_clk);
 		clk_enable(nvavp->vde_clk);
 		clk_set_rate(nvavp->emc_clk, nvavp->emc_clk_rate);
@@ -163,7 +162,7 @@ static void nvavp_clk_ctrl(struct nvavp_info *nvavp, u32 clk_en)
 		clk_disable(nvavp->vde_clk);
 		clk_set_rate(nvavp->emc_clk, 0);
 		clk_set_rate(nvavp->sclk, 0);
-		nvhost_module_idle(&nvavp->nvhost_dev->host->mod);
+		nvhost_module_idle(nvhost_get_host(nvavp->nvhost_dev)->dev);
 		nvavp->clk_enabled = 0;
 		dev_dbg(&nvavp->nvhost_dev->dev, "%s: resetting emc_clk "
 				"and sclk\n", __func__);
@@ -295,7 +294,7 @@ static void nvavp_halt_vde(struct nvavp_info *nvavp)
 		clk_disable(nvavp->bsev_clk);
 		tegra_periph_reset_assert(nvavp->vde_clk);
 		clk_disable(nvavp->vde_clk);
-		nvhost_module_idle(&nvavp->nvhost_dev->host->mod);
+		nvhost_module_idle(nvhost_get_host(nvavp->nvhost_dev)->dev);
 		nvavp->clk_enabled = 0;
 	}
 }
@@ -303,7 +302,7 @@ static void nvavp_halt_vde(struct nvavp_info *nvavp)
 static int nvavp_reset_vde(struct nvavp_info *nvavp)
 {
 	if (!nvavp->clk_enabled)
-		nvhost_module_busy(&nvavp->nvhost_dev->host->mod);
+		nvhost_module_busy(nvhost_get_host(nvavp->nvhost_dev)->dev);
 
 	clk_enable(nvavp->bsev_clk);
 	tegra_periph_reset_assert(nvavp->bsev_clk);
@@ -331,7 +330,7 @@ static int nvavp_pushbuffer_alloc(struct nvavp_info *nvavp)
 	int ret = 0;
 
 	nvavp->pushbuf_handle = nvmap_alloc(nvavp->nvmap, NVAVP_PUSHBUFFER_SIZE,
-				SZ_1M, NVMAP_HANDLE_UNCACHEABLE);
+				SZ_1M, NVMAP_HANDLE_UNCACHEABLE, 0);
 	if (IS_ERR(nvavp->pushbuf_handle)) {
 		dev_err(&nvavp->nvhost_dev->dev,
 			"cannot create pushbuffer handle\n");
@@ -574,7 +573,7 @@ static int nvavp_load_ucode(struct nvavp_info *nvavp)
 
 		ucode_info->handle = nvmap_alloc(nvavp->nvmap,
 						nvavp->ucode_info.size,
-					SZ_1M, NVMAP_HANDLE_UNCACHEABLE);
+					SZ_1M, NVMAP_HANDLE_UNCACHEABLE, 0);
 		if (IS_ERR(ucode_info->handle)) {
 			dev_err(&nvavp->nvhost_dev->dev,
 				"cannot create ucode handle\n");
@@ -732,7 +731,7 @@ static int nvavp_init(struct nvavp_info *nvavp)
 	/* vaddr is same as paddr */
 	/* Find nvmem carveout */
 	if (!pfn_valid(__phys_to_pfn(0x8e000000))) {
-		nvavp->os_info->phys = 0x8e000000;
+		nvavp->os_info.phys = 0x8e000000;
 	} else if (!pfn_valid(__phys_to_pfn(0x9e000000))) {
 		nvavp->os_info.phys = 0x9e000000;
 	} else if (!pfn_valid(__phys_to_pfn(0xbe000000))) {
@@ -818,7 +817,7 @@ static int nvavp_set_clock_ioctl(struct file *filp, unsigned int cmd,
 		return -EFAULT;
 
 	dev_dbg(&nvavp->nvhost_dev->dev, "%s: clk_id=%d, clk_rate=%u\n",
-			__func__, config.id, (unsigned)config.rate);
+			__func__, config.id, config.rate);
 
 	if (config.id == NVAVP_MODULE_ID_AVP)
 		nvavp->sclk_rate = config.rate;
@@ -1172,7 +1171,8 @@ static const struct file_operations tegra_nvavp_fops = {
 	.unlocked_ioctl	= tegra_nvavp_ioctl,
 };
 
-static int tegra_nvavp_probe(struct nvhost_device *ndev)
+static int tegra_nvavp_probe(struct nvhost_device *ndev,
+	struct nvhost_device_id *id_table)
 {
 	struct nvavp_info *nvavp;
 	int irq;
@@ -1195,7 +1195,7 @@ static int tegra_nvavp_probe(struct nvhost_device *ndev)
 
 	memset(nvavp, 0, sizeof(*nvavp));
 
-	nvavp->nvhost_syncpt = &ndev->host->syncpt;
+	nvavp->nvhost_syncpt = &nvhost_get_host(ndev)->syncpt;
 	if (!nvavp->nvhost_syncpt) {
 		dev_err(&ndev->dev, "cannot get syncpt handle\n");
 		ret = -ENOENT;
@@ -1219,17 +1219,7 @@ static int tegra_nvavp_probe(struct nvhost_device *ndev)
 	switch (heap_mask) {
 	case NVMAP_HEAP_IOVMM:
 
-#ifdef CONFIG_TEGRA_SMMU_BASE_AT_E0000000
-		iovmm_addr = 0xeff00000;
-#else
 		iovmm_addr = 0x0ff00000;
-#endif
-
-		/* Tegra3 A01 has different SMMU address */
-		if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA3
-			&& tegra_get_revision() == TEGRA_REVISION_A01) {
-			iovmm_addr = 0xeff00000;
-		}
 
 		nvavp->os_info.handle = nvmap_alloc_iovm(nvavp->nvmap, SZ_1M,
 						L1_CACHE_BYTES,
@@ -1265,7 +1255,7 @@ static int tegra_nvavp_probe(struct nvhost_device *ndev)
 		break;
 	case NVMAP_HEAP_CARVEOUT_GENERIC:
 		nvavp->os_info.handle = nvmap_alloc(nvavp->nvmap, SZ_1M, SZ_1M,
-						NVMAP_HANDLE_UNCACHEABLE);
+						NVMAP_HANDLE_UNCACHEABLE, 0);
 		if (IS_ERR_OR_NULL(nvavp->os_info.handle)) {
 			dev_err(&ndev->dev, "cannot create AVP os handle\n");
 			ret = PTR_ERR(nvavp->os_info.handle);

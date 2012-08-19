@@ -29,7 +29,7 @@
 #include <linux/types.h>
 
 #include <mach/clk.h>
-#include <mach/nvmap.h>
+#include <linux/nvmap.h>
 
 #include "../../../../video/tegra/nvmap/nvmap.h"
 
@@ -332,7 +332,6 @@ static void do_svc_module_reset(struct avp_svc_info *avp_svc,
 		resp.err = 0;
 		goto send_response;
 	}
-	pr_info("avp_svc: module reset: %s\n", mod->name);
 
 	aclk = &avp_svc->clks[mod->clk_req];
 	tegra_periph_reset_assert(aclk->clk);
@@ -363,8 +362,6 @@ static void do_svc_module_clock(struct avp_svc_info *avp_svc,
 		resp.err = AVP_ERR_EINVAL;
 		goto send_response;
 	}
-	pr_info("avp_svc: module clock: %s %s\n", mod->name,
-		msg->enable ? "on" : "off");
 
 	if (msg->module_id == AVP_MODULE_ID_VDE)
 		avp_svc->is_vde_on = msg->enable;
@@ -830,8 +827,6 @@ struct avp_svc_info *avp_svc_init(struct platform_device *pdev,
 		avp_svc->clks[mod->clk_req].mod = mod;
 		avp_svc->clks[mod->clk_req].refcnt = 0;
 	}
-	avp_svc->max_avp_rate = clk_round_rate(avp_svc->sclk, ULONG_MAX);
-	clk_set_rate(avp_svc->sclk, 0);
 
 	avp_svc->sclk = clk_get(&pdev->dev, "sclk");
 	if (IS_ERR(avp_svc->sclk)) {
@@ -839,6 +834,8 @@ struct avp_svc_info *avp_svc_init(struct platform_device *pdev,
 		ret = -ENOENT;
 		goto err_get_clks;
 	}
+	avp_svc->max_avp_rate = clk_round_rate(avp_svc->sclk, ULONG_MAX);
+	clk_set_rate(avp_svc->sclk, 0);
 
 	avp_svc->emcclk = clk_get(&pdev->dev, "emc");
 	if (IS_ERR(avp_svc->emcclk)) {
