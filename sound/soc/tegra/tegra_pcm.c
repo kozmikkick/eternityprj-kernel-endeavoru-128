@@ -53,8 +53,8 @@ static const struct snd_pcm_hardware tegra_pcm_hardware = {
 	.period_bytes_min	= 128,
 	.period_bytes_max	= PAGE_SIZE,
 	.periods_min		= 2,
-	.periods_max		= PERIODS_MAX,
-	.buffer_bytes_max	= PERIOD_BYTES_MAX * PERIODS_MAX,
+	.periods_max		= 8,
+	.buffer_bytes_max	= PAGE_SIZE * 8,
 	.fifo_size		= 4,
 };
 
