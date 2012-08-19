@@ -2224,27 +2224,6 @@ static void __init tegra_enterprise_init(void)
 	BOOT_DEBUG_LOG_LEAVE("<machine>.init_machine");
 }
 
-static void __init tegra_enterprise_ramconsole_reserve(unsigned long size)
-{
-	struct resource *res;
-	long ret;
-
-	res = platform_get_resource(&ram_console_device, IORESOURCE_MEM, 0);
-	if (!res) {
-		pr_err("Failed to find memory resource for ram console\n");
-		return;
-	}
-	res->start = memblock_end_of_DRAM() - size;
-	res->end = res->start + size - 1;
-
-	ret = memblock_remove(res->start, size);
-	if (ret) {
-		ram_console_device.resource = NULL;
-		ram_console_device.num_resources = 0;
-		pr_err("Failed to reserve memory block for ram console\n");
-	}
-}
-
 static void __init tegra_enterprise_reserve(void)
 {
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
