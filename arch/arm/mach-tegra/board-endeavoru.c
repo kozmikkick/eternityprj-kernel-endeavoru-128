@@ -1162,19 +1162,6 @@ static struct platform_device tegra_camera = {
 	.id = -1,
 };
 
-static struct resource ram_console_resources[] = {
-	{
-		.flags = IORESOURCE_MEM,
-	},
-};
-
-static struct platform_device ram_console_device = {
-	.name 		= "ram_console",
-	.id 		= -1,
-	.num_resources	= ARRAY_SIZE(ram_console_resources),
-	.resource	= ram_console_resources,
-};
-
 static struct platform_device *enterprise_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
@@ -1206,7 +1193,6 @@ static struct platform_device *enterprise_devices[] __initdata = {
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
 #endif
-//	&ram_console_device,
 };
 
 /* Touchscreen GPIO addresses   */
