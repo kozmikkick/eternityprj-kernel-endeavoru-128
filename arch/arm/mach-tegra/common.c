@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/common.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (C) 2010-2012 NVIDIA Corporation
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -28,6 +28,7 @@
 #include <linux/memblock.h>
 #include <linux/bitops.h>
 #include <linux/sched.h>
+#include <linux/cpufreq.h>
 
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/system.h>
@@ -37,7 +38,6 @@
 #include <mach/pinmux.h>
 #include <mach/powergate.h>
 #include <mach/system.h>
-#include <mach/tegra_smmu.h>
 
 #include "apbio.h"
 #include "board.h"
@@ -45,14 +45,11 @@
 #include "fuse.h"
 #include "pm.h"
 #include "reset.h"
+#include <mach/tegra_smmu.h>
 
 #if defined(CONFIG_RESET_REASON)
 #include <linux/interrupt.h>
 #include <mach/restart.h>
-#endif
-
-#ifdef CONFIG_EPRJ_SYSFS_TOOLS
-#include <mach/eternityproject.h>
 #endif
 
 #define MC_SECURITY_CFG2	0x7c
@@ -66,9 +63,6 @@
 #define AHB_GIZMO_AHB_MEM		0xc
 #define   ENB_FAST_REARBITRATE	BIT(2)
 #define   DONT_SPLIT_AHB_WR     BIT(7)
-
-#define   RECOVERY_MODE	BIT(31)
-#define   BOOTLOADER_MODE	BIT(30)
 
 #define AHB_GIZMO_USB		0x1c
 #define AHB_GIZMO_USB2		0x78
@@ -134,32 +128,21 @@ void tegra_assert_system_reset(char mode, const char *cmd)
 	void __iomem *reset = IO_ADDRESS(TEGRA_PMC_BASE + 0x00);
 	u32 reg;
 
-	reg = readl_relaxed(reset + PMC_SCRATCH0);
-	/* Writing recovery kernel or Bootloader mode in SCRATCH0 31:30 */
-	if (cmd) {
-		if (!strcmp(cmd, "recovery"))
-			reg |= RECOVERY_MODE;
-		else if (!strcmp(cmd, "bootloader"))
-			reg |= BOOTLOADER_MODE;
-	}
-	else {
-		/* Clearing SCRATCH0 31:30 on default reboot */
-		reg &= ~(BOOTLOADER_MODE | RECOVERY_MODE);
-	}
-	writel_relaxed(reg, reset + PMC_SCRATCH0);
 	/* use *_related to avoid spinlock since caches are off */
 	reg = readl_relaxed(reset);
 	reg |= 0x10;
 	writel_relaxed(reg, reset);
 #endif
 }
-static int modem_id;
+
 static int sku_override;
+static int modem_id;
 static int debug_uart_port_id;
 static enum audio_codec_type audio_codec_name;
 static enum image_type board_image_type = system_image;
 static int max_cpu_current;
 
+static int commchip_id;
 void (*tegra_reset)(char mode, const char *cmd);
 
 #if defined(CONFIG_RESET_REASON)
@@ -174,13 +157,18 @@ static int in_panic = 0;
 static __initdata struct tegra_clk_init_table common_clk_init_table[] = {
 	/* name		parent		rate		enabled */
 	{ "clk_m",	NULL,		0,		true },
+	{ "emc",	NULL,		0,		true },
+	{ "cpu",	NULL,		0,		true },
+	{ "kfuse",	NULL,		0,		true },
+	{ "fuse",	NULL,		0,		true },
+	{ "sclk",	NULL,		0,		true },
 #ifdef CONFIG_TEGRA_SILICON_PLATFORM
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	{ "pll_p",	NULL,		216000000,	true },
 	{ "pll_p_out1",	"pll_p",	28800000,	true },
-	{ "pll_p_out2",	"pll_p",	48000000,	true },
+	{ "pll_p_out2",	"pll_p",	48000000,	false },
 	{ "pll_p_out3",	"pll_p",	72000000,	true },
-	{ "pll_p_out4",	"pll_p",	108000000,	true },
+	{ "pll_p_out4",	"pll_p",	108000000,	false },
 	{ "pll_m",	"clk_m",	0,		true },
 	{ "pll_m_out1",	"pll_m",	120000000,	true },
 	{ "sclk",	"pll_c_out1",	40000000,	true },
@@ -193,41 +181,44 @@ static __initdata struct tegra_clk_init_table common_clk_init_table[] = {
 	{ "2d",		"pll_c",	0,		false },
 	{ "3d",		"pll_c",	0,		false },
 #else
-	{ "pll_p",	NULL,		408000000,	true },
-	{ "pll_p_out1",	"pll_p",	9600000,	true },
-	{ "pll_p_out2",	"pll_p",	48000000,	true },
-	{ "pll_p_out3",	"pll_p",	102000000,	true },
+	{ "pll_p",	NULL,		0,		true },
+	{ "pll_p_out1",	"pll_p",	0,		false },
+	{ "pll_p_out2",	"pll_p",	48000000,	false },
+	{ "pll_p_out3",	"pll_p",	0,		true },
 	{ "pll_m_out1",	"pll_m",	275000000,	false },
 	{ "pll_p_out4",	"pll_p",	102000000,	true },
 	{ "sclk",	"pll_p_out4",	102000000,	true },
 	{ "hclk",	"sclk",		102000000,	true },
 	{ "pclk",	"hclk",		51000000,	true },
-	{ "cpu.sclk",	NULL,		80000000,	false },
 #endif
 #else
 	{ "pll_p",	NULL,		216000000,	true },
-	{ "pll_p_out1",	"pll_p",	28800000,	true },
-	{ "pll_p_out2",	"pll_p",	48000000,	true },
+	{ "pll_p_out1",	"pll_p",	28800000,	false },
+	{ "pll_p_out2",	"pll_p",	48000000,	false },
 	{ "pll_p_out3",	"pll_p",	72000000,	true },
 	{ "pll_m_out1",	"pll_m",	275000000,	true },
-	{ "pll_c",	NULL,		ULONG_MAX,	false },
-	{ "pll_c_out1",	"pll_c",	208000000,	false },
-	{ "pll_p_out4",	"pll_p",	108000000,	true },
+	{ "pll_p_out4",	"pll_p",	108000000,	false },
 	{ "sclk",	"pll_p_out4",	108000000,	true },
 	{ "hclk",	"sclk",		108000000,	true },
 	{ "pclk",	"hclk",		54000000,	true },
 #endif
-	{ "csite",	NULL,		4250000,	true },
-	{ "emc",	NULL,		0,		true },
-	{ "cpu",	NULL,		0,		true },
-	{ "kfuse",	NULL,		0,		true },
-	{ "fuse",	NULL,		0,		true },
+#ifdef CONFIG_TEGRA_SLOW_CSITE
+	{ "csite",	"clk_m",	1000000, 	true },
+#else
+	{ "csite",      NULL,           0,              true },
+#endif
 	{ "pll_u",	NULL,		480000000,	false },
 	{ "sdmmc1",	"pll_p",	48000000,	false},
 	{ "sdmmc3",	"pll_p",	48000000,	false},
 	{ "sdmmc4",	"pll_p",	48000000,	false},
-	{ "wake.sclk",	"sbus",		40000000,	true },
+	{ "sbc1.sclk",	NULL,		40000000,	false},
+	{ "sbc2.sclk",	NULL,		40000000,	false},
+	{ "sbc3.sclk",	NULL,		40000000,	false},
+	{ "sbc4.sclk",	NULL,		40000000,	false},
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	{ "sbc5.sclk",	NULL,		40000000,	false},
+	{ "sbc6.sclk",	NULL,		40000000,	false},
+	{ "wake.sclk",	NULL,		40000000,	true },
 	{ "cbus",	"pll_c",	416000000,	false },
 	{ "pll_c_out1",	"pll_c",	208000000,	false },
 	{ "mselect",	"pll_p",	102000000,	true },
@@ -235,8 +226,7 @@ static __initdata struct tegra_clk_init_table common_clk_init_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 
-#ifdef CONFIG_CACHE_L2X0
-#ifdef CONFIG_TRUSTED_FOUNDATIONS
+#if defined(CONFIG_TRUSTED_FOUNDATIONS) && defined(CONFIG_CACHE_L2X0)
 static void tegra_cache_smc(bool enable, u32 arg)
 {
 	void __iomem *p = IO_ADDRESS(TEGRA_ARM_PERIF_BASE) + 0x3000;
@@ -305,10 +295,11 @@ static void tegra_l2x0_disable(void)
 	tegra_cache_smc(false, l2x0_way_mask);
 	local_irq_restore(flags);
 }
-#endif	/* CONFIG_TRUSTED_FOUNDATIONS  */
+#endif	/* CONFIG_TRUSTED_FOUNDATIONS && defined(CONFIG_CACHE_L2X0) */
 
 void tegra_init_cache(bool init)
 {
+#ifdef CONFIG_CACHE_L2X0
 	void __iomem *p = IO_ADDRESS(TEGRA_ARM_PERIF_BASE) + 0x3000;
 	u32 aux_ctrl;
 
@@ -339,8 +330,7 @@ void tegra_init_cache(bool init)
 	} else {
 		/* relax l2-cache latency for speedos 4,5,6 (T33's chips) */
 		speedo = tegra_cpu_speedo_id();
-		if (speedo == 4 || speedo == 5 || speedo == 6 ||
-		    speedo == 12 || speedo == 13) {
+		if (speedo == 4 || speedo == 5 || speedo == 6) {
 			writel(0x442, p + L2X0_TAG_LATENCY_CTRL);
 			writel(0x552, p + L2X0_DATA_LATENCY_CTRL);
 		} else {
@@ -353,6 +343,7 @@ void tegra_init_cache(bool init)
 	writel(0x770, p + L2X0_DATA_LATENCY_CTRL);
 #endif
 #endif
+	writel(0x3, p + L2X0_POWER_CTRL);
 	aux_ctrl = readl(p + L2X0_CACHE_TYPE);
 	aux_ctrl = (aux_ctrl & 0x700) << (17-8);
 	aux_ctrl |= 0x7C000001;
@@ -367,8 +358,8 @@ void tegra_init_cache(bool init)
 	}
 	l2x0_enable();
 #endif
-}
 #endif
+}
 
 static void __init tegra_init_power(void)
 {
@@ -436,55 +427,17 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 	gizmo_writel(val, AHB_MEM_PREFETCH_CFG4);
 }
 
-static bool console_flushed;
-
-static void tegra_pm_flush_console(void)
-{
-	if (console_flushed)
-		return;
-	console_flushed = true;
-
-	pr_emerg("Restarting %s\n", linux_banner);
-	if (console_trylock()) {
-		console_unlock();
-		return;
-	}
-
-	mdelay(50);
-
-	local_irq_disable();
-	if (!console_trylock())
-		pr_emerg("%s: Console was locked! Busting\n", __func__);
-	else
-		pr_emerg("%s: Console was locked!\n", __func__);
-	console_unlock();
-}
-
 #if defined(CONFIG_RESET_REASON)
 static inline unsigned get_restart_reason(void)
 {
 	return reboot_params->reboot_reason;
 }
-/*
-	This function should not be called outside
-	to ensure that others do not change restart reason.
-	Use mode & cmd to set reason & msg in arch_reset().
-*/
+
 static inline void set_restart_reason(unsigned int reason)
 {
 	reboot_params->reboot_reason = reason;
-	//printk(KERN_NOTICE "%s: TEGRA_IRAM_BASE: 0x%x\n", __func__, TEGRA_IRAM_BASE);
-	//printk(KERN_NOTICE "%s: TEGRA_IRAM_OFFSET_REBOOT_PARAMS: 0x%x\n", __func__, TEGRA_IRAM_OFFSET_REBOOT_PARAMS);
-	//printk(KERN_NOTICE "%s: reboot_params: 0x%p\n", __func__, reboot_params);
-	//printk(KERN_NOTICE "%s: reason: 0x%x\n", __func__, reason);
-	//printk(KERN_NOTICE "%s: reboot_params->reboot_reason: 0x%x\n", __func__, reboot_params->reboot_reason);
 }
 
-/*
-	This function should not be called outsite
-	to ensure that others do no change restart reason.
-	Use mode & cmd to set reason & msg in arch_reset().
-*/
 static inline void set_restart_msg(const char *msg)
 {
 	strncpy(reboot_params->msg, msg, sizeof(reboot_params->msg)-1);
@@ -501,7 +454,6 @@ void set_ramdump_reason(const char *msg)
 
 	set_restart_reason(RESTART_REASON_RAMDUMP);
 	set_restart_msg(msg? msg: "");
-	//printk(KERN_NOTICE "%s: finished...\n", __func__);
 }
 
 /* This function is for setting hardware reset reason*/
@@ -515,7 +467,6 @@ void set_hardware_reason(const char *msg)
 	} else if(!strcmp("offmode", msg)) {
 		set_restart_reason(RESTART_REASON_OFFMODE);
 	}
-	//printk(KERN_NOTICE "%s: finished...\n", __func__);
 }
 
 unsigned get_reboot_battery_level(void)
@@ -568,30 +519,23 @@ static void tegra_pm_restart(char mode, const char *cmd)
 	else
 		printk(KERN_NOTICE "%s: no command restart.\n", __func__);
 	if (in_panic) {
-		//printk(KERN_NOTICE "%s: in_panic, RESTART_REASON_RAMDUMP\n", __func__);
 		set_restart_reason(RESTART_REASON_RAMDUMP);
 		set_restart_msg("Kernel panic");
 	} else if (!cmd) {
-		//printk(KERN_NOTICE "%s: !cmd, RESTART_REASON_REBOOT\n", __func__);
 		set_restart_reason(RESTART_REASON_REBOOT);
 	} else if (!strcmp(cmd, "bootloader")) {
-		//printk(KERN_NOTICE "%s: bootloader, RESTART_REASON_BOOTLOADER\n", __func__);
 		set_restart_reason(RESTART_REASON_BOOTLOADER);
 	} else if (!strcmp(cmd, "recovery")) {
-		//printk(KERN_NOTICE "%s: recovery, RESTART_REASON_RECOVERY\n", __func__);
 		set_restart_reason(RESTART_REASON_RECOVERY);
 	} else if (!strcmp(cmd, "eraseflash")) {
-		//printk(KERN_NOTICE "%s: eraseflash, RESTART_REASON_ERASE_FLASH\n", __func__);
 		set_restart_reason(RESTART_REASON_ERASE_FLASH);
 	} else if(!strcmp(cmd, "offmode")) {
-		//printk(KERN_NOTICE "%s: offmode, RESTART_REASON_OFFMODE\n", __func__);
 		set_restart_reason(RESTART_REASON_OFFMODE);
 	} else if (!strncmp(cmd, "oem-", 4)) {
 		unsigned long code;
 
 		code = simple_strtoul(cmd + 4, 0, 16) & 0xff;
 
-		//printk(KERN_NOTICE "%s: oem-%u, RESTART_REASON_OEM_BASE\n", __func__, code);
 		/* oem-97, 98, 99 are RIL fatal */
 		if ((code == 0x97) || (code == 0x98))
 			code = 0x99;
@@ -610,7 +554,6 @@ static void tegra_pm_restart(char mode, const char *cmd)
 			set_restart_reason(RESTART_REASON_RAMDUMP);
 	} else {
 		/* unknown command */
-		//printk(KERN_NOTICE "%s: unknown cmd, RESTART_REASON_REBOOT\n", __func__);
 		set_restart_reason(RESTART_REASON_REBOOT);
 	}
 
@@ -621,11 +564,7 @@ static void tegra_pm_restart(char mode, const char *cmd)
 		case RESTART_REASON_RAMDUMP:
 			if (!in_panic && mode != RESTART_MODE_APP_WATCHDOG_BARK) {
 				/* Suspend wdog until all stacks are printed */
-				//msm_watchdog_suspend();
 				dump_stack();
-				//show_state_filter(TASK_UNINTERRUPTIBLE); // TODO FIXME this maybe old kernel code
-				//print_workqueue();
-				//msm_watchdog_resume();
 			}
 			if (!!get_battery_level_cb)
 				set_reboot_battery_level(get_battery_level_cb());
@@ -651,19 +590,6 @@ static void tegra_pm_restart(char mode, const char *cmd)
 
 void __init tegra_init_early(void)
 {
-#if defined(CONFIG_RESET_REASON)
-/*
-	printk(KERN_NOTICE "tegra_common_init init reboot params start\n");
-
-	reboot_params = reboot_params=(void *)(IO_ADDRESS(nvdumper_reserved - 4096));
-	memset(reboot_params, 0x0, sizeof(struct htc_reboot_params));
-	//set_restart_reason(RESTART_REASON_RAMDUMP);
-	//reboot_params->radio_flag = get_radio_flag();
-
-	printk(KERN_NOTICE "tegra_common_init init reboot params end\n");
-*/
-#endif
-
 	arm_pm_restart = tegra_pm_restart;
 #ifndef CONFIG_SMP
 	/* For SMP system, initializing the reset handler here is too
@@ -676,9 +602,9 @@ void __init tegra_init_early(void)
 	tegra_init_clock();
 	tegra_init_pinmux();
 	tegra_clk_init_from_table(common_clk_init_table);
-	BOOT_DEBUG_LOG_ENTER("<machine>_init_power");
+
 	tegra_init_power();
-	BOOT_DEBUG_LOG_ENTER("<machine>_init_cache");
+
 	tegra_init_cache(true);
 	tegra_init_ahb_gizmo_settings();
 }
@@ -891,11 +817,7 @@ __setup("audio_codec=", tegra_audio_codec_type);
 
 void tegra_get_board_info(struct board_info *bi)
 {
-#if 0
-	bi->board_id = (system_serial_high >> 16) & 0xFFFF;
-#else
 	bi->board_id = 0x0C5B;
-#endif
 	bi->sku = (system_serial_high) & 0xFFFF;
 	bi->fab = (system_serial_low >> 24) & 0xFF;
 	bi->major_revision = (system_serial_low >> 16) & 0xFF;
@@ -971,6 +893,24 @@ int tegra_get_modem_id(void)
 
 __setup("modem_id=", tegra_modem_id);
 
+
+
+static int __init tegra_commchip_id(char *id)
+{
+	char *p = id;
+
+	if (get_option(&p, &commchip_id) != 1)
+		return 0;
+	return 1;
+}
+
+int tegra_get_commchip_id(void)
+{
+	return commchip_id;
+}
+
+__setup("commchip_id=", tegra_commchip_id);
+
 /*
  * Tegra has a protected aperture that prevents access by most non-CPU
  * memory masters to addresses above the aperture value.  Enabling it
@@ -1038,28 +978,9 @@ out:
 	iounmap(to_io);
 }
 
-#ifdef CONFIG_TEGRA_SMMU_BASE_AT_E0000000
-#define FORCE_SMMU_BASE_FOR_TEGRA3_A01 1
-#else
-#define FORCE_SMMU_BASE_FOR_TEGRA3_A01 0
-#endif
-#if FORCE_SMMU_BASE_FOR_TEGRA3_A01 ||  \
-	(defined(CONFIG_TEGRA_IOVMM_SMMU) && defined(CONFIG_ARCH_TEGRA_3x_SOC))
-/* Support for Tegra3 A01 chip mask that needs to have SMMU IOVA reside in
- * the upper half of 4GB IOVA space. A02 and after use the bottom 1GB and
- * do not need to reserve memory.
- */
-#define SUPPORT_SMMU_BASE_FOR_TEGRA3_A01
-#endif
-
 void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	unsigned long fb2_size)
 {
-#ifdef SUPPORT_SMMU_BASE_FOR_TEGRA3_A01
-	int smmu_reserved = 0;
-	struct tegra_smmu_window *smmu_window = tegra_smmu_window(0);
-#endif
-
 	if (carveout_size) {
 		tegra_carveout_start = memblock_end_of_DRAM() - carveout_size;
 		if (memblock_remove(tegra_carveout_start, carveout_size)) {
@@ -1104,33 +1025,6 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 
 	if (tegra_carveout_size && tegra_carveout_start < tegra_grhost_aperture)
 		tegra_grhost_aperture = tegra_carveout_start;
-
-#ifdef SUPPORT_SMMU_BASE_FOR_TEGRA3_A01
-	if (!smmu_window) {
-		pr_err("No SMMU resource\n");
-	} else {
-		size_t smmu_window_size;
-
-		if (FORCE_SMMU_BASE_FOR_TEGRA3_A01 ||
-			(tegra_get_chipid() == TEGRA_CHIPID_TEGRA3 &&
-			tegra_get_revision() == TEGRA_REVISION_A01)) {
-			smmu_window->start = TEGRA_SMMU_BASE_TEGRA3_A01;
-			smmu_window->end   = TEGRA_SMMU_BASE_TEGRA3_A01 +
-						TEGRA_SMMU_SIZE_TEGRA3_A01 - 1;
-		}
-		smmu_window_size = smmu_window->end + 1 - smmu_window->start;
-		if (smmu_window->start >= 0x80000000) {
-			if (memblock_reserve(smmu_window->start,
-						smmu_window_size))
-				pr_err(
-			"Failed to reserve SMMU I/O VA window %08lx@%08lx\n",
-				(unsigned long)smmu_window_size,
-				(unsigned long)smmu_window->start);
-			else
-				smmu_reserved = 1;
-		}
-	}
-#endif
 
 	if (tegra_lp0_vec_size &&
 	   (tegra_lp0_vec_start < memblock_end_of_DRAM())) {
@@ -1199,12 +1093,51 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 			nvdumper_reserved,
 			nvdumper_reserved + NVDUMPER_RESERVED_LEN);
 	}
+}
 
-#ifdef SUPPORT_SMMU_BASE_FOR_TEGRA3_A01
-	if (smmu_reserved)
-		pr_info("SMMU:                   %08lx - %08lx\n",
-			smmu_window->start, smmu_window->end);
-#endif
+static struct resource ram_console_resources[] = {
+	{
+		.flags = IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device ram_console_device = {
+	.name 		= "ram_console",
+	.id 		= -1,
+	.num_resources	= ARRAY_SIZE(ram_console_resources),
+	.resource	= ram_console_resources,
+};
+
+void __init tegra_ram_console_debug_reserve(unsigned long ram_console_size)
+{
+	struct resource *res;
+	long ret;
+
+	res = platform_get_resource(&ram_console_device, IORESOURCE_MEM, 0);
+	if (!res)
+		goto fail;
+	res->start = memblock_end_of_DRAM() - ram_console_size;
+	res->end = res->start + ram_console_size - 1;
+	ret = memblock_remove(res->start, ram_console_size);
+	if (ret)
+		goto fail;
+
+	return;
+
+fail:
+	ram_console_device.resource = NULL;
+	ram_console_device.num_resources = 0;
+	pr_err("Failed to reserve memory block for ram console\n");
+}
+
+void __init tegra_ram_console_debug_init(void)
+{
+	int err;
+
+	err = platform_device_register(&ram_console_device);
+	if (err) {
+		pr_err("%s: ram console registration failed (%d)!\n", __func__, err);
+	}
 }
 
 void __init tegra_release_bootloader_fb(void)
@@ -1215,285 +1148,55 @@ void __init tegra_release_bootloader_fb(void)
 						tegra_bootloader_fb_size))
 			pr_err("Failed to free bootloader fb.\n");
 }
-/*#if defined CONFIG_TEGRA_INTERACTIVE_GOV_ON_EARLY_SUSPEND \
-	|| defined CONFIG_TEGRA_CONSERVATIVE_GOV_ON_EARLY_SUSPEND
-static char cpufreq_gov_default[32];
-static char saved_boost_factor[32];
-static char saved_go_maxspeed_load[32];
-static char saved_max_boost[32];
 
-static char saved_up_threshold[32];
-static char saved_down_threshold[32];
-static char saved_freq_step[32];
+#ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
+char cpufreq_default_gov[CONFIG_NR_CPUS][MAX_GOV_NAME_LEN];
+char *cpufreq_conservative_gov = "conservative";
 
-static char od_saved_up_threshold[32];
-static char od_saved_sampling_rate[32];
-static char od_saved_sampling_rate_min[32];
-static char od_saved_sampling_down_factor[32];*/
-
-void cpufreq_set_governor(char *governor)
+void cpufreq_store_default_gov(void)
 {
-	struct file *scaling_gov = NULL;
-	mm_segment_t old_fs;
-	char    buf[128];
-	int i = 0;
-	loff_t offset = 0;
+	unsigned int cpu;
+	struct cpufreq_policy *policy;
 
-	if (governor == NULL)
-		return;
-
-	/* change to KERNEL_DS address limit */
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
-#ifndef CONFIG_TEGRA_AUTO_HOTPLUG
-//	for_each_online_cpu(i)
-#endif
-	{
-		sprintf(buf, CPUFREQ_SYSFS_PLACE_HOLDER, i);
-		scaling_gov = filp_open(buf, O_RDWR, 0);
-		if (IS_ERR_OR_NULL(scaling_gov)) {
-			pr_err("%s. Can't open %s\n", __func__, buf);
-		} else {
-			if (scaling_gov->f_op != NULL &&
-				scaling_gov->f_op->write != NULL)
-				scaling_gov->f_op->write(scaling_gov,
-						governor,
-						strlen(governor),
-						&offset);
-			else
-				pr_err("f_op might be null\n");
-
-			filp_close(scaling_gov, NULL);
+	for (cpu = 0; cpu < CONFIG_NR_CPUS; cpu++) {
+		policy = cpufreq_cpu_get(cpu);
+		if (policy) {
+			sprintf(cpufreq_default_gov[cpu], "%s",
+					policy->governor->name);
+			cpufreq_cpu_put(policy);
 		}
 	}
-	set_fs(old_fs);
 }
 
-#if defined CONFIG_TEGRA_INTERACTIVE_GOV_ON_EARLY_SUSPEND \
-        || defined CONFIG_TEGRA_CONSERVATIVE_GOV_ON_EARLY_SUSPEND
-static char cpufreq_gov_default[32];
-static char saved_boost_factor[32];
-static char saved_go_maxspeed_load[32];
-static char saved_max_boost[32];
-
-static char saved_up_threshold[32];
-static char saved_down_threshold[32];
-static char saved_freq_step[32];
-
-static char od_saved_up_threshold[32];
-static char od_saved_sampling_rate[32];
-static char od_saved_sampling_rate_min[32];
-static char od_saved_sampling_down_factor[32];
-
-static void cpufreq_read_governor_param(char *param_path, char *name, char *value)
+int cpufreq_change_gov(char *target_gov)
 {
-	struct file *gov_param = NULL;
-	mm_segment_t old_fs;
-	static char buf[128];
-	loff_t offset = 0;
+	unsigned int cpu = 0;
 
-	if (!value || !param_path || !name)
-		return;
-
-	/* change to KERNEL_DS address limit */
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
-
-	sprintf(buf, CPUFREQ_GOV_PARAM, param_path, name);
-	gov_param = filp_open(buf, O_RDONLY, 0);
-	if (gov_param != NULL) {
-		if (gov_param->f_op != NULL &&
-			gov_param->f_op->read != NULL)
-			gov_param->f_op->read(gov_param,
-					value,
-					32,
-					&offset);
-		else
-			pr_err("f_op might be null\n");
-
-		filp_close(gov_param, NULL);
-	} else {
-		pr_err("%s. Can't open %s\n", __func__, buf);
-	}
-	set_fs(old_fs);
-}
-
-static void set_governor_param(char *param_path, char *name, char *value)
-{
-	struct file *gov_param = NULL;
-	mm_segment_t old_fs;
-	static char buf[128];
-	loff_t offset = 0;
-
-	/* change to KERNEL_DS address limit */
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
-
-	sprintf(buf, CPUFREQ_GOV_PARAM, param_path, name);
-	gov_param = filp_open(buf, O_RDWR, 0);
-	if (gov_param != NULL) {
-		if (gov_param->f_op != NULL &&
-			gov_param->f_op->write != NULL)
-			gov_param->f_op->write(gov_param,
-					value,
-					strlen(value),
-					&offset);
-		else
-			pr_err("f_op might be null\n");
-		
-		filp_close(gov_param, NULL);
-	}
-	set_fs(old_fs);
-}
-
-void set_sysfs_param(char *param_path, char *name, char *value)
-{
-	struct file *gov_param = NULL;
-	mm_segment_t old_fs;
-	static char buf[128];
-	loff_t offset = 0;
-
-	/* change to KERNEL_DS address limit */
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
-
-	sprintf(buf, "%s%s", param_path, name);
-	gov_param = filp_open(buf, O_RDWR, 0);
-	if (gov_param != NULL) {
-		if (gov_param->f_op != NULL &&
-			gov_param->f_op->write != NULL)
-			gov_param->f_op->write(gov_param,
-					value,
-					strlen(value),
-					&offset);
-		else
-			pr_err("f_op might be null\n");
-
-		filp_close(gov_param, NULL);
-	}
-	set_fs(old_fs);
-}
-
-void cpufreq_set_governor_param(char *param_path, char *name, int value)
-{
-	char buf[32];
-	sprintf(buf, "%d", value);
-	set_governor_param(param_path, name, buf);
-}
-
-
-void cpufreq_save_governor(void)
-{
-	struct file *scaling_gov = NULL;
-	mm_segment_t old_fs;
-	char    buf[128];
-	loff_t offset = 0;
-
-	/* change to KERNEL_DS address limit */
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
-
-	buf[127] = 0;
-	sprintf(buf, CPUFREQ_SYSFS_PLACE_HOLDER,0);
-	scaling_gov = filp_open(buf, O_RDONLY, 0);
-	if (scaling_gov != NULL) {
-		if (scaling_gov->f_op != NULL &&
-			scaling_gov->f_op->read != NULL)
-			scaling_gov->f_op->read(scaling_gov,
-					cpufreq_gov_default,
-					32,
-					&offset);
-		else
-			pr_err("f_op might be null\n");
-
-		filp_close(scaling_gov, NULL);
-	} else {
-		pr_err("%s. Can't open %s\n", __func__, buf);
-	}
-	if (strncmp(cpufreq_gov_default,INTERACTIVE_GOVERNOR,
-				strlen(INTERACTIVE_GOVERNOR)) == 0) {
-		cpufreq_read_governor_param(INTERACTIVE_GOVERNOR, BOOST_FACTOR,
-					saved_boost_factor);
-		cpufreq_read_governor_param(INTERACTIVE_GOVERNOR, GO_MAXSPEED_LOAD,
-					saved_go_maxspeed_load);
-		cpufreq_read_governor_param(INTERACTIVE_GOVERNOR, MAX_BOOST,
-					saved_max_boost);	
-	} else if (strncmp(cpufreq_gov_default, CONSERVATIVE_GOVERNOR,
-				strlen(CONSERVATIVE_GOVERNOR)) == 0) {
-		cpufreq_read_governor_param(CONSERVATIVE_GOVERNOR, UP_THRESHOLD,
-					saved_up_threshold);
-		cpufreq_read_governor_param(CONSERVATIVE_GOVERNOR, DOWN_THRESHOLD,
-					saved_down_threshold);
-		cpufreq_read_governor_param(CONSERVATIVE_GOVERNOR, FREQ_STEP,
-					saved_freq_step);	
-/*
- * EternityProject, 26/05/2012: nVidia, even if I've fixed it for ondemand,
- * the code in there is HORRIBLE!!!!
- */
-	} else if (strncmp(cpufreq_gov_default, ONDEMAND_GOVERNOR,
-				strlen(ONDEMAND_GOVERNOR)) == 0) {
-		cpufreq_read_governor_param(ONDEMAND_GOVERNOR, UP_THRESHOLD,
-					od_saved_up_threshold);
-/*		cpufreq_read_governor_param(ONDEMAND_GOVERNOR, SAMPRATE,
-					od_saved_sampling_rate);
-		cpufreq_read_governor_param(ONDEMAND_GOVERNOR, SAMPRATE_MIN,
-					od_saved_sampling_rate_min);
-		cpufreq_read_governor_param(ONDEMAND_GOVERNOR, SAMPDN_FACTOR,
-					od_saved_sampling_down_factor); */
-	} else {
-	    printk("Tegra PM: Cannot save your governor parameters!!");
-	}
-	
-	set_fs(old_fs);
-}
-
-void cpufreq_restore_governor(void)
-{
-	cpufreq_set_governor(cpufreq_gov_default);
-
-/*
- * EternityProject, 26/05/2012: nVidia, even if I've fixed it for ondemand,
- * the code in there is HORRIBLE!!!!
- *
- * 13/06/2012: 	Moved ondemand check to the upper.
- * 		Since we're using ondemand at resume in almost
- *		80% of the cases, that saves some CPU cycles.
- *
- */
-	if (strncmp(cpufreq_gov_default, ONDEMAND_GOVERNOR,
-			strlen(ONDEMAND_GOVERNOR)) == 0) {
-#ifdef CONFIG_ETERNITYPROJECT_CPUFMAN
-		set_sysfs_param("/sys/devices/system/cpu/cpu0/cpufreq/",
-				"scaling_max_freq", "1700000");
-#else
-		set_sysfs_param("/sys/devices/system/cpu/cpu0/cpufreq/",
-				"scaling_max_freq", "1500000");
+#ifndef CONFIG_TEGRA_AUTO_HOTPLUG
+	for_each_online_cpu(cpu)
 #endif
-		set_governor_param(ONDEMAND_GOVERNOR, UP_THRESHOLD,
-					od_saved_up_threshold);
-/*		set_governor_param(ONDEMAND_GOVERNOR, SAMPRATE,
-					od_saved_sampling_rate);
-		set_governor_param(ONDEMAND_GOVERNOR, SAMPDN_FACTOR,
-					od_saved_sampling_down_factor); */
-	} else if (strncmp(cpufreq_gov_default,INTERACTIVE_GOVERNOR,
-				strlen(INTERACTIVE_GOVERNOR)) == 0) {
-		set_governor_param(INTERACTIVE_GOVERNOR, BOOST_FACTOR,
-					saved_boost_factor);
-		set_governor_param(INTERACTIVE_GOVERNOR, GO_MAXSPEED_LOAD,
-					saved_go_maxspeed_load);
-		set_governor_param(INTERACTIVE_GOVERNOR, MAX_BOOST,
-					saved_max_boost);	
-	} else if (strncmp(cpufreq_gov_default, CONSERVATIVE_GOVERNOR,
-				strlen(CONSERVATIVE_GOVERNOR)) == 0) {
-		set_governor_param(CONSERVATIVE_GOVERNOR, UP_THRESHOLD,
-					saved_up_threshold);
-		set_governor_param(CONSERVATIVE_GOVERNOR, DOWN_THRESHOLD,
-					saved_down_threshold);
-		set_governor_param(CONSERVATIVE_GOVERNOR, FREQ_STEP,
-					saved_freq_step);	
-	} else {
-	    printk("Tegra PM: Cannot restore your governor parameters!!");
-	}
+	return cpufreq_set_gov(target_gov, cpu);
 }
-#endif /* TEGRA_CONSERVATIVE_GOV_ON_EARLY_SUSPEND ||
-		TEGRA_INTERACTIVE_GOV_ON_EARLY_SUSPEND*/
+
+int cpufreq_restore_default_gov(void)
+{
+	int ret = 0;
+	unsigned int cpu;
+
+	for (cpu = 0; cpu < CONFIG_NR_CPUS; cpu++) {
+		if (strlen((const char *)&cpufreq_default_gov[cpu])) {
+			ret = cpufreq_set_gov(cpufreq_default_gov[cpu], cpu);
+			if (ret < 0)
+				/* Unable to restore gov for the cpu as
+				 * It was online on suspend and becomes
+				 * offline on resume.
+				 */
+				pr_info("Unable to restore gov:%s for cpu:%d,"
+						, cpufreq_default_gov[cpu]
+							, cpu);
+		}
+		cpufreq_default_gov[cpu][0] = '\0';
+	}
+	return ret;
+}
+#endif /* CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND */

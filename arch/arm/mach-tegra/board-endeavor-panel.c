@@ -19,8 +19,6 @@
  */
 
 #include <linux/delay.h>
-#include <linux/ion.h>
-#include <linux/tegra_ion.h>
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/resource.h>
@@ -30,12 +28,11 @@
 #include <linux/tegra_pwm_bl.h>
 #include <asm/atomic.h>
 #include <linux/nvhost.h>
-#include <mach/nvmap.h>
+#include <linux/nvmap.h>
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/dc.h>
 #include <mach/fb.h>
-#include <mach/smmu.h>
 #include <mach/hardware.h>
 #include <mach/panel_id.h>
 #include <mach/board_htc.h>
@@ -60,7 +57,6 @@ static struct regulator *v_lcmio_1v8 = NULL;
 
 static struct regulator *enterprise_hdmi_reg = NULL;
 static struct regulator *enterprise_hdmi_pll = NULL;
-/*static struct regulator *enterprise_hdmi_vddio = NULL;*/
 #endif
 
 #define LCM_TE			TEGRA_GPIO_PJ1
@@ -93,24 +89,10 @@ static struct gpio panel_init_gpios[] = {
     {MHL_3V3_EN,    GPIOF_OUT_INIT_HIGH,    "mhl_3v3_en"},
 };
 
-#if 0
-static struct gpio enterprise_gpios[] = {
-	{MHL_1V2_EN,	GPIOF_OUT_INIT_LOW,	"mhl_1v2_en"},
-	{MHL_3V3_EN,	GPIOF_OUT_INIT_LOW,	"mhl_3v3_en"},
-};
-#endif
+static atomic_t sd_brightness = ATOMIC_INIT(255);
 
 /*global varible for work around*/
 static bool g_display_on = true;
-
-#if 0
-static void mhl_gpio_switch(int on)
-{
-	int i = 0;
-	for(i = 0 ; i < ARRAY_SIZE(enterprise_gpios) ; i++)
-		gpio_set_value(enterprise_gpios[i].gpio, on);
-}
-#endif
 
 #define BACKLIGHT_MAX 255
 
@@ -144,16 +126,15 @@ static unsigned char shrink_pwm(int val)
 	shrink_br = def_pwm +
 	(val-ORIG_PWM_DEF)*(max_pwm-def_pwm)/(ORIG_PWM_MAX-ORIG_PWM_DEF);
 
-#ifdef DEBUGENABLED
 	pr_info("brightness orig = %d, transformed=%d\n", val, shrink_br);
-#endif
 
 	return shrink_br;
 }
 
-
 static int enterprise_backlight_notify(struct device *unused, int brightness)
 {
+	int cur_sd_brightness = atomic_read(&sd_brightness);
+
 	if (brightness > 0)
 		brightness = shrink_pwm(brightness);
 
@@ -174,7 +155,7 @@ static struct platform_tegra_pwm_backlight_data enterprise_disp1_backlight_data 
 	.gpio_conf_to_sfio	= TEGRA_GPIO_PW1,
 	.switch_to_sfio		= &tegra_gpio_disable,
 	.max_brightness		= 255,
-	.dft_brightness		= 255,
+	.dft_brightness		= 85,
 	.notify		= enterprise_backlight_notify,
 	.period			= 0xFF,
 	.clk_div		= 20,
@@ -228,6 +209,7 @@ static int enterprise_hdmi_disable(void)
 
 	return 0;
 }
+
 static struct resource enterprise_disp1_resources[] = {
 	{
 		.name	= "irq",
@@ -282,12 +264,10 @@ static struct resource enterprise_disp2_resources[] = {
 	},
 };
 
-#if 0
 static struct tegra_dc_sd_settings enterprise_sd_settings = {
 	.enable = 0, /* Normal mode operation */
 	.bl_device = &enterprise_disp1_backlight_device,
 };
-#endif
 
 static struct tegra_fb_data enterprise_hdmi_fb_data = {
 	.win		= 0,
@@ -502,7 +482,6 @@ static u8 init_cmd[] = {0xB9,0xFF,0x83,0x92};
 static u8 eq_cmd[] = {0xD5,0x00,0x00,0x02};
 static u8 ptbf_cmd[] = {0xBF,0x05,0x60,0x02};
 static u8 pwm_freq_hx[] = {0xC9,0x1F,0x01};
-/*static u8 porch[] = {0x3B,0x03,0x03,0x07,0x02,0x02};*/
 static u8 flash_issue[] = {0xC6,0x35,0x00,0x00,0x04};
 
 static struct tegra_dsi_cmd osc_off_cmd[]= {
@@ -2424,7 +2403,7 @@ static struct tegra_dsi_cmd dsi_init_sharp_nt_c2_9a_cmd[]= {
 	DSI_CMD_SHORT(0x05, 0x11, 0x00),
 	DSI_DLY_MS(105),
 
-	/*gamma case-c*/
+ 	/*gamma case-c*/
 	DSI_CMD_SHORT(0x15, 0xFF, 0x01),
 	DSI_CMD_SHORT(0x15, 0xFE, 0x02),
 	DSI_CMD_SHORT(0x15, 0x75, 0x00),
@@ -2924,6 +2903,7 @@ struct tegra_dsi_out enterprise_dsi = {
 
 	.panel_reset = DSI_PANEL_RESET,
 	.power_saving_suspend = true,
+
 	.n_init_cmd = ARRAY_SIZE(dsi_init_sharp_nt_c2_cmd),
 	.dsi_init_cmd = dsi_init_sharp_nt_c2_cmd,
 
@@ -2935,17 +2915,13 @@ struct tegra_dsi_out enterprise_dsi = {
 
 	.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),
 	.dsi_suspend_cmd = dsi_suspend_cmd,
+
 	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_TX_ONLY,
 	.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
-
 	.lp_cmd_mode_freq_khz = 20000,
 
 	/* TODO: Get the vender recommended freq */
 	.lp_read_cmd_mode_freq_khz = 200000,
-
-	/*phy timing tuning by hardware*/
-	.phy_timing.t_hstrail_ns = 8,
-	.phy_timing.t_clkzero_ns = 27,
 };
 
 static struct tegra_stereo_out enterprise_stereo = {
@@ -2956,7 +2932,7 @@ static struct tegra_stereo_out enterprise_stereo = {
 #ifdef CONFIG_TEGRA_DC
 static struct tegra_dc_mode enterprise_dsi_modes[] = {
 	{
-		.pclk = 20000000,
+		.pclk = 10000000,
 		.h_ref_to_sync = 4,
 		.v_ref_to_sync = 1,
 		.h_sync_width = 16,
@@ -3009,9 +2985,9 @@ static struct tegra_dc_out enterprise_disp1_out = {
 	/*TODO let power-on sequence wait until dsi hardware init*/
 	.bridge_reset = bridge_reset,
 	.ic_reset = ic_reset,
-
 	.power_wakeup = POWER_WAKEUP_ENR,
 	.performance_tuning = 1,
+	
 };
 static struct tegra_dc_platform_data enterprise_disp1_pdata = {
 	.flags		= TEGRA_DC_FLAG_ENABLED,
@@ -3046,7 +3022,6 @@ static struct nvhost_device enterprise_disp2_device = {
 };
 #endif
 
-#if defined(CONFIG_TEGRA_NVMAP)
 static struct nvmap_platform_carveout enterprise_carveouts[] = {
 	[0] = NVMAP_HEAP_CARVEOUT_IRAM_INIT,
 	[1] = {
@@ -3070,69 +3045,11 @@ static struct platform_device enterprise_nvmap_device = {
 		.platform_data = &enterprise_nvmap_data,
 	},
 };
-#endif
-
-#if defined(CONFIG_ION_TEGRA)
-
-/*static struct platform_device tegra_iommu_device = {
-	.name = "tegra_iommu_device",
-	.id = -1,
-	.dev = {
-		.platform_data = (void *)((1 << HWGRP_COUNT) - 1),
-	},
-}; --NOT WORKING -- NOT BOOTING */
-
-static struct ion_platform_data tegra_ion_data = {
-	.nr = 3,
-	.heaps = {
-		{
-			.type = ION_HEAP_TYPE_CARVEOUT,
-			.id = TEGRA_ION_HEAP_CARVEOUT,
-			.name = "carveout",
-			.base = 0,
-			.size = 0,
-		},
-		{
-			.type = ION_HEAP_TYPE_CARVEOUT,
-			.id = TEGRA_ION_HEAP_IRAM,
-			.name = "iram",
-			.base = TEGRA_IRAM_BASE + TEGRA_RESET_HANDLER_SIZE,
-			.size = TEGRA_IRAM_SIZE - TEGRA_RESET_HANDLER_SIZE,
-		},
-		{
-			.type = ION_HEAP_TYPE_CARVEOUT,
-			.id = TEGRA_ION_HEAP_VPR,
-			.name = "vpr",
-			.base = 0,
-			.size = 0,
-		},
-/*		{
-			.type = ION_HEAP_TYPE_IOMMU,
-			.id = TEGRA_ION_HEAP_IOMMU,
-			.name = "iommu",
-			.base = TEGRA_SMMU_BASE,
-			.size = TEGRA_SMMU_SIZE,
-			.priv = &tegra_iommu_device.dev,
-		},*/
-	},
-};
-
-static struct platform_device tegra_ion_device = {
-	.name = "ion-tegra",
-	.id = -1,
-	.dev = {
-		.platform_data = &tegra_ion_data,
-	},
-};
-#endif
 
 static struct platform_device *enterprise_gfx_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_NVMAP)
 	&enterprise_nvmap_device,
 #endif
-/*#ifdef CONFIG_ION_TEGRA
-	&tegra_ion_device,
-#endif*/
 	&tegra_pwfm0_device,
 };
 
@@ -3167,9 +3084,9 @@ struct early_suspend enterprise_panel_onchg_suspender;
 static void enterprise_panel_early_suspend(struct early_suspend *h)
 {
 	struct backlight_device *bl = platform_get_drvdata(&enterprise_disp1_backlight_device);
-	
+
 	DISP_INFO_IN();
-	
+
 	if (bl && bl->props.bkl_on) {
 		bl->props.bkl_on = 0;
 		del_timer_sync(&bkl_timer);
@@ -3182,6 +3099,13 @@ static void enterprise_panel_early_suspend(struct early_suspend *h)
 	if (num_registered_fb > 1)
 		fb_blank(registered_fb[1], FB_BLANK_NORMAL);
 
+#ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
+	cpufreq_store_default_gov();
+	if (cpufreq_change_gov(cpufreq_conservative_gov))
+		pr_err("Early_suspend: Error changing governor to %s\n",
+				cpufreq_conservative_gov);
+#endif
+
 	DISP_INFO_OUT();
 }
 
@@ -3190,6 +3114,11 @@ static void enterprise_panel_late_resume(struct early_suspend *h)
 	unsigned i;
 
 	DISP_INFO_IN();
+
+#ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
+	if (cpufreq_restore_default_gov())
+		pr_err("Early_suspend: Unable to restore governor\n");
+#endif
 
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
@@ -3252,11 +3181,6 @@ int __init enterprise_panel_init(void)
 	enterprise_carveouts[1].size = tegra_carveout_size;
 #endif
 
-#ifdef CONFIG_ION_TEGRA
-	tegra_ion_data.heaps[0].base = tegra_carveout_start;
-	tegra_ion_data.heaps[0].size = tegra_carveout_size;
-#endif
-
 	err = gpio_request_array(panel_init_gpios, ARRAY_SIZE(panel_init_gpios));
 	if(err) {
 		DISP_ERR("gpio request failed\n");
@@ -3284,6 +3208,12 @@ int __init enterprise_panel_init(void)
 #endif
 #endif
 
+#ifdef CONFIG_TEGRA_GRHOST
+	err = nvhost_device_register(&tegra_grhost_device);
+
+	if (err)
+		return err;
+#endif
 	err = platform_add_devices(enterprise_gfx_devices,
 				ARRAY_SIZE(enterprise_gfx_devices));
 
@@ -3297,6 +3227,18 @@ int __init enterprise_panel_init(void)
 	/* Copy the bootloader fb to the fb. */
 	tegra_move_framebuffer(tegra_fb_start, tegra_bootloader_fb_start,
 		min(tegra_fb_size, tegra_bootloader_fb_size));
+
+#if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
+	if (!err)
+		err = nvhost_device_register(&enterprise_disp1_device);
+
+	res = nvhost_get_resource_byname(&enterprise_disp2_device,
+					 IORESOURCE_MEM, "fbmem");
+	res->start = tegra_fb2_start;
+	res->end = tegra_fb2_start + tegra_fb2_size - 1;
+	if (!err)
+		err = nvhost_device_register(&enterprise_disp2_device);
+#endif
 
 	if ((g_panel_id & BL_MASK) == BL_CPU) {
 		enterprise_disp1_backlight_data.backlight_mode = CPU_BACKLIGHT;
@@ -3423,22 +3365,6 @@ int __init enterprise_panel_init(void)
 			enterprise_dsi.osc_on_cmd = osc_on_cmd;
 	}
 
-#if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-	if (!err)
-		err = nvhost_device_register(&enterprise_disp1_device);
-
-	res = nvhost_get_resource_byname(&enterprise_disp2_device,
-					 IORESOURCE_MEM, "fbmem");
-	res->start = tegra_fb2_start;
-	res->end = tegra_fb2_start + tegra_fb2_size - 1;
-	if (!err)
-		err = nvhost_device_register(&enterprise_disp2_device);
-#endif
-
-#if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_NVAVP)
-	if (!err)
-		err = nvhost_device_register(&nvavp_device);
-#endif
 	if ( (board_mfg_mode() == 5) && (board_zchg_mode() & 0x1))
 		enterprise_disp1_backlight_data.draw_battery = 1;
 
@@ -3448,6 +3374,11 @@ int __init enterprise_panel_init(void)
 	INIT_WORK(&bkl_work, bkl_do_work);
 	bkl_wq = create_workqueue("bkl_wq");
 	setup_timer(&bkl_timer, bkl_update, 0);
+
+#if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_NVAVP)
+	if (!err)
+		err = nvhost_device_register(&nvavp_device);
+#endif
 
 failed:
 	DISP_INFO_OUT();
