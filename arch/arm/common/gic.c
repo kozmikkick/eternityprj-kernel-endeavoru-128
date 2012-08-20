@@ -26,10 +26,10 @@
 #include <linux/kernel.h>
 #include <linux/list.h>
 #include <linux/smp.h>
+#include <linux/cpu_pm.h>
 #include <linux/cpumask.h>
 #include <linux/io.h>
 
-#include <asm/cpu_pm.h>
 #include <asm/irq.h>
 #include <asm/mach/irq.h>
 #include <asm/hardware/gic.h>
@@ -363,6 +363,7 @@ static void __cpuinit gic_cpu_init(struct gic_chip_data *gic)
 	writel_relaxed(1, base + GIC_CPU_CTRL);
 }
 
+#ifdef CONFIG_CPU_PM
 /*
  * Saves the GIC distributor registers during suspend or idle.  Must be called
  * with interrupts disabled but before powering down the GIC.  After calling
@@ -520,11 +521,11 @@ static int gic_notifier(struct notifier_block *self, unsigned long cmd,	void *v)
 		case CPU_PM_EXIT:
 			gic_cpu_restore(i);
 			break;
-		case CPU_COMPLEX_PM_ENTER:
+		case CPU_CLUSTER_PM_ENTER:
 			gic_dist_save(i);
 			break;
-		case CPU_COMPLEX_PM_ENTER_FAILED:
-		case CPU_COMPLEX_PM_EXIT:
+		case CPU_CLUSTER_PM_ENTER_FAILED:
+		case CPU_CLUSTER_PM_EXIT:
 			gic_dist_restore(i);
 			break;
 		}
@@ -536,6 +537,23 @@ static int gic_notifier(struct notifier_block *self, unsigned long cmd,	void *v)
 static struct notifier_block gic_notifier_block = {
 	.notifier_call = gic_notifier,
 };
+
+static void __init gic_pm_init(struct gic_chip_data *gic)
+{
+	gic->saved_ppi_enable = __alloc_percpu(DIV_ROUND_UP(32, 32) * 4,
+		sizeof(u32);
+	BUG_ON(!gic->saved_ppi_enable);
+
+	gic->saved_ppi_conf = __alloc_percpu(DIV_ROUND_UP(32, 16) * 4,
+		sizeof(u32));
+	BUG_ON(!gic->saved_ppi_conf);
+
+	cpu_pm_register_notifier(&gic_notifier_block);
+#else
+static void __init gic_pm_init(struct gic_chip_data *gic)
+{
+}
+#endif
 
 void __init gic_init(unsigned int gic_nr, unsigned int irq_start,
 	void __iomem *dist_base, void __iomem *cpu_base)
@@ -555,20 +573,7 @@ void __init gic_init(unsigned int gic_nr, unsigned int irq_start,
 	gic_chip.flags |= gic_arch_extn.flags;
 	gic_dist_init(gic, irq_start);
 	gic_cpu_init(gic);
-
-	gic->saved_ppi_enable = __alloc_percpu(DIV_ROUND_UP(32, 32) * 4,
-		sizeof(u32));
-	BUG_ON(!gic->saved_ppi_enable);
-
-	gic->saved_ppi_conf = __alloc_percpu(DIV_ROUND_UP(32, 16) * 4,
-		sizeof(u32));
-	BUG_ON(!gic->saved_ppi_conf);
-
-	gic->saved_ppi_pri = __alloc_percpu(DIV_ROUND_UP(32, 4) * 4,
-		sizeof(u32));
-	BUG_ON(!gic->saved_ppi_pri);
-
-	cpu_pm_register_notifier(&gic_notifier_block);
+	gic_pm_init(gic);
 }
 
 void __cpuinit gic_secondary_init(unsigned int gic_nr)
