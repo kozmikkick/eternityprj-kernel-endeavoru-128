@@ -548,6 +548,13 @@ static void __init gic_pm_init(struct gic_chip_data *gic)
 		sizeof(u32));
 	BUG_ON(!gic->saved_ppi_conf);
 
+	/* EternityProject, 20/08/2012 - HACK: nVidia Tegra 3 wants this. */
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	gic->saved_ppi_pri = __alloc_percpu(DIV_ROUND_UP(32, 4) * 4,
+		sizeof(u32));
+	BUG_ON(!gic->saved_ppi_pri);
+#endif
+
 	cpu_pm_register_notifier(&gic_notifier_block);
 }
 #else
