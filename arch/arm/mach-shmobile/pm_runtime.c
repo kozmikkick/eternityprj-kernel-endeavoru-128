@@ -18,6 +18,7 @@
 #include <linux/clk.h>
 #include <linux/sh_clk.h>
 #include <linux/bitmap.h>
+#include <linux/slab.h>
 
 #ifdef CONFIG_PM_RUNTIME
 #define BIT_ONCE 0
@@ -29,22 +30,9 @@ struct pm_runtime_data {
 	struct clk *clk;
 };
 
-static void __devres_release(struct device *dev, void *res)
-{
-	struct pm_runtime_data *prd = res;
-
-	dev_dbg(dev, "__devres_release()\n");
-
-	if (test_bit(BIT_CLK_ENABLED, &prd->flags))
-		clk_disable(prd->clk);
-
-	if (test_bit(BIT_ACTIVE, &prd->flags))
-		clk_put(prd->clk);
-}
-
 static struct pm_runtime_data *__to_prd(struct device *dev)
 {
-	return devres_find(dev, __devres_release, NULL, NULL);
+	return dev ? dev->power.subsys_data : NULL;
 }
 
 static void platform_pm_runtime_init(struct device *dev,
