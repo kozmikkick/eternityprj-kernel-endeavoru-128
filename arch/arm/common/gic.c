@@ -39,21 +39,6 @@ static DEFINE_RAW_SPINLOCK(irq_controller_lock);
 /* Address of GIC 0 CPU interface */
 void __iomem *gic_cpu_base_addr __read_mostly;
 
-struct gic_chip_data {
-	unsigned int irq_offset;
-	void __iomem *dist_base;
-	void __iomem *cpu_base;
-	u32 saved_spi_enable[DIV_ROUND_UP(1020, 32)];
-	u32 saved_spi_conf[DIV_ROUND_UP(1020, 16)];
-	u32 saved_spi_pri[DIV_ROUND_UP(1020, 4)];
-	u32 saved_spi_target[DIV_ROUND_UP(1020, 4)];
-	u32 __percpu *saved_ppi_enable;
-	u32 __percpu *saved_ppi_conf;
-	u32 __percpu *saved_ppi_pri;
-
-	unsigned int gic_irqs;
-};
-
 /*
  * Supported arch specific GIC irq extension.
  * Default make them NULL.
