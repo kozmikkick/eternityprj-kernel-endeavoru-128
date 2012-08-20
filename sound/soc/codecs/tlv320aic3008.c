@@ -1631,7 +1631,8 @@ static int aic3008_dai_hw_params(struct snd_pcm_substream *substream,
 
 #define AIC3008_FORMATS (SNDRV_PCM_FMTBIT_S16_LE |\
 			SNDRV_PCM_FMTBIT_S20_3LE |\
-			SNDRV_PCM_FMTBIT_S24_LE)
+			SNDRV_PCM_FMTBIT_S24_LE  |\
+			SNDRV_PCM_FMTBIT_S32_LE)
 
 static struct snd_soc_dai_ops aic3008_dai_ops = {
 		.startup = aic3008_dai_startup,
