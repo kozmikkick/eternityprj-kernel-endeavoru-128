@@ -390,18 +390,12 @@ static void gic_dist_save(unsigned int gic_nr)
 			readl_relaxed(dist_base + GIC_DIST_CONFIG + i * 4);
 
 	for (i = 0; i < DIV_ROUND_UP(gic_irqs, 4); i++)
-		gic_data[gic_nr].saved_spi_pri[i] =
-			readl_relaxed(dist_base + GIC_DIST_PRI + i * 4);
-
-	for (i = 0; i < DIV_ROUND_UP(gic_irqs, 4); i++)
 		gic_data[gic_nr].saved_spi_target[i] =
 			readl_relaxed(dist_base + GIC_DIST_TARGET + i * 4);
 
 	for (i = 0; i < DIV_ROUND_UP(gic_irqs, 32); i++)
 		gic_data[gic_nr].saved_spi_enable[i] =
 			readl_relaxed(dist_base + GIC_DIST_ENABLE_SET + i * 4);
-
-	writel_relaxed(0, dist_base + GIC_DIST_CTRL);
 }
 
 /*
@@ -433,7 +427,7 @@ static void gic_dist_restore(unsigned int gic_nr)
 			dist_base + GIC_DIST_CONFIG + i * 4);
 
 	for (i = 0; i < DIV_ROUND_UP(gic_irqs, 4); i++)
-		writel_relaxed(gic_data[gic_nr].saved_spi_pri[i],
+		writel_relaxed(0xa0a0a0a0,
 			dist_base + GIC_DIST_PRI + i * 4);
 
 	for (i = 0; i < DIV_ROUND_UP(gic_irqs, 4); i++)
@@ -471,9 +465,6 @@ static void gic_cpu_save(unsigned int gic_nr)
 	for (i = 0; i < DIV_ROUND_UP(32, 16); i++)
 		ptr[i] = readl_relaxed(dist_base + GIC_DIST_CONFIG + i * 4);
 
-	ptr = __this_cpu_ptr(gic_data[gic_nr].saved_ppi_pri);
-	for (i = 0; i < DIV_ROUND_UP(32, 4); i++)
-		ptr[i] = readl_relaxed(dist_base + GIC_DIST_PRI + i * 4);
 }
 
 static void gic_cpu_restore(unsigned int gic_nr)
@@ -500,9 +491,8 @@ static void gic_cpu_restore(unsigned int gic_nr)
 	for (i = 0; i < DIV_ROUND_UP(32, 16); i++)
 		writel_relaxed(ptr[i], dist_base + GIC_DIST_CONFIG + i * 4);
 
-	ptr = __this_cpu_ptr(gic_data[gic_nr].saved_ppi_pri);
 	for (i = 0; i < DIV_ROUND_UP(32, 4); i++)
-		writel_relaxed(ptr[i], dist_base + GIC_DIST_PRI + i * 4);
+		writel_relaxed(0xa0a0a0a0, dist_base + GIC_DIST_PRI + i * 4);
 
 	writel_relaxed(0xf0, cpu_base + GIC_CPU_PRIMASK);
 	writel_relaxed(1, cpu_base + GIC_CPU_CTRL);
@@ -513,6 +503,11 @@ static int gic_notifier(struct notifier_block *self, unsigned long cmd,	void *v)
 	int i;
 
 	for (i = 0; i < MAX_GIC_NR; i++) {
+#ifdef CONFIG_GIC_NON_BANKED
+		/* Skip over unused GICs */
+		if (!gic_data[i].get_base)
+			continue;
+#endif
 		switch (cmd) {
 		case CPU_PM_ENTER:
 			gic_cpu_save(i);
@@ -547,13 +542,6 @@ static void __init gic_pm_init(struct gic_chip_data *gic)
 	gic->saved_ppi_conf = __alloc_percpu(DIV_ROUND_UP(32, 16) * 4,
 		sizeof(u32));
 	BUG_ON(!gic->saved_ppi_conf);
-
-	/* EternityProject, 20/08/2012 - HACK: nVidia Tegra 3 wants this. */
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	gic->saved_ppi_pri = __alloc_percpu(DIV_ROUND_UP(32, 4) * 4,
-		sizeof(u32));
-	BUG_ON(!gic->saved_ppi_pri);
-#endif
 
 	cpu_pm_register_notifier(&gic_notifier_block);
 }

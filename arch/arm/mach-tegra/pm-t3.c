@@ -22,6 +22,7 @@
 #include <linux/smp.h>
 #include <linux/interrupt.h>
 #include <linux/clk.h>
+#include <linux/cpu_pm.h>
 #include <linux/delay.h>
 #include <linux/irq.h>
 #include <linux/device.h>
@@ -32,7 +33,6 @@
 #include <mach/iomap.h>
 #include <mach/irqs.h>
 
-#include <asm/cpu_pm.h>
 #include <asm/hardware/gic.h>
 
 #include <trace/events/power.h>

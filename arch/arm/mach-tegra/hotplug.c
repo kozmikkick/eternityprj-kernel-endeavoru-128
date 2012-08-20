@@ -9,9 +9,9 @@
  */
 #include <linux/kernel.h>
 #include <linux/io.h>
+#include <linux/cpu_pm.h>
 #include <linux/smp.h>
 
-#include <asm/cpu_pm.h>
 #include <asm/cacheflush.h>
 #include <asm/cp15.h>
 
