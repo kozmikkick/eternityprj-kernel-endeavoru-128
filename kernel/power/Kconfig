@@ -301,6 +301,10 @@ config PM_RUNTIME_CLK
 	def_bool y
 	depends on PM_RUNTIME && HAVE_CLK
 
+config PM_GENERIC_DOMAINS
+	bool
+	depends on PM
+
 config POWER_KEY_WAKEUP_FAILED_PATCH
 	bool "POWER_KEY_WAKEUP_FAILED_PATCH"
 
