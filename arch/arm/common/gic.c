@@ -541,7 +541,7 @@ static struct notifier_block gic_notifier_block = {
 static void __init gic_pm_init(struct gic_chip_data *gic)
 {
 	gic->saved_ppi_enable = __alloc_percpu(DIV_ROUND_UP(32, 32) * 4,
-		sizeof(u32);
+		sizeof(u32));
 	BUG_ON(!gic->saved_ppi_enable);
 
 	gic->saved_ppi_conf = __alloc_percpu(DIV_ROUND_UP(32, 16) * 4,
@@ -549,6 +549,7 @@ static void __init gic_pm_init(struct gic_chip_data *gic)
 	BUG_ON(!gic->saved_ppi_conf);
 
 	cpu_pm_register_notifier(&gic_notifier_block);
+}
 #else
 static void __init gic_pm_init(struct gic_chip_data *gic)
 {
