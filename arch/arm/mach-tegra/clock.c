@@ -1285,7 +1285,7 @@ static const struct file_operations possible_rates_fops = {
 
 static int clk_debugfs_register_one(struct clk *c)
 {
-	struct dentry *d, *child, *child_tmp;
+	struct dentry *d;
 
 	d = debugfs_create_dir(c->name, clk_debugfs_root);
 	if (!d)
@@ -1341,10 +1341,7 @@ static int clk_debugfs_register_one(struct clk *c)
 	return 0;
 
 err_out:
-	d = c->dent;
-	list_for_each_entry_safe(child, child_tmp, &d->d_subdirs, d_u.d_child)
-		debugfs_remove(child);
-	debugfs_remove(c->dent);
+	debugfs_remove_recursive(c->dent);
 	return -ENOMEM;
 }
 
