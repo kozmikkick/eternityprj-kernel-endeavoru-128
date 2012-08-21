@@ -45,7 +45,8 @@
 /*#include <linux/mmc/debug.h>*/
 /*#include <asm/mach/mmc.h>*/
 #include <linux/delay.h>
-#include <mach/gpio.h> /*austin added*/
+/*#include <mach/gpio.h>*/ /*austin added*/ /*austin you're a pig*/
+#include <linux/gpio.h>
 
 #include "SdioDrvDbg.h"
 #include "SdioDrv.h"
