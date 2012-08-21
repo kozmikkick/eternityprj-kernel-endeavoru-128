@@ -22,6 +22,12 @@
 #ifndef __MACH_TEGRA_IO_H
 #define __MACH_TEGRA_IO_H
 
+#ifdef __ASSEMBLY__
+#define IOMEM(x)	(x)
+#else
+#define IOMEM(x)	((void __force __iomem *)(x))
+#endif
+
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #define IO_SPACE_LIMIT 0xffff
 #else
@@ -39,19 +45,19 @@
  */
 
 #define IO_IRAM_PHYS	0x40000000
-#define IO_IRAM_VIRT	0xFE400000
+#define IO_IRAM_VIRT	IOMEM(0xFE400000)
 #define IO_IRAM_SIZE	SZ_256K
 
 #define IO_CPU_PHYS	0x50000000
-#define IO_CPU_VIRT	0xFE000000
+#define IO_CPU_VIRT	IOMEM(0xFE000000)
 #define IO_CPU_SIZE	SZ_1M
 
 #define IO_PPSB_PHYS	0x60000000
-#define IO_PPSB_VIRT	0xFE200000
+#define IO_PPSB_VIRT	IOMEM(0xFE200000)
 #define IO_PPSB_SIZE	SZ_1M
 
 #define IO_APB_PHYS	0x70000000
-#define IO_APB_VIRT	0xFE300000
+#define IO_APB_VIRT	IOMEM(0xFE300000)
 #define IO_APB_SIZE	SZ_1M
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
@@ -59,7 +65,7 @@
 #else
 #define IO_USB_PHYS	0x7D000000
 #endif
-#define IO_USB_VIRT	0xFE500000
+#define IO_USB_VIRT	IOMEM(0xFE500000)
 #define IO_USB_SIZE	SZ_1M
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
@@ -67,15 +73,15 @@
 #else
 #define IO_SDMMC_PHYS	0x78000000
 #endif
-#define IO_SDMMC_VIRT	0xFE600000
+#define IO_SDMMC_VIRT	IOMEM(0xFE600000)
 #define IO_SDMMC_SIZE	SZ_1M
 
 #define IO_HOST1X_PHYS	0x54000000
-#define IO_HOST1X_VIRT	0xFE700000
+#define IO_HOST1X_VIRT	IOMEM(0xFE700000)
 #define IO_HOST1X_SIZE	SZ_4M
 
 #define IO_PPCS_PHYS	0x7C000000
-#define IO_PPCS_VIRT	0xFE100000
+#define IO_PPCS_VIRT	IOMEM(0xFE100000)
 #define IO_PPCS_SIZE	SZ_1M
 
 #define IO_TO_VIRT_BETWEEN(p, st, sz)	((p) >= (st) && (p) < ((st) + (sz)))
@@ -98,7 +104,7 @@
 		IO_TO_VIRT_XLATE((n), IO_SDMMC_PHYS, IO_SDMMC_VIRT) :	\
 	IO_TO_VIRT_BETWEEN((n), IO_PPCS_PHYS, IO_PPCS_SIZE) ?		\
 		IO_TO_VIRT_XLATE((n), IO_PPCS_PHYS, IO_PPCS_VIRT) :	\
-	0)
+	NULL)
 
 #ifndef __ASSEMBLER__
 
@@ -108,7 +114,7 @@
 void __iomem *tegra_ioremap(unsigned long phys, size_t size, unsigned int type);
 void tegra_iounmap(volatile void __iomem *addr);
 
-#define IO_ADDRESS(n) ((void __iomem *) IO_TO_VIRT(n))
+#define IO_ADDRESS(n) (IO_TO_VIRT(n))
 
 #if (defined(CONFIG_TEGRA_PCI) && defined(CONFIG_ARCH_TEGRA_2x_SOC))
 extern void __iomem *tegra_pcie_io_base;
