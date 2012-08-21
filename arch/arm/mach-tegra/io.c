@@ -71,13 +71,13 @@ static struct map_desc tegra_io_desc[] __initdata = {
 		.type = MT_DEVICE,
 	},
 	{
-		.virtual = (unsigned_long)IO_SDMMC_VIRT,
+		.virtual = (unsigned long)IO_SDMMC_VIRT,
 		.pfn = __phys_to_pfn(IO_SDMMC_PHYS),
 		.length = IO_SDMMC_SIZE,
 		.type = MT_DEVICE,
 	},
 	{
-		.virtual = (unsigned_long)IO_PPCS_VIRT,
+		.virtual = (unsigned long)IO_PPCS_VIRT,
 		.pfn = __phys_to_pfn(IO_PPCS_PHYS),
 		.length = IO_PPCS_SIZE,
 		.type = MT_DEVICE,
