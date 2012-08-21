@@ -1,8 +1,6 @@
 #ifndef __PLAT_GPIO_H
 #define __PLAT_GPIO_H
 
-#define __ARM_GPIOLIB_COMPLEX
-
 struct irq_data;
 
 /*
