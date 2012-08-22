@@ -104,8 +104,19 @@
 #define TPS80031_PREQ3_RES_ASS_A	0xDD
 #define TPS80031_PHOENIX_MSK_TRANSITION 0x20
 
+#define TPS80031_CFG_INPUT_PUPD1 0xF0
+#define TPS80031_CFG_INPUT_PUPD2 0xF1
+#define TPS80031_CFG_INPUT_PUPD3 0xF2
+#define TPS80031_CFG_INPUT_PUPD4 0xF3
+
 #define CONTROLLER_STAT1	0xE3
 #define VBUS_DET		(1U << 2)
+
+struct tps80031_pupd_data {
+	u8	reg;
+	u8	pullup_bit;
+	u8	pulldown_bit;
+};
 
 static u8 pmc_ext_control_base[] = {
 	REGEN1_BASE_ADD,
