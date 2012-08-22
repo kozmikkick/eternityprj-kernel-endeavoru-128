@@ -24,7 +24,7 @@
  * SoC dynamic audio power management
  *
  * We can have up to 4 power domains
- * 	1. Codec domain - VREF, VMID
+ *  1. Codec domain - VREF, VMID
  *     Usually controlled at codec probe/remove, although can be set
  *     at stream time if power is not needed for sidetone, etc.
  *  2. Platform/Machine domain - physically connected inputs and outputs
@@ -431,6 +431,7 @@ struct snd_soc_dapm_path {
 	/* status */
 	u32 connect:1;	/* source and sink widgets are connected */
 	u32 walked:1;	/* path has been walked */
+	u32 weak:1;	/* path ignored for power management */
 
 	int (*connected)(struct snd_soc_dapm_widget *source,
 			 struct snd_soc_dapm_widget *sink);
