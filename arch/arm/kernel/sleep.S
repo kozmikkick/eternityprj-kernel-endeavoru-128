@@ -93,7 +93,7 @@ cpu_resume_turn_mmu_on:
 	instr_sync
 	mcr	p15, 0, r1, c1, c0, 0	@ turn on MMU, I-cache, etc
 	mrc	p15, 0, r1, c0, c0, 0	@ read id reg
-	instr_rync
+	instr_sync
 	mov	r1, r1
 	mov	r1, r1
 	isb
