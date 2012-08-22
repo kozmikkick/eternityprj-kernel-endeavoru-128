@@ -40,11 +40,9 @@ ENTRY(cpu_suspend)
 #else
 	mov	r2, sp			@ current virtual SP
 	ldr	r0, =cpu_suspend_size
-	ldr	ip, =cpu_do_resume
 	sub	sp, sp, r0		@ allocate CPU state on stack
 	mov	r0, sp			@ save pointer
-	add	ip, ip, r1
-	stmfd	sp!, {r1, r2, r3, ip}	@ save v:p, virt SP, return fn
+	stmfd	sp!, {r1, r2, r3}	@ save v:p, virt SP, return fn
 	ldr	r3, =sleep_save_sp
 	add	r2, sp, r1		@ convert SP to phys
 #ifdef CONFIG_SMP
