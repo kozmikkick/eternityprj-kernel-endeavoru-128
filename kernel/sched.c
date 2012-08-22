@@ -85,7 +85,6 @@
 
 #include "sched_cpupri.h"
 #include "workqueue_sched.h"
-#include "smpboot.h"
 #include "sched_autogroup.h"
 
 #define CREATE_TRACE_POINTS
@@ -8379,7 +8378,6 @@ void __init sched_init(void)
 	/* May be allocated at isolcpus cmdline parse time */
 	if (cpu_isolated_map == NULL)
 		zalloc_cpumask_var(&cpu_isolated_map, GFP_NOWAIT);
-	idle_thread_set_boot_cpu();
 #endif /* SMP */
 
 	scheduler_running = 1;
