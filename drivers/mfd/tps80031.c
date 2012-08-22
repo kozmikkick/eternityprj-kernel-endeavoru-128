@@ -112,6 +112,8 @@
 #define CONTROLLER_STAT1	0xE3
 #define VBUS_DET		(1U << 2)
 
+#define TPS80031_BBSPOR_CHG_EN	0x8
+
 struct tps80031_pupd_data {
 	u8	reg;
 	u8	pullup_bit;
@@ -625,6 +627,17 @@ static void tps80031_pupd_init(struct tps80031 *tps80031,
 		tps80031_update(tps80031->dev, SLAVE_ID1, pupd->reg,
 				update_value, update_mask);
 	}
+}
+
+static void tps80031_backup_battery_charger_control(struct tps80031 *tps80031,
+						    int enable)
+{
+	if (enable)
+		tps80031_update(tps80031->dev, SLAVE_ID1, TPS80031_BBSPOR_CFG,
+				TPS80031_BBSPOR_CHG_EN, TPS80031_BBSPOR_CHG_EN);
+	else
+		tps80031_update(tps80031->dev, SLAVE_ID1, TPS80031_BBSPOR_CFG,
+				0, TPS80031_BBSPOR_CHG_EN);
 }
 
 static void tps80031_init_ext_control(struct tps80031 *tps80031,
@@ -1435,6 +1448,8 @@ static int __devinit tps80031_i2c_probe(struct i2c_client *client,
 
 	tps80031_debuginit(tps80031);
 
+	tps80031_backup_battery_charger_control(tps80031, 1);
+
 	if (pdata->use_power_off && !pm_power_off)
 		pm_power_off = tps80031_power_off;
 
@@ -1480,12 +1495,15 @@ static int tps80031_i2c_suspend(struct i2c_client *client, pm_message_t state)
 
 	if (client->irq)
 		disable_irq(client->irq);
+	tps80031_backup_battery_charger_control(tps80031, 0);
 	return 0;
 }
 
 static int tps80031_i2c_resume(struct i2c_client *client)
 {
 	struct tps80031 *tps80031 = i2c_get_clientdata(client);
+
+	tps80031_backup_battery_charger_control(tps80031, 1);
 
 	if (tps80031->resume_work)
 		tps80031->resume_work();
