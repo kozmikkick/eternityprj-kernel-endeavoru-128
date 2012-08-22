@@ -32,6 +32,9 @@ MISC = misc.o
 AFLAGS_decompress.o += -Wa,-march=armv7-a$(plus_sec)
 DECOMPRESS = decompress.o
 
+AFLAGS_ashldi3.o += -Wa,-march=armv7-a$(plus_sec)
+ASHLDI3 = ashldi3.o
+
 FONTC	= $(srctree)/drivers/video/console/font_acorn_8x8.c
 
 # string library code (-Os is enforced to keep it much smaller)
@@ -163,6 +166,7 @@ $(obj)/lib1funcs.S: $(srctree)/arch/$(SRCARCH)/lib/lib1funcs.S
 	$(call cmd,shipped)
 
 # For __aeabi_llsl
+AFLAGS_ashldi3.o +=-Wa,-march=armv7-a$(plus_sec)
 ashldi3 = $(obj)/ashldi3.o
 
 $(obj)/ashldi3.S: $(srctree)/arch/$(SRCARCH)/lib/ashldi3.S
