@@ -1482,17 +1482,6 @@ static int tps80031_i2c_resume(struct i2c_client *client)
 }
 #endif
 
-#define TPS80031_CFG_INPUT_PUPD1 0xF0
-#define TPS80031_CFG_INPUT_PUPD2 0xF1
-#define TPS80031_CFG_INPUT_PUPD3 0xF2
-#define TPS80031_CFG_INPUT_PUPD4 0xF3
-
-struct tps80031_pupd_data {
-	u8	reg;
-	u8	pullup_bit;
-	u8	pulldown_bit;
-};
-
 static const struct i2c_device_id tps80031_id_table[] = {
 	{ "tps80031", TPS80031 },
 	{ "tps80032", TPS80032 },
