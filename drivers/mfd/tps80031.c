@@ -29,6 +29,7 @@
 #include <linux/slab.h>
 #include <linux/gpio.h>
 #include <linux/i2c.h>
+#include <linux/pm.h>
 
 #include <linux/mfd/core.h>
 #include <linux/mfd/tps80031.h>
@@ -508,6 +509,8 @@ EXPORT_SYMBOL_GPL(tps80031_get_chip_info);
 int (*tps80031_is_cable_in)(void) = NULL;
 EXPORT_SYMBOL_GPL(tps80031_is_cable_in);
 
+static void tps80031_power_off(void);
+
 static struct tps80031 *tps80031_dev;
 int tps80031_power_off_or_reboot(void)
 {
@@ -522,7 +525,7 @@ int tps80031_power_off_or_reboot(void)
 
 	if (!(ctrl0 & VBUS_DET)) {
 		printk("VBUS not detected, shutdown");
-		ret = tps80031_power_off();
+		tps80031_power_off();
 	} else {
 		printk("VBUS detected, do offmode charging");
 		arm_pm_restart('h', "offmode");
@@ -541,34 +544,32 @@ int tps80031_get_pmu_version(struct device *dev)
 }
 EXPORT_SYMBOL_GPL(tps80031_get_pmu_version);
 
-int tps80031_power_off(void)
+static void tps80031_power_off(void)
 {
 	struct tps80031_client *tps = &tps80031_dev->tps_clients[SLAVE_ID1];
 	int ret = 0;
 	u8 reg_value;
 
 	if (!tps->client)
-		return -EINVAL;
+		return;
 	ret = __tps80031_read(tps->client, TPS80031_BBSPOR_CFG, &reg_value);
 	if (ret)
-		goto out;
+		return;
 
 	/* Turn off VRTC to save about 0.030mA */
 	ret = __tps80031_write(tps->client, TPS80031_BBSPOR_CFG,
 				0x12);
 	if (ret)
-		goto out;
+		return;
 
 	dev_info(&tps->client->dev, "switching off PMU\n");
 
-	return __tps80031_write(tps->client, TPS80031_PHOENIX_DEV_ON, DEVOFF);
-out:
-	return ret;
+	__tps80031_write(tps->client, TPS80031_PHOENIX_DEV_ON, DEVOFF);
 }
 
 static void tps80031_init_ext_control(struct tps80031 *tps80031,
 			struct tps80031_platform_data *pdata) {
-	int ret;
+	int ret = 0;
 	int i;
 
 	/* Clear all external control for this rail */
@@ -1356,6 +1357,9 @@ static int __devinit tps80031_i2c_probe(struct i2c_client *client,
 	tps80031_clk32k_init(tps80031, pdata);
 
 	tps80031_debuginit(tps80031);
+
+	if (pdata->use_power_off && !pm_power_off)
+		pm_power_off = tps80031_power_off;
 
 	tps80031_dev = tps80031;
 
