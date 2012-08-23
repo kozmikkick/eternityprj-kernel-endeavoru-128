@@ -242,6 +242,7 @@ static int tegra_ehci_hub_control(
 	hsic = (tegra->phy->usb_phy_type == TEGRA_USB_PHY_TYPE_HSIC);
 
 	/* Seshendra patch: log for resume fail */
+#ifdef EHCI_TEGRA_DEBUG	/* EternityProject patch: Seshendra is a pig */
 	printk(KERN_INFO"%s: typereq: %x wValue: %x USBMODE: %x, USBCMD: %x, PORTSC: %x, USBSTS: %x HOSTPC: %x \n",
 		__func__, typeReq, wValue,
 		readl(&ehci->regs->command + (USBMODE)),
@@ -249,14 +250,16 @@ static int tegra_ehci_hub_control(
 		readl(&ehci->regs->port_status[0]),
 		readl(&ehci->regs->status),
 		readl(hcd->regs + HOSTPC_REG_OFFSET));
+#endif
 /* 84717-1 patch */
 	if(hsic)
 		s_hsic_hcd = hcd;
 /* 84717-1 patch */
 	status_reg = &ehci->regs->port_status[(wIndex & 0xff) - 1];
+#ifdef EHCI_TEGRA_DEBUG
 	pr_info("%s hsic=%s typeReq=%x wValue=%x wIndex=%x\n",
 		__func__,hsic ? "true" : "false", typeReq, wValue, wIndex);
-
+#endif
 	spin_lock_irqsave(&ehci->lock, flags);
 
 	/*
