@@ -1074,9 +1074,10 @@ static int usb_suspend_interface(struct usb_device *udev,
 {
 	struct usb_driver	*driver;
 	int			status = 0;
+/* EternityProject, 23/08 HTC PIGS! This is a PRODUCTION kernel!!!
 	pr_info("%s: cnt %d -> %d intf=%p &intf->dev=%p kobje=%s udev->state=%d intf->condition =%d\n",
 			__func__, atomic_read(&intf->dev.power.usage_count),status,intf,&intf->dev,kobject_name(&intf->dev.kobj),udev->state,intf->condition );
-
+*/
 	if (udev->state == USB_STATE_NOTATTACHED ||
 			intf->condition == USB_INTERFACE_UNBOUND)
 		goto done;
