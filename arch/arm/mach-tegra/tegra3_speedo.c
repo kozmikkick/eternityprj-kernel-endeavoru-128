@@ -450,7 +450,11 @@ int tegra_package_id(void)
  */
 static const int cpu_speedo_nominal_millivolts[] =
 /* speedo_id 0,    1,    2,    3,    4,    5,    6,    7,    8,   9,  10,  11,   12,   13 */
+#ifdef CONFIG_ETERNITYPROJECT_CPUFMAN
+	{ 1125, 1150, 1150, 1150, 1237, 1237, 1237, 1150, 1150, 912, 850, 850, 1237, 1325};
+#else
 	{ 1125, 1150, 1150, 1150, 1237, 1237, 1237, 1150, 1150, 912, 850, 850, 1237, 1237};
+#endif
 
 int tegra_cpu_speedo_mv(void)
 {
@@ -458,6 +462,12 @@ int tegra_cpu_speedo_mv(void)
 	return cpu_speedo_nominal_millivolts[cpu_speedo_id];
 }
 
+#ifdef CONFIG_ETERNITYPROJECT_CPUFMAN
+int tegra_core_speedo_mv(void)
+{
+	return 1325;
+}
+#else
 int tegra_core_speedo_mv(void)
 {
 	switch (soc_speedo_id) {
@@ -478,3 +488,4 @@ int tegra_core_speedo_mv(void)
 		BUG();
 	}
 }
+#endif

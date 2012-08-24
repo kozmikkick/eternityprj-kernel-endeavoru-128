@@ -34,7 +34,7 @@ static struct dvfs *cpu_dvfs;
 
 static const int cpu_millivolts[MAX_DVFS_FREQS] = {
 #ifdef CONFIG_ETERNITYPROJECT_CPUFMAN
-	800, 825, 850, 875, 900, 916, 950, 975, 1000, 1007, 1025, 1050, 1075, 1100, 1125, 1150, 1200, 1250, 1275, 1300
+	800, 825, 850, 875, 900, 916, 950, 975, 1000, 1007, 1025, 1050, 1075, 1100, 1125, 1150, 1200, 1250, 1275, 1275
 #else
 	800, 825, 850, 875, 900, 916, 950, 975, 1000, 1007, 1025, 1050, 1075, 1100, 1125, 1150, 1175, 1200, 1212, 1237
 #endif
@@ -70,7 +70,7 @@ static struct dvfs_rail tegra3_dvfs_rail_vdd_cpu = {
 
 static struct dvfs_rail tegra3_dvfs_rail_vdd_core = {
 	.reg_id = "vdd_core",
-	.max_millivolts = 1350,
+	.max_millivolts = 1325,
 	.min_millivolts = 950,
 	.step = VDD_SAFE_STEP,
 };
@@ -83,20 +83,19 @@ static struct dvfs_rail *tegra3_dvfs_rails[] = {
 static int tegra3_get_core_floor_mv(int cpu_mv)
 {
 	if (cpu_mv < 800)
-		return  950;
+		return  900;
 	if (cpu_mv < 900)
-		return 1000;
+		return 950;
 	if (cpu_mv < 1000)
-		return 1100;
-	if ((tegra_cpu_speedo_id() < 2) ||
-	    (tegra_cpu_speedo_id() == 4) ||
-	    (tegra_cpu_speedo_id() == 7) ||
-	    (tegra_cpu_speedo_id() == 8))
-		return 1200;
+		return 1050;
 	if (cpu_mv < 1100)
+		return 1150;
+        if (cpu_mv < 1150)
 		return 1200;
-	if (cpu_mv <= 1250)
-		return 1300;
+        if (cpu_mv < 1250)
+                return 1250;
+        if (cpu_mv <= 1325)
+                return 1325;
 	BUG();
 }
 

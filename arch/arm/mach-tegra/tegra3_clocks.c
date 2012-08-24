@@ -356,6 +356,11 @@ static struct cpufreq_frequency_table *selected_cpufreq_table;
 #define SCLK_MIN_FREQ			40000000
 #endif
 
+#ifdef CONFIG_ETERNITYPROJECT_CPUFMAN
+#define EPRJ_MAXPLL	1800000000
+#else
+#define EPRJ_MAXPLL	1700000000
+#endif
 
 static int tegra3_clk_shared_bus_update(struct clk *bus);
 
@@ -3441,6 +3446,14 @@ static struct clk tegra_pll_u = {
 };
 
 static struct clk_pll_freq_table tegra_pll_x_freq_table[] = {
+#ifdef CONFIG_ETERNITYPROJECT_CPUFMAN
+	/* 1.8 GHz */
+	{ 12000000, 1800000000, 900,  6,  1, 8},
+	{ 13000000, 1800000000, 969,  7,  1, 8},
+	{ 16800000, 1800000000, 750,  7,  1, 8},
+	{ 19200000, 1800000000, 750,  8,  1, 8},
+	{ 26000000, 1800000000, 850,  9,  1, 8},	
+#endif
 	/* 1.7 GHz */
 	{ 12000000, 1700000000, 850,  6,  1, 8},
 	{ 13000000, 1700000000, 915,  7,  1, 8},	/* actual: 1699.2 MHz */
@@ -3506,14 +3519,14 @@ static struct clk tegra_pll_x = {
 	.ops       = &tegra_pll_ops,
 	.reg       = 0xe0,
 	.parent    = &tegra_pll_ref,
-	.max_rate  = 1700000000,
+	.max_rate  = EPRJ_MAXPLL,
 	.u.pll = {
 		.input_min = 2000000,
 		.input_max = 31000000,
 		.cf_min    = 1000000,
 		.cf_max    = 6000000,
 		.vco_min   = 20000000,
-		.vco_max   = 1700000000,
+		.vco_max   = EPRJ_MAXPLL,
 		.freq_table = tegra_pll_x_freq_table,
 		.lock_delay = 300,
 	},
@@ -3791,7 +3804,7 @@ static struct clk tegra_clk_cclk_g = {
 	.inputs	= mux_cclk_g,
 	.reg	= 0x368,
 	.ops	= &tegra_super_ops,
-	.max_rate = 1700000000,
+	.max_rate = EPRJ_MAXPLL,
 	.u.cclk = {
 		.div71 = 2 * CPU_G_BACKUP_RATE_DIV - 2,
 	},
@@ -3822,7 +3835,7 @@ static struct clk tegra_clk_virtual_cpu_g = {
 	.name      = "cpu_g",
 	.parent    = &tegra_clk_cclk_g,
 	.ops       = &tegra_cpu_ops,
-	.max_rate  = 1700000000,
+	.max_rate  = EPRJ_MAXPLL,
 	.u.cpu = {
 		.main      = &tegra_pll_x,
 		.backup    = &tegra_pll_p,
@@ -3854,7 +3867,7 @@ static struct clk tegra_clk_cpu_cmplx = {
 	.name      = "cpu",
 	.inputs    = mux_cpu_cmplx,
 	.ops       = &tegra_cpu_cmplx_ops,
-	.max_rate  = 1700000000,
+	.max_rate  = EPRJ_MAXPLL,
 };
 
 static struct clk tegra_clk_cop = {
@@ -4187,9 +4200,15 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("uarte_dbg",	"serial8250.0",		"uarte", 66,	0x1c4,	900000000, mux_pllp_clkm,		MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK_EX("vi",	"tegra_camera",		"vi",	20,	0x148,	470000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT,	&tegra_vi_clk_ops),
 	PERIPH_CLK("vi_sensor",	"tegra_camera",		"vi_sensor",	20,	0x1a8,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
+#ifdef CONFIG_ETERNITYPROJECT_CPUFMAN
+	PERIPH_CLK("3d",	"3d",			NULL,	24,	0x158,	650000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT | DIV_U71_IDLE | PERIPH_MANUAL_RESET),
+	PERIPH_CLK("3d2",       "3d2",			NULL,	98,	0x3b0,	650000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT | DIV_U71_IDLE | PERIPH_MANUAL_RESET),
+	PERIPH_CLK("2d",	"2d",			NULL,	21,	0x15c,	650000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT | DIV_U71_IDLE),
+#else
 	PERIPH_CLK("3d",	"3d",			NULL,	24,	0x158,	600000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT | DIV_U71_IDLE | PERIPH_MANUAL_RESET),
 	PERIPH_CLK("3d2",       "3d2",			NULL,	98,	0x3b0,	600000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT | DIV_U71_IDLE | PERIPH_MANUAL_RESET),
 	PERIPH_CLK("2d",	"2d",			NULL,	21,	0x15c,	600000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT | DIV_U71_IDLE),
+#endif
 	PERIPH_CLK("epp",	"epp",			NULL,	19,	0x16c,	600000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK("mpe",	"mpe",			NULL,	60,	0x170,	600000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK("host1x",	"host1x",		NULL,	28,	0x180,	300000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT),

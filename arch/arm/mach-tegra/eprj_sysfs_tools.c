@@ -84,7 +84,6 @@ static ssize_t eprjsysfs_store(struct kobject *kobj, struct attribute *attr,
 				 const char *buf, size_t len)
 {
 	struct eprj_sysfs *entry = container_of(attr, struct eprj_sysfs, attr);
-	int a = 0;
 	eprj_attribute mynameis;
 
 	sscanf(buf, "%d", &entry->value);
