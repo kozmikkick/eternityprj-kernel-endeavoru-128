@@ -931,14 +931,14 @@ static void vbus_enable(struct tegra_usb_phy *phy)
 	gpio_set_value_cansleep(gpio, 1);
 #else
 
-	pr_info(MODULE_NAME "%s %d(0:utmi, 1:ulpi, 2:null, 3:hsic)\n",
-		__func__, phy->usb_phy_type); /* HTC */
+/*	pr_info(MODULE_NAME "%s %d(0:utmi, 1:ulpi, 2:null, 3:hsic)\n",
+		__func__, phy->usb_phy_type); *//* HTC PIGS */
 
 	if (phy->reg_vbus) {
-		pr_info(MODULE_NAME "%s call regulator_enable\n", __func__); /* HTC */
+/*		pr_info(MODULE_NAME "%s call regulator_enable\n", __func__); *//* HTC PIGS */
 		regulator_enable(phy->reg_vbus);
 	} else {
-		pr_info(MODULE_NAME "%s nop\n", __func__);
+/*		pr_info(MODULE_NAME "%s nop\n", __func__); Who's that pig?*/
 	}
 #endif
 }
@@ -955,12 +955,12 @@ static void vbus_disable(struct tegra_usb_phy *phy)
 	gpio_free(gpio);
 #else
 	pr_info(MODULE_NAME "%s %d(0:utmi, 1:ulpi, 2:null, 3:hsic)\n",
-			__func__, phy->usb_phy_type); /* HTC */
+/*			__func__, phy->usb_phy_type); *//* HTC PIGS */
 	if (phy->reg_vbus) {
-		pr_info(MODULE_NAME "%s: call regulator_disable\n", __func__);
+/*		pr_info(MODULE_NAME "%s: call regulator_disable\n", __func__); Who's that pig?*/
 		regulator_disable(phy->reg_vbus);
 	} else
-		pr_info(MODULE_NAME "%s nop\n", __func__);
+/*		pr_info(MODULE_NAME "%s nop\n", __func__); Who's that pig?*/
 #endif
 }
 
@@ -1690,10 +1690,10 @@ static int uhsic_phy_postsuspend(struct tegra_usb_phy *phy, bool is_dpd)
 {
 	struct tegra_uhsic_config *uhsic_config = phy->config;
 
-	pr_info(MODULE_NAME "%s\n", __func__); /* HTC */
+/*	pr_info(MODULE_NAME "%s\n", __func__); *//* HTC PIGS */
 
 	if (uhsic_config->postsuspend) {
-		pr_info(MODULE_NAME "%s call uhsic_config->postsuspend\n", __func__); /* HTC */
+/*		pr_info(MODULE_NAME "%s call uhsic_config->postsuspend\n", __func__); *//* HTC PIGS */
 		uhsic_config->postsuspend();
 	}
 
@@ -1717,7 +1717,7 @@ static int uhsic_phy_postresume(struct tegra_usb_phy *phy, bool is_dpd)
 
 	printk(KERN_INFO"%s\n", __func__);
 
-	pr_info(MODULE_NAME "%s\n", __func__); /* HTC */
+/*	pr_info(MODULE_NAME "%s\n", __func__); *//* HTC PIGS */
 
 	val = readl(base + USB_TXFILLTUNING);
 	if ((val & USB_FIFO_TXFILL_MASK) != USB_FIFO_TXFILL_THRES(0x10)) {
@@ -2335,8 +2335,8 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy, bool is_dpd)
 	void __iomem *base = phy->regs;
 	struct tegra_uhsic_config *uhsic_config = phy->config;
 
-	pr_info(MODULE_NAME "%s %d(0:utmi, 1:ulpi, 2:null, 3:hsic)\n",
-		__func__, phy->usb_phy_type); /* HTC */
+/*	pr_info(MODULE_NAME "%s %d(0:utmi, 1:ulpi, 2:null, 3:hsic)\n",
+		__func__, phy->usb_phy_type); *//* HTC PIGS*/
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	uhsic_powerup_pmc_wake_detect(phy);
 #endif
@@ -2449,8 +2449,8 @@ static int uhsic_phy_power_off(struct tegra_usb_phy *phy, bool is_dpd)
 	void __iomem *base = phy->regs;
 	struct tegra_uhsic_config *uhsic_config = phy->config;
 
-	pr_info(MODULE_NAME "%s %d(0:utmi, 1:ulpi, 2:null, 3:hsic)\n",
-		__func__, phy->usb_phy_type); /* HTC */
+/*	pr_info(MODULE_NAME "%s %d(0:utmi, 1:ulpi, 2:null, 3:hsic)\n",
+		__func__, phy->usb_phy_type); *//* HTC PIGS */
 
 	//workaround for CP L0 L2 L0 L3
 	if (uhsic_config->post_phy_off && uhsic_config->post_phy_off())
@@ -2496,7 +2496,7 @@ static irqreturn_t usb_phy_vbus_irq_thr(int irq, void *pdata)
 	struct tegra_usb_phy *phy = pdata;
 
 	if (phy->reg_vdd && !phy->regulator_on) {
-		pr_info(MODULE_NAME "%s: regulator_enable(phy->reg_vdd), set regulator_on=1\n", __func__); /* HTC */
+/*		pr_info(MODULE_NAME "%s: regulator_enable(phy->reg_vdd), set regulator_on=1\n", __func__); *//* HTC PIGS */
 		regulator_enable(phy->reg_vdd);
 		phy->regulator_on = 1;
 		/*
@@ -2514,7 +2514,7 @@ static irqreturn_t usb_phy_vbus_irq_thr(int irq, void *pdata)
 	cable_detection_queue_vbus_work(0);
 #endif
 	adb_count_set(0);
-	pr_info(MODULE_NAME "%s: done\n", __func__); /* HTC */
+/*	pr_info(MODULE_NAME "%s: done\n", __func__); *//* HTC PIGS */
 	return IRQ_HANDLED;
 }
 
@@ -2532,8 +2532,8 @@ struct tegra_usb_phy *tegra_usb_phy_open(int instance, void __iomem *regs,
 	int reset_gpio, enable_gpio;
 #endif
 
-	pr_info(MODULE_NAME "%s %d(0:utmi, 1:ulpi, 2:null, 3:hsic)\n",
-		__func__, usb_phy_type); /* HTC */
+/*	pr_info(MODULE_NAME "%s %d(0:utmi, 1:ulpi, 2:null, 3:hsic)\n",
+		__func__, usb_phy_type); *//* HTC PIGS*/
 
 	phy = kzalloc(sizeof(struct tegra_usb_phy), GFP_KERNEL);
 	if (!phy)
@@ -2733,8 +2733,8 @@ int tegra_usb_phy_power_on(struct tegra_usb_phy *phy, bool is_dpd)
 		uhsic_phy_power_on,
 	};
 
-	pr_info(MODULE_NAME "%s %d(0:utmi, 1:ulpi, 2:null, 3:hsic)\n",
-		__func__, phy->usb_phy_type); /* HTC */
+/*	pr_info(MODULE_NAME "%s %d(0:utmi, 1:ulpi, 2:null, 3:hsic)\n",
+		__func__, phy->usb_phy_type); *//* HTC PIGS */
 
 	if (phy->power_on)
 		return ret;
@@ -2771,8 +2771,8 @@ void tegra_usb_phy_power_off(struct tegra_usb_phy *phy, bool is_dpd)
 		uhsic_phy_power_off,
 	};
 
-	pr_info(MODULE_NAME "%s %d(0:utmi, 1:ulpi, 2:null, 3:hsic)\n",
-		__func__, phy->usb_phy_type); /* HTC */
+/*	pr_info(MODULE_NAME "%s %d(0:utmi, 1:ulpi, 2:null, 3:hsic)\n",
+		__func__, phy->usb_phy_type); *//* HTC PIGS */
 
 	if (!phy->power_on)
 		return;
@@ -2804,10 +2804,10 @@ void tegra_usb_phy_preresume(struct tegra_usb_phy *phy, bool is_dpd)
 		uhsic_phy_preresume,
 	};
 
-	pr_info(MODULE_NAME "%s\n", __func__); /* HTC */
+/*	pr_info(MODULE_NAME "%s\n", __func__); *//* HTC PIGS */
 
 	if (preresume[phy->usb_phy_type]) {
-		pr_info(MODULE_NAME "%s call preresume\n", __func__); /* HTC */
+/*		pr_info(MODULE_NAME "%s call preresume\n", __func__); *//* HTC PIGS */
 		preresume[phy->usb_phy_type](phy, is_dpd);
 	}
 }
@@ -2835,7 +2835,7 @@ void tegra_usb_phy_postsuspend(struct tegra_usb_phy *phy, bool is_dpd)
 		uhsic_phy_postsuspend,
 	};
 
-	pr_info(MODULE_NAME "%s\n", __func__); /* HTC */
+/*	pr_info(MODULE_NAME "%s\n", __func__); *//* HTC PIGS*/
 
 	if (postsuspend[phy->usb_phy_type]) {
 		pr_info(MODULE_NAME "%s call postsuspend\n", __func__); /* HTC */
@@ -2852,7 +2852,7 @@ void tegra_usb_phy_postresume(struct tegra_usb_phy *phy, bool is_dpd)
 		uhsic_phy_postresume,
 	};
 
-	pr_info(MODULE_NAME "%s\n", __func__); /* HTC */
+/*	pr_info(MODULE_NAME "%s\n", __func__); *//* HTC PIGS */
 
 	if (postresume[phy->usb_phy_type]) {
 		pr_info(MODULE_NAME "%s call postresume\n", __func__); /* HTC */
@@ -2927,8 +2927,8 @@ void tegra_usb_phy_clk_enable(struct tegra_usb_phy *phy)
 
 void tegra_usb_phy_close(struct tegra_usb_phy *phy)
 {
-	pr_info(MODULE_NAME "%s %d(0:utmi, 1:ulpi, 2:null, 3:hsic)\n",
-		__func__, phy->usb_phy_type); /* HTC */
+/*	pr_info(MODULE_NAME "%s %d(0:utmi, 1:ulpi, 2:null, 3:hsic)\n",
+		__func__, phy->usb_phy_type); *//* HTC PIGS */
 
 	if (phy->usb_phy_type == TEGRA_USB_PHY_TYPE_UTMIP) {
 		utmip_pad_close(phy);
@@ -2942,11 +2942,11 @@ void tegra_usb_phy_close(struct tegra_usb_phy *phy)
 	clk_disable(phy->pll_u);
 	clk_put(phy->pll_u);
 	if (phy->reg_vbus) {
-		pr_info(MODULE_NAME "%s, regulator_put(phy->reg_vbus)\n", __func__); /* HTC */
+/*		pr_info(MODULE_NAME "%s, regulator_put(phy->reg_vbus)\n", __func__); *//* HTC PIGS */
 		regulator_put(phy->reg_vbus);
 	}
 	if (phy->reg_vdd) {
-		pr_info(MODULE_NAME "%s, regulator_put(phy->reg_vdd)\n", __func__); /* HTC */
+/*		pr_info(MODULE_NAME "%s, regulator_put(phy->reg_vdd)\n", __func__); *//* HTC PIGS */
 		regulator_put(phy->reg_vdd);
 	}
 	if (phy->instance == 0 && usb_phy_data[0].vbus_irq)
@@ -2960,7 +2960,7 @@ int tegra_usb_phy_bus_connect(struct tegra_usb_phy *phy)
 	void __iomem *base = phy->regs;
 	struct tegra_uhsic_config *uhsic_config = phy->config;
 
-	pr_info(MODULE_NAME "%s\n", __func__); /* HTC */
+/*	pr_info(MODULE_NAME "%s\n", __func__); *//* HTC PIGS */
 
 	if (phy->usb_phy_type == TEGRA_USB_PHY_TYPE_HSIC) {
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
@@ -2980,12 +2980,12 @@ int tegra_usb_phy_bus_connect(struct tegra_usb_phy *phy)
 		val |= UHSIC_DETECT_SHORT_CONNECT;
 		writel(val, base + UHSIC_MISC_CFG0);
 		udelay(1);
-		pr_info(MODULE_NAME "%s(%d) - val=0x%lx\n", __func__, __LINE__, val); /* HTC */
+/*		pr_info(MODULE_NAME "%s(%d) - val=0x%lx\n", __func__, __LINE__, val); *//* HTC PIGS */
 
 		val = readl(base + UHSIC_MISC_CFG0);
 		val |= UHSIC_FORCE_XCVR_MODE;
 		writel(val, base + UHSIC_MISC_CFG0);
-		pr_info(MODULE_NAME "%s(%d) - val=0x%lx\n", __func__, __LINE__, val); /* HTC */
+/*		pr_info(MODULE_NAME "%s(%d) - val=0x%lx\n", __func__, __LINE__, val); *//* HTC PIGS */
 
 		val = readl(base + UHSIC_PADS_CFG1);
 		val &= ~UHSIC_RPD_STROBE;
@@ -2993,7 +2993,7 @@ int tegra_usb_phy_bus_connect(struct tegra_usb_phy *phy)
 		val |= UHSIC_RPU_STROBE;
 #endif
 		writel(val, base + UHSIC_PADS_CFG1);
-		pr_info(MODULE_NAME "%s(%d) - val=0x%lx\n", __func__, __LINE__, val); /* HTC */
+/*		pr_info(MODULE_NAME "%s(%d) - val=0x%lx\n", __func__, __LINE__, val); *//* HTC PIGS */
 
 		if (uhsic_config->usb_phy_ready &&
 					uhsic_config->usb_phy_ready())
@@ -3024,7 +3024,7 @@ int tegra_usb_phy_bus_reset(struct tegra_usb_phy *phy)
 	void __iomem *base = phy->regs;
 	int spin = 5;
 
-	pr_info(MODULE_NAME "%s patch for late 5sec \n", __func__); /* HTC */
+/*	pr_info(MODULE_NAME "%s patch for late 5sec \n", __func__); *//* HTC PIGS*/
 
 	if (phy->usb_phy_type == TEGRA_USB_PHY_TYPE_HSIC) {
 retry:
@@ -3113,7 +3113,7 @@ retry:
 		}
 	}
 
-	pr_info(MODULE_NAME "%s, complete\n", __func__); /* HTC */
+/*	pr_info(MODULE_NAME "%s, complete\n", __func__); *//* HTC PIGS */
 	return 0;
 }
 
@@ -3123,7 +3123,7 @@ int tegra_usb_phy_bus_idle(struct tegra_usb_phy *phy)
 	void __iomem *base = phy->regs;
 	struct tegra_uhsic_config *uhsic_config = phy->config;
 
-	pr_info(MODULE_NAME "%s\n", __func__); /* HTC */
+/*	pr_info(MODULE_NAME "%s\n", __func__); *//* HTC PIGS */
 
 	if (phy->usb_phy_type == TEGRA_USB_PHY_TYPE_HSIC) {
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
@@ -3138,12 +3138,12 @@ int tegra_usb_phy_bus_idle(struct tegra_usb_phy *phy)
 		val |= HOSTPC1_DEVLC_PSPD(HOSTPC1_DEVLC_PSPD_HIGH_SPEED);
 		writel(val, base + HOSTPC1_DEVLC);
 #endif
-		pr_info(MODULE_NAME "%s(%d) - val=0x%lx\n", __func__, __LINE__, val); /* HTC */
+/*		pr_info(MODULE_NAME "%s(%d) - val=0x%lx\n", __func__, __LINE__, val); *//* HTC PIGS */
 		val = readl(base + UHSIC_MISC_CFG0);
 		val |= UHSIC_DETECT_SHORT_CONNECT;
 		writel(val, base + UHSIC_MISC_CFG0);
 		udelay(1);
-		pr_info(MODULE_NAME "%s(%d) - val=0x%lx\n", __func__, __LINE__, val); /* HTC */
+/*		pr_info(MODULE_NAME "%s(%d) - val=0x%lx\n", __func__, __LINE__, val); *//* HTC PIGS */
 
 		val = readl(base + UHSIC_MISC_CFG0);
 		val |= UHSIC_FORCE_XCVR_MODE;
@@ -3154,7 +3154,7 @@ int tegra_usb_phy_bus_idle(struct tegra_usb_phy *phy)
 		/* safe to enable RPU on STROBE at all times during idle */
 		val |= UHSIC_RPU_STROBE;
 		writel(val, base + UHSIC_PADS_CFG1);
-		pr_info(MODULE_NAME "%s(%d) - val=0x%lx\n", __func__, __LINE__, val); /* HTC */
+/*		pr_info(MODULE_NAME "%s(%d) - val=0x%lx\n", __func__, __LINE__, val); *//* HTC PIGS */
 
 		val = readl(base + USB_USBCMD);
 		val &= ~USB_USBCMD_RS;
@@ -3288,7 +3288,7 @@ void tegra_usb_phy_power_down_pmc(void)
 
 int __init tegra_usb_phy_init(struct usb_phy_plat_data *pdata, int size)
 {
-	pr_info(MODULE_NAME "%s\n", __func__); /* HTC */
+/*	pr_info(MODULE_NAME "%s\n", __func__); *//* HTC PIGS */
 
 	if (pdata) {
 		int i;
