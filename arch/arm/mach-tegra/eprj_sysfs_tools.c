@@ -34,19 +34,10 @@
 #include <asm/uaccess.h>
 #include <mach/eternityproject.h>
 
-bool wifiwakelock_is_allowed = 0;
-struct wake_lock eprj_wifi_lock;
-
 static struct eprj_sysfs android_release = {
 	.attr.name = "android_apirev",
 	.attr.mode = 0644,
 	.value = ANDROID_API_ICS, /* By default, we assume we are working with ICS */
-};
-
-static struct eprj_sysfs wifi_hwbug = {
-	.attr.name = "wifi_wakelock",
-	.attr.mode = 0666,
-	.value = 1, /* 0 = Disallow wakelock -- 1 = Allow wakelock */
 };
 
 static struct eprj_sysfs pwrmode = {
@@ -66,7 +57,6 @@ typedef enum
 {
 	EPRJ_INVALID = 0,
 	HSMGR_APIREV,
-	WIFI_WAKELOCK,
 	POWER_LOCK
 } eprj_attribute;
 
@@ -74,8 +64,6 @@ static eprj_attribute calling_attribute(const char *attrname)
 {
 	if (!strcmp(attrname, "android_apirev"))
 		return HSMGR_APIREV;
-	if (!strcmp(attrname, "wifi_wakelock"))
-		return WIFI_WAKELOCK;
 	if (!strcmp(attrname, "power_lock"))
 		return POWER_LOCK;
 
@@ -110,12 +98,6 @@ static ssize_t eprjsysfs_store(struct kobject *kobj, struct attribute *attr,
 				EPRJ_PRINT("EternityProject HSMGR: Android Jellybean detected.\n");
 				eprj_hsmgr_35mm_os(ANDROID_API_JB);
 			}
-			break;
-		case WIFI_WAKELOCK:
-			a = wake_lock_active(&eprj_wifi_lock);
-			if (a != 0)
-				wake_unlock(&eprj_wifi_lock);
-			wifiwakelock_is_allowed = entry->value;
 			break;
 		case POWER_LOCK:
 			eprj_extreme_powersave(entry->value);
@@ -214,7 +196,6 @@ static int __init eprj_sysfs_tools_init(void)
 	}
 	if (!ret)
 		printk("EternityProject sysfs Tools: Initialized!\n");
-	wake_lock_init(&eprj_wifi_lock, WAKE_LOCK_SUSPEND, "wifi_wakelock");
 	return ret;
 }
 
@@ -224,7 +205,6 @@ static void __exit eprj_sysfs_tools_exit(void)
 		kobject_put(eprj_sysfs_tools);
 		kfree(eprj_sysfs_tools);
 	}
-	wake_lock_destroy(&eprj_wifi_lock);
 }
 
 late_initcall(eprj_sysfs_tools_init);
