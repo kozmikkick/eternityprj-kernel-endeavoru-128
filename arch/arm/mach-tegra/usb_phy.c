@@ -937,9 +937,9 @@ static void vbus_enable(struct tegra_usb_phy *phy)
 	if (phy->reg_vbus) {
 /*		pr_info(MODULE_NAME "%s call regulator_enable\n", __func__); *//* HTC PIGS */
 		regulator_enable(phy->reg_vbus);
-	} else {
-/*		pr_info(MODULE_NAME "%s nop\n", __func__); Who's that pig?*/
-	}
+	}/* else {
+		pr_info(MODULE_NAME "%s nop\n", __func__); Who's that pig?
+	}*/
 #endif
 }
 
@@ -954,13 +954,13 @@ static void vbus_disable(struct tegra_usb_phy *phy)
 	gpio_set_value_cansleep(gpio, 0);
 	gpio_free(gpio);
 #else
-	pr_info(MODULE_NAME "%s %d(0:utmi, 1:ulpi, 2:null, 3:hsic)\n",
-/*			__func__, phy->usb_phy_type); *//* HTC PIGS */
+/*	pr_info(MODULE_NAME "%s %d(0:utmi, 1:ulpi, 2:null, 3:hsic)\n",
+			__func__, phy->usb_phy_type); *//* HTC PIGS */
 	if (phy->reg_vbus) {
 /*		pr_info(MODULE_NAME "%s: call regulator_disable\n", __func__); Who's that pig?*/
 		regulator_disable(phy->reg_vbus);
-	} else
-/*		pr_info(MODULE_NAME "%s nop\n", __func__); Who's that pig?*/
+	}/* else
+		pr_info(MODULE_NAME "%s nop\n", __func__); Who's that pig?*/
 #endif
 }
 

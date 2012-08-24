@@ -49,7 +49,6 @@ static struct eprj_sysfs pwrmode = {
 struct attribute * eprjmanager[] = {
 	&android_release.attr,
 	&pwrmode.attr,
-	&wifi_hwbug.attr,
 	NULL
 };
 
