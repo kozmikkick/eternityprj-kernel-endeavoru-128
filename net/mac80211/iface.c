@@ -461,8 +461,9 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 	/* APs need special treatment */
 	if (sdata->vif.type == NL80211_IFTYPE_AP) {
 		struct ieee80211_sub_if_data *vlan, *tmpsdata;
-		struct beacon_data *old_beacon = sdata->u.ap.beacon;
-		struct sk_buff *old_probe_resp =
+		struct beacon_data *old_beacon =
+			rtnl_dereference(sdata->u.ap.beacon);
+		struct probe_resp *old_probe_resp =
 			rtnl_dereference(sdata->u.ap.probe_resp);
 
 		/* sdata_running will return false, so this will disable */
@@ -474,7 +475,7 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 		RCU_INIT_POINTER(sdata->u.ap.probe_resp, NULL);
 		synchronize_rcu();
 		kfree(old_beacon);
-		kfree(old_probe_resp);
+		ieee80211_free_probe_resp(old_probe_resp);
 
 		/* down all dependent devices, that is VLANs */
 		list_for_each_entry_safe(vlan, tmpsdata, &sdata->u.ap.vlans,
@@ -672,7 +673,6 @@ static u16 ieee80211_monitor_select_queue(struct net_device *dev,
 	struct ieee80211_local *local = sdata->local;
 	struct ieee80211_hdr *hdr;
 	struct ieee80211_radiotap_header *rtap = (void *)skb->data;
-	u8 *p;
 
 	if (local->hw.queues < 4)
 		return 0;
@@ -683,19 +683,7 @@ static u16 ieee80211_monitor_select_queue(struct net_device *dev,
 
 	hdr = (void *)((u8 *)skb->data + le16_to_cpu(rtap->it_len));
 
-	if (!ieee80211_is_data(hdr->frame_control)) {
-		skb->priority = 7;
-		return ieee802_1d_to_ac[skb->priority];
-	}
-	if (!ieee80211_is_data_qos(hdr->frame_control)) {
-		skb->priority = 0;
-		return ieee802_1d_to_ac[skb->priority];
-	}
-
-	p = ieee80211_get_qos_ctl(hdr);
-	skb->priority = *p & IEEE80211_QOS_CTL_TAG1D_MASK;
-
-	return ieee80211_downgrade_queue(local, skb);
+	return ieee80211_select_queue_80211(local, skb, hdr);
 }
 
 static const struct net_device_ops ieee80211_monitorif_ops = {
@@ -1193,13 +1181,6 @@ int ieee80211_if_add(struct ieee80211_local *local, const char *name,
 		sband = local->hw.wiphy->bands[i];
 		sdata->rc_rateidx_mask[i] =
 			sband ? (1 << sband->n_bitrates) - 1 : 0;
-		if (sband)
-			memcpy(sdata->rc_rateidx_mcs_mask[i],
-			       sband->ht_cap.mcs.rx_mask,
-			       sizeof(sdata->rc_rateidx_mcs_mask[i]));
-		else
-			memset(sdata->rc_rateidx_mcs_mask[i], 0,
-			       sizeof(sdata->rc_rateidx_mcs_mask[i]));
 	}
 
 	/* setup type-dependent data */

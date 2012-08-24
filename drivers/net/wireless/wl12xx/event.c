@@ -193,6 +193,7 @@ static int wl1271_event_process(struct wl1271 *wl, struct event_mailbox *mbox)
 
 		/* TODO: configure only the relevant vif */
 		wl12xx_for_each_wlvif_sta(wl, wlvif) {
+			struct ieee80211_vif *vif = wl12xx_wlvif_to_vif(wlvif);
 			bool success;
 
 			if (!test_and_clear_bit(WLVIF_FLAG_CS_PROGRESS,
@@ -200,8 +201,6 @@ static int wl1271_event_process(struct wl1271 *wl, struct event_mailbox *mbox)
 				continue;
 
 			success = mbox->channel_switch_status ? false : true;
-			vif = wl12xx_wlvif_to_vif(wlvif);
-
 			ieee80211_chswitch_done(vif, success);
 		}
 	}
@@ -258,12 +257,41 @@ static int wl1271_event_process(struct wl1271 *wl, struct event_mailbox *mbox)
 		}
 	}
 
-	if (beacon_loss)
+	if (beacon_loss) {
+		unsigned long now = jiffies;
+		struct conf_conn_settings *conn = &wl->conf.conn;
+
 		wl12xx_for_each_wlvif_sta(wl, wlvif) {
 			vif = wl12xx_wlvif_to_vif(wlvif);
-			ieee80211_connection_loss(vif);
-		}
 
+			/* no roaming for p2p connection */
+			if (wlvif->p2p) {
+				ieee80211_connection_loss(vif);
+				continue;
+			}
+
+			/* check for consecutive beacon loss events */
+			if (!wlvif->sta.last_bcn_loss ||
+			    time_after(now,
+				       wlvif->sta.last_bcn_loss +
+				       msecs_to_jiffies(
+						conn->cons_bcn_loss_time))) {
+				/* first beacon loss */
+				wlvif->sta.first_bcn_loss = now;
+				ieee80211_cqm_rssi_notify(
+					vif,
+					NL80211_CQM_RSSI_BEACON_LOSS_EVENT,
+					GFP_KERNEL);
+
+			} else if (time_after(now,
+					wlvif->sta.first_bcn_loss +
+					msecs_to_jiffies(
+						conn->max_bcn_loss_time))) {
+				ieee80211_connection_loss(vif);
+			}
+			wlvif->sta.last_bcn_loss = now;
+		}
+	}
 	return 0;
 }
 
@@ -278,13 +306,20 @@ int wl1271_event_unmask(struct wl1271 *wl)
 	return 0;
 }
 
-void wl1271_event_mbox_config(struct wl1271 *wl)
+int wl1271_event_mbox_config(struct wl1271 *wl)
 {
-	wl->mbox_ptr[0] = wl1271_read32(wl, REG_EVENT_MAILBOX_PTR);
+	int ret;
+
+	ret = wl1271_read32(wl, REG_EVENT_MAILBOX_PTR, &wl->mbox_ptr[0]);
+	if (ret < 0)
+		return ret;
+
 	wl->mbox_ptr[1] = wl->mbox_ptr[0] + sizeof(struct event_mailbox);
 
 	wl1271_debug(DEBUG_EVENT, "MBOX ptrs: 0x%x 0x%x",
 		     wl->mbox_ptr[0], wl->mbox_ptr[1]);
+
+	return 0;
 }
 
 int wl1271_event_handle(struct wl1271 *wl, u8 mbox_num)
@@ -298,8 +333,10 @@ int wl1271_event_handle(struct wl1271 *wl, u8 mbox_num)
 		return -EINVAL;
 
 	/* first we read the mbox descriptor */
-	wl1271_read(wl, wl->mbox_ptr[mbox_num], &mbox,
-		    sizeof(struct event_mailbox), false);
+	ret = wl1271_read(wl, wl->mbox_ptr[mbox_num], &mbox,
+			  sizeof(struct event_mailbox), false);
+	if (ret < 0)
+		return ret;
 
 	/* process the descriptor */
 	ret = wl1271_event_process(wl, &mbox);
@@ -307,7 +344,7 @@ int wl1271_event_handle(struct wl1271 *wl, u8 mbox_num)
 		return ret;
 
 	/* then we let the firmware know it can go on...*/
-	wl1271_write32(wl, ACX_REG_INTERRUPT_TRIG, INTR_TRIG_EVENT_ACK);
+	ret = wl1271_write32(wl, ACX_REG_INTERRUPT_TRIG, INTR_TRIG_EVENT_ACK);
 
-	return 0;
+	return ret;
 }

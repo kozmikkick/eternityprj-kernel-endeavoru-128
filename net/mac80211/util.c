@@ -13,6 +13,7 @@
 
 #include <net/mac80211.h>
 #include <linux/netdevice.h>
+#include <linux/module.h>
 #include <linux/types.h>
 #include <linux/slab.h>
 #include <linux/skbuff.h>
@@ -861,8 +862,8 @@ u32 ieee80211_mandatory_rates(struct ieee80211_local *local,
 
 void ieee80211_send_auth(struct ieee80211_sub_if_data *sdata,
 			 u16 transaction, u16 auth_alg,
-			 u8 *extra, size_t extra_len, const u8 *da,
-			 const u8 *bssid, const u8 *key, u8 key_len, u8 key_idx)
+			 u8 *extra, size_t extra_len, const u8 *bssid,
+			 const u8 *key, u8 key_len, u8 key_idx)
 {
 	struct ieee80211_local *local = sdata->local;
 	struct sk_buff *skb;
@@ -880,7 +881,7 @@ void ieee80211_send_auth(struct ieee80211_sub_if_data *sdata,
 	memset(mgmt, 0, 24 + 6);
 	mgmt->frame_control = cpu_to_le16(IEEE80211_FTYPE_MGMT |
 					  IEEE80211_STYPE_AUTH);
-	memcpy(mgmt->da, da, ETH_ALEN);
+	memcpy(mgmt->da, bssid, ETH_ALEN);
 	memcpy(mgmt->sa, sdata->vif.addr, ETH_ALEN);
 	memcpy(mgmt->bssid, bssid, ETH_ALEN);
 	mgmt->u.auth.auth_alg = cpu_to_le16(auth_alg);
@@ -913,6 +914,8 @@ int ieee80211_build_preq_ies(struct ieee80211_local *local, u8 *buffer,
 	int ext_rates_len;
 
 	sband = local->hw.wiphy->bands[band];
+	if (WARN_ON_ONCE(!sband))
+		return 0;
 
 	pos = buffer;
 
@@ -1141,6 +1144,16 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 		 */
 	}
 #endif
+
+	/* setup fragmentation threshold */
+	drv_set_frag_threshold(local, hw->wiphy->frag_threshold);
+
+	/* setup RTS threshold */
+	drv_set_rts_threshold(local, hw->wiphy->rts_threshold);
+
+	/* reset coverage class */
+	drv_set_coverage_class(local, hw->wiphy->coverage_class);
+
 	/* everything else happens only if HW was up & running */
 	if (!local->open_count)
 		goto wake_up;
@@ -1159,15 +1172,6 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 		return res;
 	}
 
-	/* setup fragmentation threshold */
-	drv_set_frag_threshold(local, hw->wiphy->frag_threshold);
-
-	/* setup RTS threshold */
-	drv_set_rts_threshold(local, hw->wiphy->rts_threshold);
-
-	/* reset coverage class */
-	drv_set_coverage_class(local, hw->wiphy->coverage_class);
-
 	ieee80211_led_radio(local, true);
 	ieee80211_mod_tpt_led_trig(local,
 				   IEEE80211_TPT_LEDTRIG_FL_RADIO, 0);
@@ -1184,14 +1188,20 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 	mutex_lock(&local->sta_mtx);
 	list_for_each_entry(sta, &local->sta_list, list) {
 		if (sta->uploaded) {
-			enum ieee80211_sta_state state;
+			enum ieee80211_sta_state state = IEEE80211_STA_NONE;
 
-			WARN_ON(drv_sta_add(local, sta->sdata, &sta->sta));
+			sdata = sta->sdata;
+			if (sdata->vif.type == NL80211_IFTYPE_AP_VLAN)
+				sdata = container_of(sdata->bss,
+					     struct ieee80211_sub_if_data,
+					     u.ap);
 
-			for (state = IEEE80211_STA_NOTEXIST;
-			     state < sta->sta_state - 1; state++)
-				WARN_ON(drv_sta_state(local, sta->sdata, sta,
-						      state, state + 1));
+			if (WARN_ON(drv_sta_add(local, sdata, &sta->sta)))
+				continue;
+
+			while (state < sta->sta.state)
+				drv_sta_state(local, sdata, &sta->sta,
+					      ++state);
 		}
 	}
 	mutex_unlock(&local->sta_mtx);
@@ -1211,6 +1221,7 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 	ieee80211_hw_config(local, ~0);
 
 	ieee80211_configure_filter(local);
+	ieee80211_set_rx_filters(hw->wiphy, local->wowlan_patterns);
 
 	/* Finally also reconfigure all the BSS information */
 	list_for_each_entry(sdata, &local->interfaces, list) {
@@ -1228,7 +1239,8 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 			  BSS_CHANGED_BEACON_INT |
 			  BSS_CHANGED_BSSID |
 			  BSS_CHANGED_CQM |
-			  BSS_CHANGED_QOS;
+			  BSS_CHANGED_QOS |
+			  BSS_CHANGED_IDLE;
 
 		switch (sdata->vif.type) {
 		case NL80211_IFTYPE_STATION:
@@ -1268,11 +1280,12 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 		}
 	}
 
+	ieee80211_recalc_ps(local, -1);
 	/*
 	 * The sta might be in psm against the ap (e.g. because
-	 * this was the state before a hw restart), so we
-	 * explicitly send a null packet in order to make sure
-	 * it'll sync against the ap (and get out of psm).
+	 * that's the state it was before the hw restart), so we
+	 * explicitly send a null packet in order to make sure it'll
+	 * sync against the ap.
 	 */
 	if (!(local->hw.conf.flags & IEEE80211_CONF_PS)) {
 		list_for_each_entry(sdata, &local->interfaces, list) {
@@ -1283,6 +1296,12 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 		}
 	}
 
+	/* add back keys */
+	list_for_each_entry(sdata, &local->interfaces, list)
+		if (ieee80211_sdata_running(sdata))
+			ieee80211_enable_keys(sdata);
+
+ wake_up:
 	/*
 	 * Clear the WLAN_STA_BLOCK_BA flag so new aggregation
 	 * sessions can be established after a resume.
@@ -1304,12 +1323,6 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 		mutex_unlock(&local->sta_mtx);
 	}
 
-	/* add back keys */
-	list_for_each_entry(sdata, &local->interfaces, list)
-		if (ieee80211_sdata_running(sdata))
-			ieee80211_enable_keys(sdata);
-
- wake_up:
 	ieee80211_wake_queues_by_reason(hw,
 			IEEE80211_QUEUE_STOP_REASON_SUSPEND);
 
@@ -1353,6 +1366,33 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 #endif
 	return 0;
 }
+
+void ieee80211_resume_disconnect(struct ieee80211_vif *vif)
+{
+	struct ieee80211_sub_if_data *sdata;
+	struct ieee80211_local *local;
+	struct ieee80211_key *key;
+
+	if (WARN_ON(!vif))
+		return;
+
+	sdata = vif_to_sdata(vif);
+	local = sdata->local;
+
+	if (WARN_ON(!local->resuming))
+		return;
+
+	if (WARN_ON(vif->type != NL80211_IFTYPE_STATION))
+		return;
+
+	sdata->flags |= IEEE80211_SDATA_DISCONNECT_RESUME;
+
+	mutex_lock(&local->key_mtx);
+	list_for_each_entry(key, &sdata->key_list, list)
+		key->flags |= KEY_FLAG_TAINTED;
+	mutex_unlock(&local->key_mtx);
+}
+EXPORT_SYMBOL_GPL(ieee80211_resume_disconnect);
 
 static int check_mgd_smps(struct ieee80211_if_managed *ifmgd,
 			  enum ieee80211_smps_mode *smps_mode)
@@ -1669,3 +1709,58 @@ int ieee80211_add_ext_srates_ie(struct ieee80211_vif *vif, struct sk_buff *skb)
 	}
 	return 0;
 }
+
+int ieee80211_get_open_count(struct ieee80211_hw *hw,
+			     struct ieee80211_vif *exclude_vif)
+{
+	struct ieee80211_local *local = hw_to_local(hw);
+	struct ieee80211_sub_if_data *sdata;
+	int count = 0;
+
+	list_for_each_entry(sdata, &local->interfaces, list) {
+		if (sdata->vif.type == NL80211_IFTYPE_AP_VLAN ||
+		    sdata->vif.type == NL80211_IFTYPE_MONITOR ||
+		    !ieee80211_sdata_running(sdata))
+			continue;
+
+		if (exclude_vif == &sdata->vif)
+			continue;
+
+		count++;
+	}
+	return count;
+}
+EXPORT_SYMBOL(ieee80211_get_open_count);
+
+bool ieee80211_suspending(struct ieee80211_hw *hw)
+{
+	struct ieee80211_local *local = hw_to_local(hw);
+
+	return local->quiescing;
+}
+EXPORT_SYMBOL(ieee80211_suspending);
+
+int ieee80211_started_vifs_count(struct ieee80211_hw *hw)
+{
+	struct ieee80211_local *local = hw_to_local(hw);
+	struct ieee80211_sub_if_data *sdata;
+	int count = 0;
+
+	rcu_read_lock();
+
+	list_for_each_entry_rcu(sdata, &local->interfaces, list) {
+		if (!ieee80211_sdata_running(sdata))
+			continue;
+
+		if (sdata->vif.type == NL80211_IFTYPE_AP_VLAN ||
+		    sdata->vif.type == NL80211_IFTYPE_MONITOR)
+			continue;
+
+		if (!sdata->vif.bss_conf.idle)
+			count++;
+	}
+
+	rcu_read_unlock();
+	return count;
+}
+EXPORT_SYMBOL(ieee80211_started_vifs_count);

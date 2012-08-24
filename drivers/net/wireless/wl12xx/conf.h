@@ -433,8 +433,7 @@ struct conf_rx_settings {
 #define CONF_TX_RATE_RETRY_LIMIT       10
 
 /* basic rates for p2p operations (probe req/resp, etc.) */
-#define CONF_TX_RATE_MASK_BASIC_P2P    (CONF_HW_BIT_RATE_6MBPS | \
-	CONF_HW_BIT_RATE_12MBPS | CONF_HW_BIT_RATE_24MBPS)
+#define CONF_TX_RATE_MASK_BASIC_P2P    CONF_HW_BIT_RATE_6MBPS
 
 /*
  * Rates supported for data packets when operating as AP. Note the absence
@@ -533,7 +532,7 @@ enum conf_tx_ac {
 	CONF_TX_AC_VI = 2,         /* video */
 	CONF_TX_AC_VO = 3,         /* voice */
 	CONF_TX_AC_CTS2SELF = 4,   /* fictitious AC, follows AC_VO */
-	CONF_TX_AC_ANY_TID = 0x1f
+	CONF_TX_AC_ANY_TID = 0xff
 };
 
 struct conf_tx_ac_category {
@@ -865,6 +864,22 @@ struct conf_conn_settings {
 	u32 bss_lose_timeout;
 
 	/*
+	 * Max time (in msec) between beacon loss events in which they are still
+	 * considered consecutive (and a new message won't be generated)
+	 *
+	 * Range: u32
+	 */
+	 u32 cons_bcn_loss_time;
+
+	/*
+	 * Max handling time (in msec) for beacon loss events, before a connection
+	 * loss event will be sent
+	 *
+	 * Range u32
+	 */
+	 u32 max_bcn_loss_time;
+
+	/*
 	 * Beacon receive timeout.
 	 *
 	 * Range: u32
@@ -966,6 +981,13 @@ struct conf_conn_settings {
 	 * Range: u16
 	 */
 	u8 max_listen_interval;
+
+	/*
+	 * Specifies the timeout in which the host will allow the chip to go
+	 * into ELP. Mainly needed for TX traffic to prevent the host from
+	 * interrogating the FW status for each packets.
+	 */
+	u16 elp_timeout;
 };
 
 enum {
@@ -1096,16 +1118,32 @@ struct conf_scan_settings {
 };
 
 struct conf_sched_scan_settings {
-	/* minimum time to wait on the channel for active scans (in TUs) */
-	u16 min_dwell_time_active;
+	/*
+	 * The base time to wait on the channel for active scans (in TU/1000).
+	 * The minimum dwell time is calculated according to this:
+	 * min_dwell_time = base + num_of_probes_to_be_sent * delta_per_probe
+	 * The maximum dwell time is calculated according to this:
+	 * max_dwell_time = min_dwell_time + max_dwell_time_delta
+	 */
+	u32 base_dwell_time;
 
-	/* maximum time to wait on the channel for active scans (in TUs) */
-	u16 max_dwell_time_active;
+	/*
+	 * The delta between the min dwell time and max dwell time for
+	 * active scans (in TU/1000s). The max dwell time is used by the FW once
+	 * traffic is detected on the channel.
+	 */
+	u32 max_dwell_time_delta;
 
-	/* time to wait on the channel for passive scans (in TUs) */
+	/* Delta added to min dwell time per each probe in 2.4 GHz (TU/1000) */
+	u32 dwell_time_delta_per_probe;
+
+	/* Delta added to min dwell time per each probe in 5 GHz (TU/1000) */
+	u32 dwell_time_delta_per_probe_5;
+
+	/* time to wait on the channel for passive scans (in TU/1000) */
 	u32 dwell_time_passive;
 
-	/* time to wait on the channel for DFS scans (in TUs) */
+	/* time to wait on the channel for DFS scans (in TU/1000) */
 	u32 dwell_time_dfs;
 
 	/* number of probe requests to send on each channel in active scans */

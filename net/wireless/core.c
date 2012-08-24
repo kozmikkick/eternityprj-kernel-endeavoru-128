@@ -574,6 +574,16 @@ int wiphy_register(struct wiphy *wiphy)
 			return -EINVAL;
 	}
 
+#ifdef CONFIG_ANDROID
+	/* use wowlan by default */
+	if (rdev->wiphy.wowlan.flags & WIPHY_WOWLAN_ANY) {
+		/* TODO: free wowlan in case we fail later*/
+		rdev->wowlan = kzalloc(sizeof(*rdev->wowlan), GFP_KERNEL);
+		if (!rdev->wowlan)
+			return -ENOMEM;
+		rdev->wowlan->any = true;
+	}
+#endif
 	/* check and set up bitrates */
 	ieee80211_set_bitrate_flags(wiphy);
 
@@ -933,7 +943,8 @@ static int cfg80211_netdev_notifier_call(struct notifier_block * nb,
 		 * Configure power management to the driver here so that its
 		 * correctly set also after interface type changes etc.
 		 */
-		if (wdev->iftype == NL80211_IFTYPE_STATION &&
+		if ((wdev->iftype == NL80211_IFTYPE_STATION ||
+		     wdev->iftype == NL80211_IFTYPE_P2P_CLIENT) &&
 		    rdev->ops->set_power_mgmt)
 			if (rdev->ops->set_power_mgmt(wdev->wiphy, dev,
 						      wdev->ps,

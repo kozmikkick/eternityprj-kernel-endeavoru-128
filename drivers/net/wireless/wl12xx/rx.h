@@ -126,7 +126,14 @@ struct wl1271_rx_descriptor {
 	u8  reserved;
 } __packed;
 
-void wl12xx_rx(struct wl1271 *wl, struct wl12xx_fw_status *status);
+int wl12xx_rx(struct wl1271 *wl, struct wl12xx_fw_status *status);
 u8 wl1271_rate_to_idx(int rate, enum ieee80211_band band);
-
+void wl1271_set_default_filters(struct wl1271 *wl);
+int wl1271_rx_data_filtering_enable(struct wl1271 *wl, bool enable,
+				    enum rx_data_filter_action policy);
+int wl1271_rx_data_filter_enable(struct wl1271 *wl,
+				 int index,
+				 bool enable,
+				 struct wl12xx_rx_data_filter *filter);
+int wl1271_rx_data_filters_clear_all(struct wl1271 *wl);
 #endif

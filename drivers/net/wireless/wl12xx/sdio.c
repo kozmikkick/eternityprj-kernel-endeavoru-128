@@ -56,9 +56,6 @@ static const struct sdio_device_id wl1271_devices[] __devinitconst = {
 };
 MODULE_DEVICE_TABLE(sdio, wl1271_devices);
 
-extern void set_wifi_is_on(int on);
-extern bool stop_wifi_driver_flag;
-
 static void wl1271_sdio_set_block_size(struct device *child,
 				       unsigned int blksz)
 {
@@ -70,8 +67,8 @@ static void wl1271_sdio_set_block_size(struct device *child,
 	sdio_release_host(func);
 }
 
-static void wl12xx_sdio_raw_read(struct device *child, int addr, void *buf,
-				 size_t len, bool fixed)
+static int __must_check wl12xx_sdio_raw_read(struct device *child, int addr,
+					     void *buf, size_t len, bool fixed)
 {
 	int ret;
 	struct wl12xx_sdio_glue *glue = dev_get_drvdata(child->parent);
@@ -95,12 +92,14 @@ static void wl12xx_sdio_raw_read(struct device *child, int addr, void *buf,
 
 	sdio_release_host(func);
 
-	if (ret)
+	if (WARN_ON(ret))
 		dev_err(child->parent, "sdio read failed (%d)\n", ret);
+
+	return ret;
 }
 
-static void wl12xx_sdio_raw_write(struct device *child, int addr, void *buf,
-				  size_t len, bool fixed)
+static int __must_check wl12xx_sdio_raw_write(struct device *child, int addr,
+					      void *buf, size_t len, bool fixed)
 {
 	int ret;
 	struct wl12xx_sdio_glue *glue = dev_get_drvdata(child->parent);
@@ -124,8 +123,10 @@ static void wl12xx_sdio_raw_write(struct device *child, int addr, void *buf,
 
 	sdio_release_host(func);
 
-	if (ret)
+	if (WARN_ON(ret))
 		dev_err(child->parent, "sdio write failed (%d)\n", ret);
+
+	return ret;
 }
 
 static int wl12xx_sdio_power_on(struct wl12xx_sdio_glue *glue)
@@ -315,9 +316,7 @@ static int wl1271_suspend(struct device *dev)
 		wl->wow_enabled);
 
 	/* check whether sdio should keep power */
-/*	if (wl->wow_enabled) {		*/
-/*	if (stop_wifi_driver_flag) {	*/
-	if ( (wl->wow_enabled) || (stop_wifi_driver_flag) ) {
+	if (wl->wow_enabled) {
 		sdio_flags = sdio_get_host_pm_caps(func);
 
 		if (!(sdio_flags & MMC_PM_KEEP_POWER)) {
@@ -334,33 +333,14 @@ static int wl1271_suspend(struct device *dev)
 			goto out;
 		}
 	}
-	
-	/*
-	 * EternityProject: Add quirks for BOARD_ENDEAVORU
-	 */
-//	if (stop_wifi_driver_flag) {
-		/* Release SDIO host and use
-		 * sdio_set_host_pm_flags for keeping power
-		 */
-//	}
-
 out:
 	return ret;
 }
 
 static int wl1271_resume(struct device *dev)
 {
-/*	dev_dbg(dev, "wl1271 resume\n"); */
+	dev_dbg(dev, "wl1271 resume\n");
 
-//	printk("[EternityProject WiFi] Resuming SDIO.\n");
-//	set_wifi_is_on(1);
-
-/*	struct sdio_func *func = dev_to_sdio_func(dev);
-	struct wl12xx_sdio_glue *glue = sdio_get_drvdata(func);
-	struct wl1271 *wl = platform_get_drvdata(glue->core);
-
-	wl->wow_enabled = 0;
-*/
 	return 0;
 }
 
@@ -384,15 +364,11 @@ static struct sdio_driver wl1271_sdio_driver = {
 
 static int __init wl1271_init(void)
 {
-	printk("EternityProject: set wifi_is_on to 1\n");
-	set_wifi_is_on(1);
 	return sdio_register_driver(&wl1271_sdio_driver);
 }
 
 static void __exit wl1271_exit(void)
 {
-	printk("EternityProject: set wifi_is_on to 0\n");
-	set_wifi_is_on(0);
 	sdio_unregister_driver(&wl1271_sdio_driver);
 }
 
@@ -404,7 +380,7 @@ MODULE_AUTHOR("Luciano Coelho <coelho@ti.com>");
 MODULE_AUTHOR("Juuso Oikarinen <juuso.oikarinen@nokia.com>");
 MODULE_FIRMWARE(WL127X_FW_NAME_SINGLE);
 MODULE_FIRMWARE(WL127X_FW_NAME_MULTI);
-MODULE_FIRMWARE(WL127X_PLT_FW_NAME);
 MODULE_FIRMWARE(WL128X_FW_NAME_SINGLE);
 MODULE_FIRMWARE(WL128X_FW_NAME_MULTI);
+MODULE_FIRMWARE(WL127X_PLT_FW_NAME);
 MODULE_FIRMWARE(WL128X_PLT_FW_NAME);

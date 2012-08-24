@@ -78,6 +78,16 @@ int __ieee80211_suspend(struct ieee80211_hw *hw, struct cfg80211_wowlan *wowlan)
 		if (err < 0) {
 			local->quiescing = false;
 			local->wowlan = false;
+			if (hw->flags & IEEE80211_HW_AMPDU_AGGREGATION) {
+				mutex_lock(&local->sta_mtx);
+				list_for_each_entry(sta,
+						    &local->sta_list, list) {
+					clear_sta_flag(sta, WLAN_STA_BLOCK_BA);
+				}
+				mutex_unlock(&local->sta_mtx);
+			}
+			ieee80211_wake_queues_by_reason(hw,
+					IEEE80211_QUEUE_STOP_REASON_SUSPEND);
 			return err;
 		} else if (err > 0) {
 			WARN_ON(err != 1);
@@ -99,14 +109,13 @@ int __ieee80211_suspend(struct ieee80211_hw *hw, struct cfg80211_wowlan *wowlan)
 	mutex_lock(&local->sta_mtx);
 	list_for_each_entry(sta, &local->sta_list, list) {
 		if (sta->uploaded) {
-			enum ieee80211_sta_state state;
+			sdata = sta->sdata;
+			if (sdata->vif.type == NL80211_IFTYPE_AP_VLAN)
+				sdata = container_of(sdata->bss,
+					     struct ieee80211_sub_if_data,
+					     u.ap);
 
-			drv_sta_remove(local, sta->sdata, &sta->sta);
-
-			state = sta->sta_state;
-			for (; state > IEEE80211_STA_NOTEXIST; state--)
-				WARN_ON(drv_sta_state(local, sdata, sta,
-						      state, state - 1));
+			drv_sta_remove(local, sdata, &sta->sta);
 		}
 
 		mesh_plink_quiesce(sta);
