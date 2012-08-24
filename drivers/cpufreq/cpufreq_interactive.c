@@ -562,7 +562,6 @@ static int cpufreq_interactive_input_connect(struct input_handler *handler,
 	struct input_handle *handle;
 	int error;
 
-	pr_info("%s: connect to %s\n", __func__, dev->name);
 	handle = kzalloc(sizeof(struct input_handle), GFP_KERNEL);
 	if (!handle)
 		return -ENOMEM;
