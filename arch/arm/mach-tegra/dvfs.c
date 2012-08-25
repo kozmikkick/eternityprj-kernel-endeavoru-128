@@ -716,6 +716,7 @@ int __init tegra_dvfs_late_init(void)
 	bool connected = true;
 	struct dvfs_rail *rail;
 
+printk("DVFS GENERIC Framework: Initialization...\n");
 	mutex_lock(&dvfs_lock);
 
 	list_for_each_entry(rail, &dvfs_rail_list, node)
@@ -735,7 +736,7 @@ int __init tegra_dvfs_late_init(void)
 
 	return 0;
 }
-late_initcall(tegra_dvfs_late_init);
+device_initcall(tegra_dvfs_late_init);
 
 #ifdef CONFIG_DEBUG_FS
 static int dvfs_tree_sort_cmp(void *p, struct list_head *a, struct list_head *b)

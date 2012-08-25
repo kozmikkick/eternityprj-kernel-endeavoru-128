@@ -38,7 +38,7 @@
 #include "dvfs.h"
 
 #define DISABLE_BOOT_CLOCKS 1
-
+#define TEGRABOOT_CLOCK	1400000000
 /*
  * Locking:
  *
@@ -750,9 +750,15 @@ static int tegra_sync_cpu_clock(void)
 	int ret;
 	unsigned long rate;
 	struct clk *c = tegra_get_clock_by_name("cpu");
+	bool firstrun = 1;
 
 	BUG_ON(!c);
-	rate = clk_get_rate(c);
+	if (firstrun) {
+		rate = TEGRABOOT_CLOCK;
+		firstrun = 0;
+	} else {
+		rate = clk_get_rate(c);
+	}
 	ret = clk_set_rate(c, rate);
 	if (ret)
 		pr_err("%s: Failed to sync CPU at rate %lu\n", __func__, rate);
