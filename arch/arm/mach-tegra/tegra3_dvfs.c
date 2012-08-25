@@ -851,8 +851,6 @@ static void core_cap_update(void)
 
 static void core_cap_enable(bool enable)
 {
-	int i;
-
 	if (enable)
 		tegra3_core_cap.refcnt++;
 	else if (tegra3_core_cap.refcnt)
