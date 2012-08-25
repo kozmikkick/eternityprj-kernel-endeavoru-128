@@ -750,7 +750,7 @@ static int tegra_sync_cpu_clock(void)
 	int ret;
 	unsigned long rate;
 	struct clk *c = tegra_get_clock_by_name("cpu");
-	bool firstrun = 1;
+	static bool firstrun = 1;
 
 	BUG_ON(!c);
 	if (firstrun) {
