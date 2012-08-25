@@ -716,7 +716,6 @@ int __init tegra_dvfs_late_init(void)
 	bool connected = true;
 	struct dvfs_rail *rail;
 
-printk("DVFS GENERIC Framework: Initialization...\n");
 	mutex_lock(&dvfs_lock);
 
 	list_for_each_entry(rail, &dvfs_rail_list, node)
