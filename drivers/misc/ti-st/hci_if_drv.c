@@ -235,7 +235,7 @@ static long hciif_ioctl(struct file * file, unsigned int cmd,
 	if ((NULL == file) || (0 == cmd)) {
 		HCIIFDRV_ERR("Invalid input parameters passed to %s",
 					 __func__);
-		unlock_kernel();
+		/* unlock_kernel(); EternityProject, 26/08/2012: BKL removed. */
 		return -EINVAL;
 	}
 	client = file->private_data;
