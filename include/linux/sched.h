@@ -1230,9 +1230,7 @@ struct task_struct {
 	unsigned int ptrace;
 
 #ifdef CONFIG_SMP
-#ifdef __ARCH_WANT_UNLOCKED_CTXSW
 	int on_cpu;
-#endif
 	int on_rq;
 #endif
 
