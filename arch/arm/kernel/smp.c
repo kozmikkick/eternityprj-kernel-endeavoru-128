@@ -672,10 +672,7 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
 		break;
 
 	case IPI_RESCHEDULE:
-		/*
-		 * nothing more to do - eveything is
-		 * done on the interrupt return path
-		 */
+		scheduler_ipi();
 		break;
 
 	case IPI_CALL_FUNC:
