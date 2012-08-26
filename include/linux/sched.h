@@ -1230,6 +1230,7 @@ struct task_struct {
 	unsigned int ptrace;
 
 #ifdef CONFIG_SMP
+	struct task_struct *wake_entry;
 	int on_cpu;
 	int on_rq;
 #endif
