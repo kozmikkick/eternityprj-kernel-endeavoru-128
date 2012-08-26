@@ -2604,7 +2604,7 @@ EXPORT_SYMBOL_GPL(kick_process);
 
 #ifdef CONFIG_SMP
 /*
- * ->cpus_allowed is protected by either TASK_WAKING or rq->lock held.
+ * ->cpus_allowed is protected by both rq->lock and p->pi_lock
  */
 static int select_fallback_rq(int cpu, struct task_struct *p)
 {
@@ -2637,7 +2637,7 @@ static int select_fallback_rq(int cpu, struct task_struct *p)
 }
 
 /*
- * The caller (fork, wakeup) owns TASK_WAKING, ->cpus_allowed is stable.
+ * The caller (fork, wakeup) owns p->pi_lock, ->cpus_allowed is stable.
  */
 static inline
 int select_task_rq(struct task_struct *p, int sd_flags, int wake_flags)
@@ -2764,7 +2764,8 @@ static int try_to_wake_up(struct task_struct *p, unsigned int state,
 	this_cpu = get_cpu();
 
 	smp_wmb();
-	rq = task_rq_lock(p, &flags);
+	raw_spin_lock_irqsave(&p->pi_lock, flags);
+	rq = __task_rq_lock(p);
 	if (!(p->state & state))
 		goto out;
 
@@ -2822,7 +2823,8 @@ out_running:
 	ttwu_stat(rq, p, cpu, wake_flags);
 	success = 1;
 out:
-	task_rq_unlock(rq, &flags);
+	__task_rq_unlock(rq);
+	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
 	put_cpu();
 
 	return success;
@@ -5013,6 +5015,8 @@ void rt_mutex_setprio(struct task_struct *p, int prio)
 
 	BUG_ON(prio < 0 || prio > MAX_PRIO);
 
+	lockdep_assert_held(&p->pi_lock);
+
 	rq = task_rq_lock(p, &flags);
 
 	trace_sched_pi_setprio(p, prio);
@@ -5636,7 +5640,6 @@ long sched_getaffinity(pid_t pid, struct cpumask *mask)
 {
 	struct task_struct *p;
 	unsigned long flags;
-	struct rq *rq;
 	int retval;
 
 	get_online_cpus();
@@ -5651,9 +5654,9 @@ long sched_getaffinity(pid_t pid, struct cpumask *mask)
 	if (retval)
 		goto out_unlock;
 
-	rq = task_rq_lock(p, &flags);
+	raw_spin_lock_irqsave(&p->pi_lock, flags);
 	cpumask_and(mask, &p->cpus_allowed, cpu_online_mask);
-	task_rq_unlock(rq, &flags);
+	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
 
 out_unlock:
 	rcu_read_unlock();
@@ -6211,18 +6214,8 @@ int set_cpus_allowed_ptr(struct task_struct *p, const struct cpumask *new_mask)
 	unsigned int dest_cpu;
 	int ret = 0;
 
-	/*
-	 * Serialize against TASK_WAKING so that ttwu() and wunt() can
-	 * drop the rq->lock and still rely on ->cpus_allowed.
-	 */
-again:
-	while (task_is_waking(p))
-		cpu_relax();
-	rq = task_rq_lock(p, &flags);
-	if (task_is_waking(p)) {
-		task_rq_unlock(rq, &flags);
-		goto again;
-	}
+	raw_spin_lock_irqsave(&p->pi_lock, flags);
+	rq = __task_rq_lock(p);
 
 	if (cpumask_equal(&p->cpus_allowed, new_mask))
 		goto out;
@@ -6247,13 +6240,15 @@ again:
 	if (need_migrate_task(p)) {
 		struct migration_arg arg = { p, dest_cpu };
 		/* Need help from migration thread: drop lock and wait. */
-		task_rq_unlock(rq, &flags);
+		__task_rq_unlock(rq);
+		raw_spin_unlock_irqrestore(&p->pi_lock, flags);
 		stop_one_cpu(cpu_of(rq), migration_cpu_stop, &arg);
 		tlb_migrate_finish(p->mm);
 		return 0;
 	}
 out:
-	task_rq_unlock(rq, &flags);
+	__task_rq_unlock(rq);
+	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
 
 	return ret;
 }
