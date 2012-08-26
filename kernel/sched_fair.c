@@ -2304,7 +2304,7 @@ static int select_idle_sibling(struct task_struct *p, int target)
  * preempt must be disabled.
  */
 static int
-select_task_rq_idle(struct task_struct *p, int sd_flag, int flags)
+select_task_rq_fair(struct task_struct *p, int sd_flag, int wake_flags)
 {
 	struct sched_domain *tmp, *affine_sd = NULL, *sd = NULL;
 	int cpu = smp_processor_id();

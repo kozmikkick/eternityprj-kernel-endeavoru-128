@@ -1005,7 +1005,7 @@ static int find_lowest_rq(struct task_struct *task);
 static int
 select_task_rq_rt(struct task_struct *p, int sd_flag, int flags)
 {
-Ã	struct task_struct *curr;
+	struct task_struct *curr;
 	struct rq *rq;
 	int cpu;
 
