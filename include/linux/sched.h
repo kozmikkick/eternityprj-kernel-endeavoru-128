@@ -1304,6 +1304,7 @@ struct task_struct {
 
 	/* Revert to default priority/policy when forking */
 	unsigned sched_reset_on_fork:1;
+	unsigned sched_contributes_to_load:1;
 
 #ifdef CONFIG_GENERIC_HARDIRQS
 	/* IRQ handler threads */
