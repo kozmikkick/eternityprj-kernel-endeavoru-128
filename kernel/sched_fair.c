@@ -1075,8 +1075,6 @@ static void return_cfs_rq_runtime(struct cfs_rq *cfs_rq);
 static void
 dequeue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int flags)
 {
-	u64 min_vruntime;
-
 	/*
 	 * Update run-time statistics of the 'current'.
 	 */
@@ -1104,15 +1102,13 @@ dequeue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int flags)
 	update_cfs_load(cfs_rq, 0);
 	account_entity_dequeue(cfs_rq, se);
 
-	min_vruntime = cfs_rq->min_vruntime;
-
 	/*
 	 * Normalize the entity after updating the min_vruntime because the
 	 * update can refer to the ->curr item and we need to reflect this
 	 * movement in our normalized position.
 	 */
 	if (!(flags & DEQUEUE_SLEEP))
-		se->vruntime -= min_vruntime;
+		se->vruntime -= cfs_rq->min_vruntime;
 
 	/* return excess runtime on last dequeue */
 	return_cfs_rq_runtime(cfs_rq);
