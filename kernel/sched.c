@@ -2683,6 +2683,11 @@ static inline void ttwu_activate(struct task_struct *p, struct rq *rq,
 		schedstat_inc(p, se.statistics.nr_wakeups_remote);
 
 	activate_task(rq, p, en_flags);
+
+	/* if a worker is waking up, notify workqueue */
+	if (p->flags & PF_WQ_WORKER)
+		wq_worker_waking_up(p, cpu_of(rq));
+
 	p->on_rq = 1;
 }
 
@@ -2708,9 +2713,6 @@ static inline void ttwu_post_activation(struct task_struct *p, struct rq *rq,
 		rq->idle_stamp = 0;
 	}
 #endif
-	/* if a worker is waking up, notify workqueue */
-	if ((p->flags & PF_WQ_WORKER) && success)
-		wq_worker_waking_up(p, cpu_of(rq));
 }
 
 /**
