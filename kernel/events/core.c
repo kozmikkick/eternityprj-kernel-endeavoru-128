@@ -5238,6 +5238,14 @@ static enum hrtimer_restart perf_swevent_hrtimer(struct hrtimer *hrtimer)
 	period = max_t(u64, 10000, event->hw.sample_period);
 	hrtimer_forward_now(hrtimer, ns_to_ktime(period));
 
+	if (event->fasync && event->pending_kill) {
+		if (nmi) {
+			event->pending_wakeup = 1;
+			irq_work_queue(&event->pending);
+		} else
+			perf_event_wakeup(event);
+	}
+
 	return ret;
 }
 
