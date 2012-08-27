@@ -114,8 +114,6 @@ static int pmu_core_edp = 1200;	/* default 1.2V EDP limit */
 static int board_panel_type;
 static enum power_supply_type pow_supply_type = POWER_SUPPLY_TYPE_MAINS;
 
-void (*arch_reset)(char mode, const char *cmd) = tegra_assert_system_reset;
-
 extern unsigned reboot_battery_first_level;
 
 unsigned (*get_battery_level_cb)(void) = NULL;

@@ -2242,6 +2242,7 @@ MACHINE_START(ENDEAVORU, "endeavoru")
 	.init_irq       = tegra_init_irq,
 	.timer          = &tegra_timer,
 	.init_machine   = tegra_enterprise_init,
+	.restart	= tegra_assert_system_reset,
 MACHINE_END
 
 /* XXX for transition period only, will be removed soon */
