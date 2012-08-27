@@ -159,6 +159,9 @@ extern void vfp_flush_hwstate(struct thread_info *);
 #define _TIF_RESTORE_SIGMASK	(1 << TIF_RESTORE_SIGMASK)
 #define _TIF_SECCOMP		(1 << TIF_SECCOMP)
 
+/* Checks for any syscall work in entry-common.S */
+#define _TIF_SYSCALL_WORK (_TIF_SYSCALL_TRACE | _TIF_SYSCALL_AUDIT)
+
 /*
  * Change these and you break ASM code in entry-common.S
  */
