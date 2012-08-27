@@ -27,6 +27,4 @@ obj-$(CONFIG_AMD_NUMA)		+= amdtopology_64.o
 obj-$(CONFIG_ACPI_NUMA)		+= srat_$(BITS).o
 obj-$(CONFIG_NUMA_EMU)		+= numa_emulation.o
 
-obj-$(CONFIG_HAVE_MEMBLOCK)		+= memblock.o
-
 obj-$(CONFIG_MEMTEST)		+= memtest.o
