@@ -119,6 +119,7 @@ mem_cgroup_get_reclaim_stat_from_page(struct page *page);
 extern void mem_cgroup_print_oom_info(struct mem_cgroup *memcg,
 					struct task_struct *p);
 
+extern void mem_cgroup_reset_owner(struct page *page);
 #ifdef CONFIG_CGROUP_MEM_RES_CTLR_SWAP
 extern int do_swap_account;
 #endif
@@ -367,6 +368,10 @@ static inline void mem_cgroup_split_huge_fixup(struct page *head,
 
 static inline
 void mem_cgroup_count_vm_event(struct mm_struct *mm, enum vm_event_item idx)
+{
+}
+
+static inline void mem_cgroup_reset_owner(struct page *page)
 {
 }
 #endif /* CONFIG_CGROUP_MEM_CONT */
