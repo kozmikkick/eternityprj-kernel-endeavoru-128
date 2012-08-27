@@ -29,6 +29,9 @@ config GENERIC_FIND_LAST_BIT
 	bool
 	default y
 
+config NO_GENERIC_PCI_IOPORT_MAP
+	bool
+
 config GENERIC_PCI_IOMAP
 	bool
 
