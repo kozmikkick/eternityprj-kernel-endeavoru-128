@@ -4092,7 +4092,6 @@ static inline int pageblock_default_order(unsigned int order)
 
 #endif /* CONFIG_HUGETLB_PAGE_SIZE_VARIABLE */
 
-#ifndef CONFIG_HAVE_MEMBLOCK_NODE_MAP
 /*
  * Set up the zone data structures:
  *   - mark all pages reserved
