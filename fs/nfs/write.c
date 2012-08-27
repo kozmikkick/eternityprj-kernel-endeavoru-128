@@ -1652,7 +1652,7 @@ out_error:
 
 #ifdef CONFIG_MIGRATION
 int nfs_migrate_page(struct address_space *mapping, struct page *newpage,
-		struct page *page)
+		struct page *page, bool sync)
 {
 	struct nfs_page *req;
 	int ret;
@@ -1664,7 +1664,7 @@ int nfs_migrate_page(struct address_space *mapping, struct page *newpage,
 	if (IS_ERR(req))
 		goto out;
 
-	ret = migrate_page(mapping, newpage, page);
+	ret = migrate_page(mapping, newpage, page, sync);
 	if (!req)
 		goto out;
 	if (ret)
