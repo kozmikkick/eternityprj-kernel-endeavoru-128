@@ -502,7 +502,7 @@ void set_reboot_battery_level(unsigned level)
 	}
 }
 
-static void tegra_pm_restart(char mode, const char *cmd)
+void tegra_pm_restart(char mode, const char *cmd)
 {
 	printk("tegra_pm_restart(%c,%s)\n", mode, cmd);
 	/* arch_reset should only enter once*/
@@ -578,6 +578,7 @@ static void tegra_pm_restart(char mode, const char *cmd)
 			break;
 	}
 
+	tegra_assert_system_reset(mode, cmd);
 	arm_pm_restart(mode, cmd);
 }
 #else
@@ -592,7 +593,7 @@ static void tegra_pm_restart(char mode, const char *cmd)
 
 void __init tegra_init_early(void)
 {
-	arm_pm_restart = tegra_pm_restart;
+	/*arm_pm_restart = tegra_pm_restart;*/
 #ifndef CONFIG_SMP
 	/* For SMP system, initializing the reset handler here is too
 	   late. For non-SMP systems, the function that calls the reset
