@@ -29,6 +29,9 @@ config GENERIC_FIND_LAST_BIT
 	bool
 	default y
 
+config GENERIC_IOMAP
+	bool
+
 config CRC_CCITT
 	tristate "CRC-CCITT functions"
 	help

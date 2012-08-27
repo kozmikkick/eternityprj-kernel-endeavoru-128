@@ -126,9 +126,6 @@ config NEED_SG_DMA_LENGTH
 config GENERIC_ISA_DMA
 	def_bool ISA_DMA_API
 
-config GENERIC_IOMAP
-	def_bool y
-
 config GENERIC_BUG
 	def_bool y
 	depends on BUG
