@@ -580,7 +580,7 @@ static void tegra_pm_restart(char mode, const char *cmd)
 			break;
 	}
 
-	arm_machine_restart(mode, cmd);
+	arm_pm_restart(mode, cmd);
 }
 #else
 
