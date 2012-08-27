@@ -30,6 +30,7 @@
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <asm/mach-types.h>
+#include <linux/cm3629.h>
 #include <linux/cm3628.h>
 #include <linux/pl_sensor.h>
 #include <linux/capella_cm3602.h>
