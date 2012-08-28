@@ -2436,11 +2436,11 @@ unsigned long try_to_free_pages(struct zonelist *zonelist, int order,
 
 #ifdef CONFIG_CGROUP_MEM_RES_CTLR
 
-unsigned long mem_cgroup_shrink_node_zone(struct mem_cgroup *mem,
-					gfp_t gfp_mask, bool noswap,
-					struct zone *zone,
-					struct memcg_scanrecord *rec,
-					unsigned long *scanned)
+unsigned long mem_cgroup_shrink_node_zone(struct mem_cgroup *memcg,
+					       gfp_t gfp_mask, bool noswap,
+					       struct zone *zone,
+					       struct memcg_scanrecord *rec,
+					       unsigned long *scanned)
 {
 	struct scan_control sc = {
 		.nr_scanned = 0,
@@ -2449,8 +2449,12 @@ unsigned long mem_cgroup_shrink_node_zone(struct mem_cgroup *mem,
 		.may_unmap = 1,
 		.may_swap = !noswap,
 		.order = 0,
-		.target_mem_cgroup = mem,
+		.target_mem_cgroup = memcg,
 		.memcg_record = rec,
+	};
+	struct mem_cgroup_zone mz = {
+		.mem_cgroup = memcg,
+		.zone = zone,
 	};
 	ktime_t start, end;
 
@@ -2469,7 +2473,7 @@ unsigned long mem_cgroup_shrink_node_zone(struct mem_cgroup *mem,
 	 * will pick up pages from other mem cgroup's as well. We hack
 	 * the priority and make it zero.
 	 */
-	shrink_zone(0, &mz, &sc);
+	shrink_mem_cgroup_zone(0, &mz, &sc);
 	end = ktime_get();
 
 	if (rec)
@@ -2481,7 +2485,7 @@ unsigned long mem_cgroup_shrink_node_zone(struct mem_cgroup *mem,
 	return sc.nr_reclaimed;
 }
 
-unsigned long try_to_free_mem_cgroup_pages(struct mem_cgroup *mem_cont,
+unsigned long try_to_free_mem_cgroup_pages(struct mem_cgroup *memcg,
 					   gfp_t gfp_mask,
 					   bool noswap,
 					   struct memcg_scanrecord *rec)
@@ -2512,7 +2516,7 @@ unsigned long try_to_free_mem_cgroup_pages(struct mem_cgroup *mem_cont,
 	 * take care of from where we get pages. So the node where we start the
 	 * scan does not need to be the current node.
 	 */
-	nid = mem_cgroup_select_victim_node(mem_cont);
+	nid = mem_cgroup_select_victim_node(memcg);
 
 	zonelist = NODE_DATA(nid)->node_zonelists;
 
