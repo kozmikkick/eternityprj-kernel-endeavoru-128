@@ -148,7 +148,6 @@ extern unsigned long mem_cgroup_shrink_node_zone(struct mem_cgroup *mem,
 					       struct memcg_scanrecord *rec,
 					       unsigned long *nr_scanned);
 
-extern void mem_cgroup_reset_owner(struct page *page);
 #ifdef CONFIG_CGROUP_MEM_RES_CTLR_SWAP
 extern int do_swap_account;
 #endif
@@ -405,10 +404,6 @@ static inline void mem_cgroup_split_huge_fixup(struct page *head)
 
 static inline
 void mem_cgroup_count_vm_event(struct mm_struct *mm, enum vm_event_item idx)
-{
-}
-
-static inline void mem_cgroup_reset_owner(struct page *page)
 {
 }
 static inline void mem_cgroup_replace_page_cache(struct page *oldpage,
