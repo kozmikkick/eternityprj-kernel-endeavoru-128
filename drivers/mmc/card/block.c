@@ -52,12 +52,6 @@ MODULE_ALIAS("mmc:block");
 #endif
 #define MODULE_PARAM_PREFIX "mmcblk."
 
-#define REL_WRITES_SUPPORTED(card) (mmc_card_mmc((card)) &&	\
-    (((card)->ext_csd.rel_param & EXT_CSD_WR_REL_PARAM_EN) ||	\
-     ((card)->ext_csd.rel_sectors)))
-
-static DEFINE_MUTEX(block_mutex);
-
 #define INAND_CMD38_ARG_EXT_CSD  113
 #define INAND_CMD38_ARG_ERASE    0x00
 #define INAND_CMD38_ARG_TRIM     0x01
@@ -65,7 +59,8 @@ static DEFINE_MUTEX(block_mutex);
 #define INAND_CMD38_ARG_SECTRIM1 0x81
 #define INAND_CMD38_ARG_SECTRIM2 0x88
 
-#define MMC_CMD_RETRIES 10
+static DEFINE_MUTEX(block_mutex);
+
 /*
  * The defaults come from config options but can be overriden by module
  * or bootarg options.
@@ -92,8 +87,8 @@ struct mmc_blk_data {
 	struct list_head part;
 
 	unsigned int	flags;
-#define MMC_BLK_CMD23   (1 << 0)	/* Can do SET_BLOCK_COUNT for multiblock */
-#define MMC_BLK_REL_WR  (1 << 1)	/* MMC Reliable write support */
+#define MMC_BLK_CMD23	(1 << 0)	/* Can do SET_BLOCK_COUNT for multiblock */
+#define MMC_BLK_REL_WR	(1 << 1)	/* MMC Reliable write support */
 
 	unsigned int	usage;
 	unsigned int	read_only;
@@ -141,11 +136,7 @@ static struct mmc_blk_data *mmc_blk_get(struct gendisk *disk)
 
 static inline int mmc_get_devidx(struct gendisk *disk)
 {
-	int devmaj = MAJOR(disk_devt(disk));
-	int devidx = MINOR(disk_devt(disk)) / perdev_minors;
-
-	if (!devmaj)
-		devidx = disk->first_minor / perdev_minors;
+	int devidx = disk->first_minor / perdev_minors;
 	return devidx;
 }
 
@@ -296,7 +287,7 @@ static int mmc_blk_ioctl_cmd(struct block_device *bdev,
 	struct mmc_card *card;
 	struct mmc_command cmd = {0};
 	struct mmc_data data = {0};
-	struct mmc_request mrq = {NULL};
+	struct mmc_request mrq = {0};
 	struct scatterlist sg;
 	int err;
 
@@ -451,19 +442,15 @@ static inline int mmc_blk_part_switch(struct mmc_card *card,
 		return 0;
 
 	if (mmc_card_mmc(card)) {
-		u8 part_config = card->ext_csd.part_config;
-
-		part_config &= ~EXT_CSD_PART_CONFIG_ACC_MASK;
-		part_config |= md->part_type;
+		card->ext_csd.part_config &= ~EXT_CSD_PART_CONFIG_ACC_MASK;
+		card->ext_csd.part_config |= md->part_type;
 
 		ret = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
-				 EXT_CSD_PART_CONFIG, part_config,
+				 EXT_CSD_PART_CONFIG, card->ext_csd.part_config,
 				 card->ext_csd.part_time);
 		if (ret)
 			return ret;
-
-		card->ext_csd.part_config = part_config;
-	}
+}
 
 	main_md->part_curr = md->part_type;
 	return 0;
@@ -475,7 +462,7 @@ static u32 mmc_sd_num_wr_blocks(struct mmc_card *card)
 	u32 result;
 	__be32 *blocks;
 
-	struct mmc_request mrq = {NULL};
+	struct mmc_request mrq = {0};
 	struct mmc_command cmd = {0};
 	struct mmc_data data = {0};
 	unsigned int timeout_us;
@@ -584,18 +571,22 @@ static int mmc_blk_cmd_error(struct request *req, const char *name, int error,
 			req->rq_disk->disk_name, "timed out", name, status);
 
 		/* If the status cmd initially failed, retry the r/w cmd */
-		if (!status_valid)
+		if (!status_valid) {
+			pr_err("%s: status not valid, retrying timeout\n", req->rq_disk->disk_name);
 			return ERR_RETRY;
-
+		}
 		/*
 		 * If it was a r/w cmd crc error, or illegal command
 		 * (eg, issued in wrong state) then retry - we should
 		 * have corrected the state problem above.
 		 */
-		if (status & (R1_COM_CRC_ERROR | R1_ILLEGAL_COMMAND))
+		if (status & (R1_COM_CRC_ERROR | R1_ILLEGAL_COMMAND)) {
+			pr_err("%s: command error, retrying timeout\n", req->rq_disk->disk_name);
 			return ERR_RETRY;
+		}
 
 		/* Otherwise abort the command */
+		pr_err("%s: not retrying timeout\n", req->rq_disk->disk_name);
 		return ERR_ABORT;
 
 	default:
@@ -710,9 +701,7 @@ static int mmc_blk_issue_discard_rq(struct mmc_queue *mq, struct request *req)
 	from = blk_rq_pos(req);
 	nr = blk_rq_sectors(req);
 
-	if (mmc_can_discard(card))
-		arg = MMC_DISCARD_ARG;
-	else if (mmc_can_trim(card))
+	if (mmc_can_trim(card))
 		arg = MMC_TRIM_ARG;
 	else
 		arg = MMC_ERASE_ARG;
@@ -722,7 +711,8 @@ static int mmc_blk_issue_discard_rq(struct mmc_queue *mq, struct request *req)
 				 INAND_CMD38_ARG_EXT_CSD,
 				 arg == MMC_TRIM_ARG ?
 				 INAND_CMD38_ARG_TRIM :
-				 INAND_CMD38_ARG_ERASE, 0);
+				 INAND_CMD38_ARG_ERASE,
+				 0);
 		if (err)
 			goto out;
 	}
@@ -761,7 +751,8 @@ static int mmc_blk_issue_secdiscard_rq(struct mmc_queue *mq,
 				 INAND_CMD38_ARG_EXT_CSD,
 				 arg == MMC_SECURE_TRIM1_ARG ?
 				 INAND_CMD38_ARG_SECTRIM1 :
-				 INAND_CMD38_ARG_SECERASE, 0);
+				 INAND_CMD38_ARG_SECERASE,
+				 0);
 		if (err)
 			goto out;
 	}
@@ -770,7 +761,8 @@ static int mmc_blk_issue_secdiscard_rq(struct mmc_queue *mq,
 		if (card->quirks & MMC_QUIRK_INAND_CMD38) {
 			err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 					 INAND_CMD38_ARG_EXT_CSD,
-					 INAND_CMD38_ARG_SECTRIM2, 0);
+					 INAND_CMD38_ARG_SECTRIM2,
+					 0);
 			if (err)
 				goto out;
 		}
@@ -807,8 +799,8 @@ static int mmc_blk_issue_flush(struct mmc_queue *mq, struct request *req)
  * partial completions.
  */
 static inline void mmc_apply_rel_rw(struct mmc_blk_request *brq,
-				   struct mmc_card *card,
-				   struct request *req)
+				    struct mmc_card *card,
+				    struct request *req)
 {
 	if (!(card->ext_csd.rel_param & EXT_CSD_WR_REL_PARAM_EN)) {
 		/* Legacy mode imposes restrictions on transfers. */
@@ -881,7 +873,7 @@ static int mmc_blk_err_check(struct mmc_card *card,
 		do {
 			int err = get_card_status(card, &status, 5);
 			if (err) {
-				pr_err("%s: error %d requesting status\n",
+				printk(KERN_ERR "%s: error %d requesting status\n",
 				       req->rq_disk->disk_name, err);
 				return MMC_BLK_CMD_ERR;
 			}
@@ -934,6 +926,9 @@ static void mmc_blk_rw_rq_prep(struct mmc_queue_req *mqrq,
 	/*
 	 * Reliable writes are used to implement Forced Unit Access and
 	 * REQ_META accesses, and are supported only on MMCs.
+	 *
+	 * XXX: this really needs a good explanation of why REQ_META
+	 * is treated special.
 	 */
 	bool do_rel_wr = ((req->cmd_flags & REQ_FUA) ||
 			  (req->cmd_flags & REQ_META)) &&
@@ -1100,7 +1095,7 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 				 * erros returned by host.
 				 * If this happen it's a bug.
 				 */
-				pr_err("%s BUG rq_tot %d d_xfer %d\n",
+				printk(KERN_ERR "%s BUG rq_tot %d d_xfer %d\n",
 				       __func__, blk_rq_bytes(req),
 				       brq->data.bytes_xfered);
 				rqc = NULL;
@@ -1145,7 +1140,6 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 	if (brq->cmd.resp[0] & R1_URGENT_BKOPS)
 		mmc_card_set_need_bkops(card);
 
-out:
 	return 1;
 
  cmd_err:
@@ -1196,20 +1190,22 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 	struct mmc_blk_data *md = mq->data;
 	struct mmc_card *card = md->queue.card;
 
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
 	if (mmc_bus_needs_resume(card->host)) {
 		mmc_resume_bus(card->host);
 		mmc_blk_set_blksize(md, card);
 	}
+#endif
 
 	if (req && !mq->mqrq_prev->req)
 		/* claim host only for the first request */
 		mmc_claim_host(card->host);
 
 	ret = mmc_blk_part_switch(card, md);
- 	if (ret) {
- 		ret = 0;
- 		goto out;
- 	}
+	if (ret) {
+		ret = 0;
+		goto out;
+	}
 
 	if (req && req->cmd_flags & REQ_DISCARD) {
 		/* complete ongoing async transfer before issuing discard */
@@ -1229,7 +1225,7 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 		if (mmc_card_mmc(mq->card) && mmc_card_doing_bkops(mq->card))
 			mmc_interrupt_hpi(mq->card);
 
-		ret =  mmc_blk_issue_rw_rq(mq, req);
+		ret = mmc_blk_issue_rw_rq(mq, req);
 	}
 
 out:
@@ -1308,8 +1304,8 @@ static struct mmc_blk_data *mmc_blk_alloc_req(struct mmc_card *card,
 	md->disk->private_data = md;
 	md->disk->queue = md->queue.queue;
 	md->disk->driverfs_dev = parent;
-	md->disk->flags = GENHD_FL_EXT_DEVT;
 	set_disk_ro(md->disk, md->read_only || default_ro);
+	md->disk->flags = GENHD_FL_EXT_DEVT;
 
 	/*
 	 * As discussed on lkml, GENHD_FL_REMOVABLE should:
@@ -1396,35 +1392,32 @@ static int mmc_blk_alloc_part(struct mmc_card *card,
 
 	string_get_size((u64)get_capacity(part_md->disk) << 9, STRING_UNITS_2,
 			cap_str, sizeof(cap_str));
-	pr_info("%s: %s %s partition %u %s\n",
+	printk(KERN_INFO "%s: %s %s partition %u %s\n",
 	       part_md->disk->disk_name, mmc_card_id(card),
 	       mmc_card_name(card), part_md->part_type, cap_str);
 	return 0;
 }
 
-/* MMC Physical partitions consist of two boot partitions and
- * up to four general purpose partitions.
- * For each partition enabled in EXT_CSD a block device will be allocatedi
- * to provide access to the partition.
- */
-
 static int mmc_blk_alloc_parts(struct mmc_card *card, struct mmc_blk_data *md)
 {
-	int idx, ret = 0;
+	int ret = 0;
 
 	if (!mmc_card_mmc(card))
 		return 0;
 
-	for (idx = 0; idx < card->nr_parts; idx++) {
-		if (card->part[idx].size) {
-			ret = mmc_blk_alloc_part(card, md,
-				card->part[idx].part_cfg,
-				card->part[idx].size >> 9,
-				card->part[idx].force_ro,
-				card->part[idx].name);
-			if (ret)
-				return ret;
-		}
+	if (card->ext_csd.boot_size) {
+		ret = mmc_blk_alloc_part(card, md, EXT_CSD_PART_CONFIG_ACC_BOOT0,
+					 card->ext_csd.boot_size >> 9,
+					 true,
+					 "boot0");
+		if (ret)
+			return ret;
+		ret = mmc_blk_alloc_part(card, md, EXT_CSD_PART_CONFIG_ACC_BOOT1,
+					 card->ext_csd.boot_size >> 9,
+					 true,
+					 "boot1");
+		if (ret)
+			return ret;
 	}
 
 	return ret;
@@ -1440,36 +1433,13 @@ mmc_blk_set_blksize(struct mmc_blk_data *md, struct mmc_card *card)
 	mmc_release_host(card->host);
 
 	if (err) {
-		pr_err("%s: unable to set block size to 512: %d\n",
+		printk(KERN_ERR "%s: unable to set block size to 512: %d\n",
 			md->disk->disk_name, err);
 		return -EINVAL;
 	}
 
 	return 0;
 }
-
-static const struct mmc_fixup blk_fixups[] =
-{
-	MMC_FIXUP("SEM08G", 0x2, 0x100, add_quirk, MMC_QUIRK_INAND_CMD38),
-	MMC_FIXUP("SEM16G", 0x2, 0x100, add_quirk, MMC_QUIRK_INAND_CMD38),
-	MMC_FIXUP("SEM32G", 0x2, 0x100, add_quirk, MMC_QUIRK_INAND_CMD38),
-
-	/*
-	 * Some MMC cards experience performance degradation with CMD23
-	 * instead of CMD12-bounded multiblock transfers. For now we'll
-	 * black list what's bad...
-	 * - Certain Toshiba cards.
-	 *
-	 * N.B. This doesn't affect SD cards.
-	 */
-	MMC_FIXUP("MMC08G", 0x11, CID_OEMID_ANY, add_quirk,
-		  MMC_QUIRK_BLK_NO_CMD23),
-	MMC_FIXUP("MMC16G", 0x11, CID_OEMID_ANY, add_quirk,
-		  MMC_QUIRK_BLK_NO_CMD23),
-	MMC_FIXUP("MMC32G", 0x11, CID_OEMID_ANY, add_quirk,
-		  MMC_QUIRK_BLK_NO_CMD23),
-	END_FIXUP
-};
 
 static void mmc_blk_remove_req(struct mmc_blk_data *md)
 {
@@ -1518,6 +1488,31 @@ static int mmc_add_disk(struct mmc_blk_data *md)
 	return ret;
 }
 
+static const struct mmc_fixup blk_fixups[] =
+{
+	MMC_FIXUP("SEM02G", 0x2, 0x100, add_quirk, MMC_QUIRK_INAND_CMD38),
+	MMC_FIXUP("SEM04G", 0x2, 0x100, add_quirk, MMC_QUIRK_INAND_CMD38),
+	MMC_FIXUP("SEM08G", 0x2, 0x100, add_quirk, MMC_QUIRK_INAND_CMD38),
+	MMC_FIXUP("SEM16G", 0x2, 0x100, add_quirk, MMC_QUIRK_INAND_CMD38),
+	MMC_FIXUP("SEM32G", 0x2, 0x100, add_quirk, MMC_QUIRK_INAND_CMD38),
+
+	/*
+	 * Some MMC cards experience performance degradation with CMD23
+	 * instead of CMD12-bounded multiblock transfers. For now we'll
+	 * black list what's bad...
+	 * - Certain Toshiba cards.
+	 *
+	 * N.B. This doesn't affect SD cards.
+	 */
+	MMC_FIXUP("MMC08G", 0x11, CID_OEMID_ANY, add_quirk_mmc,
+		  MMC_QUIRK_BLK_NO_CMD23),
+	MMC_FIXUP("MMC16G", 0x11, CID_OEMID_ANY, add_quirk_mmc,
+		  MMC_QUIRK_BLK_NO_CMD23),
+	MMC_FIXUP("MMC32G", 0x11, CID_OEMID_ANY, add_quirk_mmc,
+		  MMC_QUIRK_BLK_NO_CMD23),
+	END_FIXUP
+};
+
 static int mmc_blk_probe(struct mmc_card *card)
 {
 	struct mmc_blk_data *md, *part_md;
@@ -1540,7 +1535,7 @@ static int mmc_blk_probe(struct mmc_card *card)
 
 	string_get_size((u64)get_capacity(md->disk) << 9, STRING_UNITS_2,
 			cap_str, sizeof(cap_str));
-	pr_info("%s: %s %s %s %s\n",
+	printk(KERN_INFO "%s: %s %s %s %s\n",
 		md->disk->disk_name, mmc_card_id(card), mmc_card_name(card),
 		cap_str, md->read_only ? "(ro)" : "");
 
@@ -1604,7 +1599,9 @@ static int mmc_blk_resume(struct mmc_card *card)
 	struct mmc_blk_data *md = mmc_get_drvdata(card);
 
 	if (md) {
+#ifndef CONFIG_MMC_BLOCK_DEFERRED_RESUME
 		mmc_blk_set_blksize(md, card);
+#endif
 
 		/*
 		 * Resume involves the card going into idle state,

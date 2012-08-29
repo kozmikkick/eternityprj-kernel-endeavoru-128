@@ -30,10 +30,10 @@
 #include <linux/dma-mapping.h>
 #include <mach/hardware.h>
 #include <linux/platform_device.h>
-/*#include <mach/board.h>*/
+
 #include <linux/errno.h>
 #include <linux/clk.h>
-/*#include <mach/dma.h>*/
+
 #include <asm/io.h>
 #include <linux/mmc/sdio_ids.h>
 #include <linux/mmc/sdio_func.h>
@@ -42,15 +42,13 @@
 #include <linux/mmc/mmc.h>
 #include <linux/mmc/sd.h>
 #include <linux/mmc/sdio.h>
-/*#include <linux/mmc/debug.h>*/
-/*#include <asm/mach/mmc.h>*/
+
 #include <linux/delay.h>
 #include <mach/gpio.h> /*austin added*/
 
 #include "SdioDrvDbg.h"
 #include "SdioDrv.h"
 
-/*HTC_CSP_START*/
 #include <linux/mmc/sdio_ops.h>
 #include <linux/i2c.h>
 #include <asm/io.h>
@@ -696,6 +694,17 @@ int sdioDrv_SyncReadMethod(char *out_data_buffer,
 			unsigned long in_source_address,
 			unsigned long data_length)
 {
+	/*SDIO_BufferLength bytes_count;*/
+	/*unsigned long extra_size;
+	unsigned int transferSize;
+	SDIO_Status status;
+	unsigned int incr_fix=1;INCREMENT_REG_ADDR; //address will be inc by HW automatically*/
+#if 0/*USE_SIGNAL_READ_WRITE*/
+/*use cmd 52*/
+	unsigned long bytes_count;
+	for (bytes_count = 0; bytes_count < data_length; bytes_count++)
+		sdioDrv_ReadSyncBytes(TXN_FUNC_ID_WLAN, in_source_address++, out_data_buffer++, 1, 1);
+#else
 /*use cmd 53*/
 	unsigned long extra_size;
 	unsigned int transferSize;
@@ -735,6 +744,7 @@ int sdioDrv_SyncReadMethod(char *out_data_buffer,
 		in_source_address += ((incr_fix == 1/*INCREMENT_REG_ADDR*/) ? transferSize : 0);
 		extra_size -= transferSize;
 	}
+#endif
 	return 0;/*SDIO_SUCCESS;*/
 }
 
@@ -1341,10 +1351,10 @@ static int sdioDrv_probe(void)
 {
 	int rc = 0;
 	int bit;
-	struct mmc_ios *ios;
 /*TODO	struct mmc_ios ios;*/
 	/*struct mmc_platform_data* plat = pdev->dev.platform_data;  //austin disabled for build break*/
 	struct mmc_host *mmc = 0;
+	struct mmc_ios *ios;
 
 	wlan_gpio_init();
 
@@ -1389,6 +1399,7 @@ static int sdioDrv_probe(void)
 	memcpy(&mmc->ios,&ios,sizeof(struct mmc_ios));
 	mmc->ops->set_ios(mmc, &ios);
 */
+
 	mmc->ios.bus_width = MMC_BUS_WIDTH_1;
 	mmc->ios.power_mode = MMC_POWER_UP;
 	/* If ocr is set, we use it */
@@ -1400,6 +1411,7 @@ static int sdioDrv_probe(void)
 	mmc->ios.bus_mode = MMC_BUSMODE_OPENDRAIN;
 	mmc->ios.chip_select = MMC_CS_DONTCARE;
 	mmc->ios.timing = MMC_TIMING_LEGACY;
+	
 	ios = &mmc->ios;
 	pr_info("[SD] %s: clock %uHz busmode %u powermode %u cs %u Vdd %u "
 		"width %u timing %u\n",
@@ -1497,6 +1509,7 @@ static int sdioDrv_remove(void)
 void sdioDrv_set_clock_rate(int clock_rate)
 {
 	struct mmc_host *mmc  = mmci_get_mmc();
+
 	struct mmc_ios *ios;
 /*TODO	struct mmc_ios ios;
 
@@ -1531,6 +1544,7 @@ void sdioDrv_set_clock_rate(int clock_rate)
 
 	mmc->ios.vdd = 21;
 	mmc->ios.timing = MMC_TIMING_LEGACY;
+	
 	ios = &mmc->ios;
 	pr_info("[SD] %s: clock %uHz busmode %u powermode %u cs %u Vdd %u "
 		"width %u timing %u\n",
@@ -1542,7 +1556,7 @@ void sdioDrv_set_clock_rate(int clock_rate)
 	msleep(50);
 }
 
-int sdiodrv_open(void)
+int sdiodrv_open(struct inode *i, struct file *f)
 {
 	int rc;
 	printk(KERN_INFO"sdiodrv_open+\n");
@@ -1551,7 +1565,7 @@ int sdiodrv_open(void)
 	return rc;
 }
 
-int sdiodrv_close(void)
+int sdiodrv_close(struct inode *i, struct file *p)
 {
 	int rc;
 	printk(KERN_INFO "sdiodrv close+\n");
@@ -1562,6 +1576,8 @@ int sdiodrv_close(void)
 
 static struct file_operations sdiodrv_fops = {
 	.owner		= THIS_MODULE,
+	.open		= sdiodrv_open,
+	.release	= sdiodrv_close,
 };
 
 static struct miscdevice sdiodrv_device = {

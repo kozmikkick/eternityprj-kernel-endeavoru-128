@@ -21,8 +21,8 @@
  *          15 May 2002
  */
 
-#ifndef MMC_MMC_H
-#define MMC_MMC_H
+#ifndef LINUX_MMC_MMC_H
+#define LINUX_MMC_MMC_H
 
 /* Standard MMC commands (4.1)           type  argument     response */
    /* class 1 */
@@ -271,26 +271,22 @@ struct _mmc_csd {
  * EXT_CSD fields
  */
 
-#define EXT_CSD_GP_SIZE_MULT		143	/* R/W */
 #define EXT_CSD_PARTITION_ATTRIBUTE	156	/* R/W */
-#define EXT_CSD_MAX_ENH_SIZE_MULT		157 /* R/W */
 #define EXT_CSD_PARTITION_SUPPORT	160	/* RO */
 #define EXT_CSD_HPI_MGMT		161	/* R/W */
 #define EXT_CSD_BKOPS_EN		163	/* R/W */
 #define EXT_CSD_BKOPS_START		164	/* R/W */
 #define EXT_CSD_WR_REL_PARAM		166	/* RO */
 #define EXT_CSD_ERASE_GROUP_DEF		175	/* R/W */
-#define EXT_CSD_PARTITION_CFG	    179 /* R/W */
 #define EXT_CSD_PART_CONFIG		179	/* R/W */
 #define EXT_CSD_ERASED_MEM_CONT		181	/* RO */
 #define EXT_CSD_BUS_WIDTH		183	/* R/W */
 #define EXT_CSD_HS_TIMING		185	/* R/W */
-#define EXT_CSD_POWER_CLASS     187 /* R/W */ 
 #define EXT_CSD_REV			192	/* RO */
 #define EXT_CSD_STRUCTURE		194	/* RO */
 #define EXT_CSD_CARD_TYPE		196	/* RO */
-#define EXT_CSD_PART_SWITCH_TIME	199	/* RO */
 #define EXT_CSD_OUT_OF_INTERRUPT_TIME	198	/* RO */
+#define EXT_CSD_PART_SWITCH_TIME        199     /* RO */
 #define EXT_CSD_SEC_CNT			212	/* RO, 4 bytes */
 #define EXT_CSD_S_A_TIMEOUT		217	/* RO */
 #define EXT_CSD_REL_WR_SEC_C		222	/* RO */
@@ -314,9 +310,7 @@ struct _mmc_csd {
 
 #define EXT_CSD_PART_CONFIG_ACC_MASK	(0x7)
 #define EXT_CSD_PART_CONFIG_ACC_BOOT0	(0x1)
-#define EXT_CSD_PART_CONFIG_ACC_GP0	(0x4)
-
-#define EXT_CSD_PART_SUPPORT_PART_EN	(0x1)
+#define EXT_CSD_PART_CONFIG_ACC_BOOT1	(0x2)
 
 #define EXT_CSD_CMD_SET_NORMAL		(1<<0)
 #define EXT_CSD_CMD_SET_SECURE		(1<<1)
@@ -351,5 +345,4 @@ struct _mmc_csd {
 #define MMC_SWITCH_MODE_CLEAR_BITS	0x02	/* Clear bits which are 1 in value */
 #define MMC_SWITCH_MODE_WRITE_BYTE	0x03	/* Set target to value */
 
-#endif  /* MMC_MMC_PROTOCOL_H */
-
+#endif /* LINUX_MMC_MMC_H */

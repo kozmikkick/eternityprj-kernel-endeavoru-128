@@ -249,8 +249,8 @@ static int mxcmci_setup_data(struct mxcmci_host *host, struct mmc_data *data)
 	if (nents != data->sg_len)
 		return -EINVAL;
 
-	host->desc = host->dma->device->device_prep_slave_sg(host->dma,
-		data->sg, data->sg_len, host->dma_dir,
+	host->desc = dmaengine_prep_slave_sg(host->dma,
+		data->sg, data->sg_len, slave_dirn,
 		DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
 
 	if (!host->desc) {
@@ -731,6 +731,7 @@ static void mxcmci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 				"failed to config DMA channel. Falling back to PIO\n");
 			dma_release_channel(host->dma);
 			host->do_dma = 0;
+			host->dma = NULL;
 		}
 	}
 
@@ -842,7 +843,7 @@ static int mxcmci_probe(struct platform_device *pdev)
 	int ret = 0, irq;
 	dma_cap_mask_t mask;
 
-	pr_info("i.MX SDHC driver\n");
+	printk(KERN_INFO "i.MX SDHC driver\n");
 
 	iores = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	irq = platform_get_irq(pdev, 0);

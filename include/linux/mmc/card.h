@@ -12,7 +12,6 @@
 
 #include <linux/mmc/core.h>
 #include <linux/mod_devicetable.h>
-#include <linux/genhd.h>
 
 struct mmc_cid {
 	unsigned int		manfid;
@@ -48,10 +47,9 @@ struct mmc_ext_csd {
 	u8			rev;
 	u8			erase_group_def;
 	u8			sec_feature_support;
-	u8			part_config;
 	u8			rel_sectors;
 	u8			rel_param;
-	u8			part_conf;
+	u8			part_config;
 	unsigned int		part_time;		/* Units: ms */
 	unsigned int		sa_timeout;		/* Units: 100ns */
 	unsigned int		hs_max_dtr;
@@ -65,6 +63,7 @@ struct mmc_ext_csd {
 	bool			enhanced_area_en;	/* enable bit */
 	unsigned long long	enhanced_area_offset;	/* Units: Byte */
 	unsigned int		enhanced_area_size;	/* Units: KB */
+	unsigned int		boot_size;		/* in bytes */
 	u8			raw_partition_support;	/* 160 */
 	u8			raw_erased_mem_count;	/* 181 */
 	u8			raw_ext_csd_structure;	/* 194 */
@@ -78,7 +77,6 @@ struct mmc_ext_csd {
 	u8			raw_sec_feature_support;/* 231 */
 	u8			raw_trim_mult;		/* 232 */
 	u8			raw_sectors[4];		/* 212 - 4 bytes */
-	unsigned int		max_enh_size_mult;
 	bool			hpi_en;			/* HPI enablebit */
 	bool			hpi;			/* HPI support bit */
 	unsigned int		hpi_cmd;		/* cmd used as HPI */
@@ -165,23 +163,6 @@ struct sdio_func_tuple;
 
 #define SDIO_MAX_FUNCS		7
 
-/* The number of MMC physical partitions.  These consist of:
- * boot partitions (2), general purpose partitions (4) in MMC v4.4.
- */
-#define MMC_NUM_BOOT_PARTITION	2
-#define MMC_NUM_GP_PARTITION	4
-#define MMC_NUM_PHY_PARTITION	6
-
-/*
- * MMC Physical partitions
- */
-struct mmc_part {
-	unsigned int	size;	/* partition size (in bytes) */
-	unsigned int	part_cfg;	/* partition type */
-	char	name[DISK_NAME_LEN];
-	bool	force_ro;	/* to make boot parts RO by default */
-};
-
 /*
  * MMC device
  */
@@ -200,11 +181,10 @@ struct mmc_card {
 #define MMC_STATE_HIGHSPEED	(1<<2)		/* card is in high speed mode */
 #define MMC_STATE_BLOCKADDR	(1<<3)		/* card uses block-addressing */
 #define MMC_STATE_HIGHSPEED_DDR (1<<4)		/* card is in high speed mode */
-#define MMC_STATE_DOING_BKOPS	(1 << 5)	/* Card doing bkops */
-#define MMC_STATE_NEED_BKOPS	(1 << 6)	/* Card needs to do bkops */
-#define MMC_STATE_ULTRAHIGHSPEED (1 << 7)	/* Card is in UHS mode */
-#define MMC_CARD_SDXC		(1<<8)		/* card is SDXC */
-
+#define MMC_STATE_ULTRAHIGHSPEED (1<<5)		/* card is in ultra high speed mode */
+#define MMC_STATE_DOING_BKOPS	(1<<6)		/* Card doing bkops */
+#define MMC_STATE_NEED_BKOPS	(1<<7)		/* Card needs to do bkops */
+#define MMC_CARD_SDXC		(1<<6)		/* card is SDXC */
 	unsigned int		quirks; 	/* card quirks */
 #define MMC_QUIRK_LENIENT_FN0	(1<<0)		/* allow SDIO FN0 writes outside of the VS CCCR range */
 #define MMC_QUIRK_BLKSZ_FOR_BYTE_MODE (1<<1)	/* use func->cur_blksize */
@@ -244,30 +224,14 @@ struct mmc_card {
 	unsigned int		sd_bus_speed;	/* Bus Speed Mode set for the card */
 
 	struct dentry		*debugfs_root;
-	struct mmc_part	part[MMC_NUM_PHY_PARTITION]; /* physical partitions */
-	unsigned int    nr_parts;
 };
 
 /*
- * This function fill contents in mmc_part.
- */
-static inline void mmc_part_add(struct mmc_card *card, unsigned int size,
-			unsigned int part_cfg, char *name, int idx, bool ro)
-{
-	card->part[card->nr_parts].size = size;
-	card->part[card->nr_parts].part_cfg = part_cfg;
-	sprintf(card->part[card->nr_parts].name, name, idx);
-	card->part[card->nr_parts].force_ro = ro;
-	card->nr_parts++;
-}
-
-/*
  *  The world is not perfect and supplies us with broken mmc/sdio devices.
- *  For at least a part of these bugs we need a work-around
+ *  For at least some of these bugs we need a work-around.
  */
 
 struct mmc_fixup {
-
 	/* CID-specific fields. */
 	const char *name;
 
@@ -277,14 +241,14 @@ struct mmc_fixup {
 	unsigned int manfid;
 	unsigned short oemid;
 
-       /* SDIO-specfic fields. You can use SDIO_ANY_ID here of course */
+	/* SDIO-specfic fields. You can use SDIO_ANY_ID here of course */
 	u16 cis_vendor, cis_device;
 
 	void (*vendor_fixup)(struct mmc_card *card, int data);
 	int data;
 };
 
-#define CID_MANFID_ANY (-1ul)
+#define CID_MANFID_ANY (-1u)
 #define CID_OEMID_ANY ((unsigned short) -1)
 #define CID_NAME_ANY (NULL)
 
@@ -334,16 +298,14 @@ struct mmc_fixup {
 		    card->cid.month)
 
 /*
- * This hook just adds a quirk unconditionnally
+ * Unconditionally quirk add/remove.
  */
+
 static inline void __maybe_unused add_quirk(struct mmc_card *card, int data)
 {
 	card->quirks |= data;
 }
 
-/*
- * This hook just removes a quirk unconditionnally
- */
 static inline void __maybe_unused remove_quirk(struct mmc_card *card, int data)
 {
 	card->quirks &= ~data;
@@ -358,22 +320,53 @@ static inline void __maybe_unused remove_quirk(struct mmc_card *card, int data)
 #define mmc_card_highspeed(c)	((c)->state & MMC_STATE_HIGHSPEED)
 #define mmc_card_blockaddr(c)	((c)->state & MMC_STATE_BLOCKADDR)
 #define mmc_card_ddr_mode(c)	((c)->state & MMC_STATE_HIGHSPEED_DDR)
+#define mmc_sd_card_uhs(c)	((c)->state & MMC_STATE_ULTRAHIGHSPEED)
+#define mmc_card_ext_capacity(c) ((c)->state & MMC_CARD_SDXC)
 #define mmc_card_doing_bkops(c) ((c)->state & MMC_STATE_DOING_BKOPS)
 #define mmc_card_need_bkops(c) ((c)->state & MMC_STATE_NEED_BKOPS)
-#define mmc_card_uhs(c)		((c)->state & MMC_STATE_ULTRAHIGHSPEED)
-#define mmc_card_ext_capacity(c) ((c)->state & MMC_CARD_SDXC)
-#define mmc_sd_card_uhs(c)	((c)->state & MMC_STATE_ULTRAHIGHSPEED)
-
 #define mmc_card_set_present(c)	((c)->state |= MMC_STATE_PRESENT)
 #define mmc_card_set_readonly(c) ((c)->state |= MMC_STATE_READONLY)
 #define mmc_card_set_highspeed(c) ((c)->state |= MMC_STATE_HIGHSPEED)
 #define mmc_card_set_blockaddr(c) ((c)->state |= MMC_STATE_BLOCKADDR)
 #define mmc_card_set_ddr_mode(c) ((c)->state |= MMC_STATE_HIGHSPEED_DDR)
+#define mmc_sd_card_set_uhs(c) ((c)->state |= MMC_STATE_ULTRAHIGHSPEED)
+#define mmc_card_set_ext_capacity(c) ((c)->state |= MMC_CARD_SDXC)
+
+/*
+ * Quirk add/remove for MMC products.
+ */
+
+static inline void __maybe_unused add_quirk_mmc(struct mmc_card *card, int data)
+{
+	if (mmc_card_mmc(card))
+		card->quirks |= data;
+}
+
+static inline void __maybe_unused remove_quirk_mmc(struct mmc_card *card,
+						   int data)
+{
+	if (mmc_card_mmc(card))
+		card->quirks &= ~data;
+}
+
+/*
+ * Quirk add/remove for SD products.
+ */
+
+static inline void __maybe_unused add_quirk_sd(struct mmc_card *card, int data)
+{
+	if (mmc_card_sd(card))
+		card->quirks |= data;
+}
+
+static inline void __maybe_unused remove_quirk_sd(struct mmc_card *card,
+						   int data)
+{
+	if (mmc_card_sd(card))
+		card->quirks &= ~data;
+}
 #define mmc_card_set_doing_bkops(c) ((c)->state |= MMC_STATE_DOING_BKOPS)
 #define mmc_card_set_need_bkops(c) ((c)->state |= MMC_STATE_NEED_BKOPS)
-#define mmc_card_set_uhs(c) ((c)->state |= MMC_STATE_ULTRAHIGHSPEED)
-#define mmc_card_set_ext_capacity(c) ((c)->state |= MMC_CARD_SDXC)
-#define mmc_sd_card_set_uhs(c) ((c)->state |= MMC_STATE_ULTRAHIGHSPEED)
 
 #define mmc_card_clr_doing_bkops(c) ((c)->state &= ~MMC_STATE_DOING_BKOPS)
 #define mmc_card_clr_need_bkops(c) ((c)->state &= ~MMC_STATE_NEED_BKOPS)
@@ -424,4 +417,4 @@ extern void mmc_unregister_driver(struct mmc_driver *);
 extern void mmc_fixup_device(struct mmc_card *card,
 			     const struct mmc_fixup *table);
 
-#endif
+#endif /* LINUX_MMC_CARD_H */

@@ -645,7 +645,7 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 			(MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
 			 MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR104 |
 			 MMC_CAP_UHS_DDR50))) {
-		err = mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_180, 0);
+		err = mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_180, true);
 		if (err) {
 			ocr &= ~R4_18V_PRESENT;
 			host->ocr &= ~R4_18V_PRESENT;
@@ -781,7 +781,7 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 			goto remove;
 
 		/* Card is an ultra-high-speed card */
-		mmc_card_set_uhs(card);
+		mmc_sd_card_set_uhs(card);
 	} else {
 		/*
 		 * Switch to high-speed (if supported).
@@ -886,6 +886,7 @@ out:
 
 		mmc_claim_host(host);
 		mmc_detach_bus(host);
+		mmc_power_off(host);
 		mmc_release_host(host);
 	}
 }
@@ -942,7 +943,7 @@ static int mmc_sdio_resume(struct mmc_host *host)
 	/* No need to reinitialize powered-resumed nonremovable cards */
 	if (mmc_card_is_removable(host) || !mmc_card_keep_power(host))
 		err = mmc_sdio_init_card(host, host->ocr, host->card,
-					 mmc_card_keep_power(host));
+					mmc_card_keep_power(host));
 	else if (mmc_card_keep_power(host) && mmc_card_wake_sdio_irq(host)) {
 		/* We may have switched to 1-bit mode during suspend */
 		err = sdio_enable_4bit_bus(host->card);
@@ -980,9 +981,7 @@ static int mmc_sdio_resume(struct mmc_host *host)
 static int mmc_sdio_power_restore(struct mmc_host *host)
 {
 	int ret;
-	/* HTC_WIFI_START */
 	u32 ocr;
-	/* HTC_WIFI_END */
 
 	BUG_ON(!host);
 	BUG_ON(!host->card);
@@ -1023,7 +1022,7 @@ static int mmc_sdio_power_restore(struct mmc_host *host)
 		ret = -EINVAL;
 		goto out;
 	}
-	
+
 	ret = mmc_sdio_init_card(host, host->ocr, host->card,
 				mmc_card_keep_power(host));
 	if (!ret && host->sdio_irqs)
@@ -1069,7 +1068,7 @@ int mmc_attach_sdio(struct mmc_host *host)
 	 * support.
 	 */
 	if (ocr & 0x7F) {
-		pr_warning("%s: card claims to support voltages "
+		printk(KERN_WARNING "%s: card claims to support voltages "
 		       "below the defined range. These will be ignored.\n",
 		       mmc_hostname(host));
 		ocr &= ~0x7F;
@@ -1197,7 +1196,7 @@ remove:
 err:
 	mmc_detach_bus(host);
 
-	pr_err("%s: error %d whilst initialising SDIO card\n",
+	printk(KERN_ERR "%s: error %d whilst initialising SDIO card\n",
 		mmc_hostname(host), err);
 
 	return err;

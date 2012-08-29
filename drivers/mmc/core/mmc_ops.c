@@ -233,7 +233,7 @@ static int
 mmc_send_cxd_data(struct mmc_card *card, struct mmc_host *host,
 		u32 opcode, void *buf, unsigned len)
 {
-	struct mmc_request mrq = {NULL};
+	struct mmc_request mrq = {0};
 	struct mmc_command cmd = {0};
 	struct mmc_data data = {0};
 	struct scatterlist sg;
@@ -371,11 +371,13 @@ int mmc_spi_set_crc(struct mmc_host *host, int use_crc)
  *	@set: cmd set values
  *	@index: EXT_CSD register index
  *	@value: value to program into EXT_CSD register
+ *	@timeout_ms: timeout (ms) for operation performed by register write,
+ *                   timeout of zero implies maximum possible timeout
  *
  *	Modifies the EXT_CSD register for selected card.
  */
 int mmc_switch(struct mmc_card *card, u8 set, u8 index, u8 value,
-	      unsigned int timeout_ms)
+	       unsigned int timeout_ms)
 {
 	int err;
 	struct mmc_command cmd = {0};
@@ -396,9 +398,6 @@ int mmc_switch(struct mmc_card *card, u8 set, u8 index, u8 value,
 	if (err)
 		return err;
 
-	/* Sandisk iNAND needs this delay */
-	mmc_delay(1);
-
 	/* Must check status to be sure of no errors */
 	do {
 		err = mmc_send_status(card, &status);
@@ -415,7 +414,7 @@ int mmc_switch(struct mmc_card *card, u8 set, u8 index, u8 value,
 			return -EBADMSG;
 	} else {
 		if (status & 0xFDFFA000)
-			pr_warning("%s: unexpected status %#x after "
+			printk(KERN_WARNING "%s: unexpected status %#x after "
 			       "switch", mmc_hostname(card->host), status);
 		if (status & R1_SWITCH_ERROR)
 			return -EBADMSG;
@@ -455,7 +454,7 @@ static int
 mmc_send_bus_test(struct mmc_card *card, struct mmc_host *host, u8 opcode,
 		  u8 len)
 {
-	struct mmc_request mrq = {NULL};
+	struct mmc_request mrq = {0};
 	struct mmc_command cmd = {0};
 	struct mmc_data data = {0};
 	struct scatterlist sg;
@@ -477,7 +476,7 @@ mmc_send_bus_test(struct mmc_card *card, struct mmc_host *host, u8 opcode,
 	else if (len == 4)
 		test_buf = testdata_4bit;
 	else {
-		pr_err("%s: Invalid bus_width %d\n",
+		printk(KERN_ERR "%s: Invalid bus_width %d\n",
 		       mmc_hostname(host), len);
 		kfree(data_buf);
 		return -EINVAL;
@@ -589,7 +588,7 @@ int mmc_send_bk_ops_cmd(struct mmc_card *card, bool is_synchronous)
 
 	cmd.opcode = MMC_SWITCH;
 	cmd.arg = (MMC_SWITCH_MODE_WRITE_BYTE << 24) |
-		(EXT_CSD_BKOPS_EN << 16) |
+		(EXT_CSD_BKOPS_START << 16) |
 		(1 << 8) |
 		EXT_CSD_CMD_SET_NORMAL;
 	if (is_synchronous)

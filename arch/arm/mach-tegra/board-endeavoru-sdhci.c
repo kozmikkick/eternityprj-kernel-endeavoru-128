@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-endeavoru-sdhci.c
  *
- * Copyright (C) 2011 NVIDIA Corporation.
+ * Copyright (C) 2011-2012 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -22,8 +22,10 @@
 #include <linux/clk.h>
 #include <linux/err.h>
 #include <linux/mmc/host.h>
+#include <linux/wl12xx.h>
 
 #include <asm/mach-types.h>
+
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/sdhci.h>
@@ -31,46 +33,35 @@
 #include "gpio-names.h"
 #include "board.h"
 
-/* HTC_WIFI_START */
-#include <linux/wl12xx.h>
-/* HTC_WIFI_END */
-
 #define ENTERPRISE_WLAN_PWR	TEGRA_GPIO_PV2
 #define ENTERPRISE_WLAN_RST	TEGRA_GPIO_PV3
 #define ENTERPRISE_WLAN_WOW	TEGRA_GPIO_PO4
 
-//#define ENTERPRISE_SD_CD TEGRA_GPIO_PI5
-
 static void (*wifi_status_cb)(int card_present, void *dev_id);
 static void *wifi_status_cb_devid;
-static int enterprise_wifi_status_register(void (*callback)(int , void *), void *);
 
-//static int enterprise_wifi_reset(int on);
-/* HTC_WIFI_START */
-//static int enterprise_wifi_power(int on);
-//static int enterprise_wifi_set_carddetect(int val);
+static int enterprise_wifi_status_register(void (*callback)(int , void *), void *);
+static int enterprise_wifi_reset(int on);
+
 int enterprise_wifi_power(int on);
 int enterprise_wifi_set_carddetect(int val);
 unsigned int enterprise_wifi_status(struct device *dev);
-static int enterprise_wifi_cd;		/* WIFI virtual 'card detect' status */
-/* HTC_WIFI_END */
 
+static int enterprise_wifi_cd;
 
-/* HTC_WIFI_START */
 static struct wl12xx_platform_data enterprise_wlan_data __initdata = {
 	.irq = TEGRA_GPIO_TO_IRQ(ENTERPRISE_WLAN_WOW),
 	.board_ref_clock = WL12XX_REFCLOCK_26,
 	.board_tcxo_clock = 1,
-//	.platform_quirks = WL12XX_PLATFORM_QUIRK_EDGE_IRQ,
 };
-/* HTC_WIFI_END */
 
-#if 0
+/* BCM4329?! rofl
 static struct wifi_platform_data enterprise_wifi_control = {
 	.set_power      = enterprise_wifi_power,
 	.set_reset      = enterprise_wifi_reset,
 	.set_carddetect = enterprise_wifi_set_carddetect,
 };
+
 
 static struct resource wifi_resource[] = {
 	[0] = {
@@ -81,7 +72,6 @@ static struct resource wifi_resource[] = {
 	},
 };
 
-
 static struct platform_device enterprise_wifi_device = {
 	.name           = "bcm4329_wlan",
 	.id             = 1,
@@ -90,8 +80,7 @@ static struct platform_device enterprise_wifi_device = {
 	.dev            = {
 		.platform_data = &enterprise_wifi_control,
 	},
-};
-#endif
+};*/
 
 static int emmc_suspend_gpiocfg(void)
 {
@@ -103,22 +92,6 @@ static void emmc_resume_gpiocfg(void)
 {
 	DISABLE_GPIO(SDMMC4_CLK, CC4, NORMAL);
 }
-
-// No uSD
-#if 0
-static struct resource sdhci_resource0[] = {
-	[0] = {
-		.start  = INT_SDMMC1,
-		.end    = INT_SDMMC1,
-		.flags  = IORESOURCE_IRQ,
-	},
-	[1] = {
-		.start	= TEGRA_SDMMC1_BASE,
-		.end	= TEGRA_SDMMC1_BASE + TEGRA_SDMMC1_SIZE-1,
-		.flags	= IORESOURCE_MEM,
-	},
-};
-#endif
 
 static struct resource sdhci_resource2[] = {
 	[0] = {
@@ -146,7 +119,6 @@ static struct resource sdhci_resource3[] = {
 	},
 };
 
-#if 0
 static struct embedded_sdio_data embedded_sdio_data0 = {
 	.cccr   = {
 		.sdio_vsn       = 2,
@@ -162,35 +134,19 @@ static struct embedded_sdio_data embedded_sdio_data0 = {
 	},
 };
 
-// No uSD
-static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
-	.mmc_data = {
-		.register_status_notify	= enterprise_wifi_status_register,
-		.embedded_sdio = &embedded_sdio_data0,
-		/* FIXME need to revert the built_in change
-		once we use get the signal strength fix of
-		bcmdhd driver from broadcom for bcm4329 chipset*/
-		.built_in = 0,
-	},
-	.cd_gpio = -1,
-	.wp_gpio = -1,
-	.power_gpio = -1,
-	.max_clk_limit = 45000000,
-};
-#endif
-
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.mmc_data = {
 		.status = enterprise_wifi_status,
 		.register_status_notify	= enterprise_wifi_status_register,
-		/* HTC_WIFI_START */
-		//.embedded_sdio = &embedded_sdio_data0,
-		/* HTC_WIFI_END */
+//		.embedded_sdio = &embedded_sdio_data0,
 		.built_in = 1,
+		.ocr_mask = MMC_OCR_1V8_MASK,
 	},
 	.cd_gpio = -1,
 	.wp_gpio = -1,
 	.power_gpio = -1,
+	.tap_delay = 0x0F,
+	.ddr_clk_limit = 41000000,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
@@ -198,25 +154,14 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.wp_gpio = -1,
 	.power_gpio = -1,
 	.is_8bit = 1,
+	.tap_delay = 0x0F,
+	.ddr_clk_limit = 41000000,
 	.mmc_data = {
 		.built_in = 1,
 	},
 	.suspend_gpiocfg = emmc_suspend_gpiocfg,
 	.resume_gpiocfg = emmc_resume_gpiocfg,
 };
-
-// No uSD
-#if 0
-static struct platform_device tegra_sdhci_device0 = {
-	.name		= "sdhci-tegra",
-	.id		= 0,
-	.resource	= sdhci_resource0,
-	.num_resources	= ARRAY_SIZE(sdhci_resource0),
-	.dev = {
-		.platform_data = &tegra_sdhci_platform_data0,
-	},
-};
-#endif
 
 static struct platform_device tegra_sdhci_device2 = {
 	.name		= "sdhci-tegra",
@@ -244,18 +189,17 @@ static int enterprise_wifi_status_register(
 {
 	if (wifi_status_cb)
 		return -EAGAIN;
+
 	wifi_status_cb = callback;
 	wifi_status_cb_devid = dev_id;
 	return 0;
 }
 
-/* HTC_WIFI_START */
 unsigned int enterprise_wifi_status(struct device *dev)
 {
 	return enterprise_wifi_cd;
 }
 
-//static int enterprise_wifi_set_carddetect(int val)
 int enterprise_wifi_set_carddetect(int val)
 {
 	printk("%s: %d\n", __func__, val);
@@ -268,7 +212,6 @@ int enterprise_wifi_set_carddetect(int val)
 }
 EXPORT_SYMBOL(enterprise_wifi_set_carddetect);
 
-//static int enterprise_wifi_power(int on)
 int enterprise_wifi_power(int on)
 {
 	static int power_state;
@@ -287,26 +230,14 @@ int enterprise_wifi_power(int on)
 	}
 
 	return 0;
-/*	
-	pr_debug("%s: %d\n", __func__, on);
-	gpio_set_value(ENTERPRISE_WLAN_PWR, on);
-	mdelay(100);
-	gpio_set_value(ENTERPRISE_WLAN_RST, on);
-	mdelay(200);
-
-	return 0;
-*/
 }
 EXPORT_SYMBOL(enterprise_wifi_power);
-/* HTC_WIFI_END */
 
-#if 0
 static int enterprise_wifi_reset(int on)
 {
 	pr_debug("%s: do nothing\n", __func__);
 	return 0;
 }
-#endif
 
 static int __init enterprise_wifi_init(void)
 {
@@ -315,9 +246,11 @@ static int __init enterprise_wifi_init(void)
 	rc = gpio_request(ENTERPRISE_WLAN_PWR, "wlan_power");
 	if (rc)
 		pr_err("WLAN_PWR gpio request failed:%d\n", rc);
+
 	rc = gpio_request(ENTERPRISE_WLAN_RST, "wlan_rst");
 	if (rc)
 		pr_err("WLAN_RST gpio request failed:%d\n", rc);
+
 	rc = gpio_request(ENTERPRISE_WLAN_WOW, "bcmsdh_sdmmc");
 	if (rc)
 		pr_err("WLAN_WOW gpio request failed:%d\n", rc);
@@ -329,18 +262,18 @@ static int __init enterprise_wifi_init(void)
 	rc = gpio_direction_output(ENTERPRISE_WLAN_PWR, 0);
 	if (rc)
 		pr_err("WLAN_PWR gpio direction configuration failed:%d\n", rc);
+
 	gpio_direction_output(ENTERPRISE_WLAN_RST, 0);
 	if (rc)
 		pr_err("WLAN_RST gpio direction configuration failed:%d\n", rc);
+
 	rc = gpio_direction_input(ENTERPRISE_WLAN_WOW);
 	if (rc)
 		pr_err("WLAN_WOW gpio direction configuration failed:%d\n", rc);
 
-	/* HTC_WIFI_START */
-	// platform_device_register(&enterprise_wifi_device);
 	if (wl12xx_set_platform_data(&enterprise_wlan_data))
 		pr_err("Error setting wl12xx_data\n");
-	/* HTC_WIFI_END */
+
 	return 0;
 }
 
@@ -360,12 +293,10 @@ void blue_pincfg_uartc_resume(void) {
 	tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_UART3_RXD, TEGRA_PUPD_NORMAL);
         tegra_gpio_disable(TEGRA_GPIO_PW7);
 }
-
 EXPORT_SYMBOL(blue_pincfg_uartc_resume);
 
 void blue_pincfg_uartc_suspend(void) {
         /* BT_EN GPIO-U.00 O(L) */
-
         gpio_direction_output(TEGRA_GPIO_PU0, 0);
 
         /* UART3_CTS_N GPIO-A.01 I(PU) */
@@ -391,7 +322,6 @@ void blue_pincfg_uartc_suspend(void) {
 	gpio_direction_input(TEGRA_GPIO_PO5);
 	tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_ULPI_DATA4, TEGRA_PUPD_NORMAL);
 }
-
 EXPORT_SYMBOL(blue_pincfg_uartc_suspend);
 
 void blue_pincfg_uartc_gpio_request(void) {
@@ -423,11 +353,10 @@ void blue_pincfg_uartc_gpio_request(void) {
         err = gpio_request(TEGRA_GPIO_PO5, "bt");
         if (err)
                 pr_err("BT_WAKEUP gpio request failed:%d\n", err);
+
         tegra_gpio_enable(TEGRA_GPIO_PO5);
         gpio_direction_input(TEGRA_GPIO_PO5);
+
 	tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_ULPI_DATA4, TEGRA_PUPD_NORMAL);
-
-
 }
-
 EXPORT_SYMBOL(blue_pincfg_uartc_gpio_request);

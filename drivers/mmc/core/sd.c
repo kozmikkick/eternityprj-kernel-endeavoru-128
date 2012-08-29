@@ -163,7 +163,7 @@ static int mmc_decode_csd(struct mmc_card *card)
 		csd->erase_size = 1;
 		break;
 	default:
-		pr_err("%s: unrecognised CSD structure version %d\n",
+		printk(KERN_ERR "%s: unrecognised CSD structure version %d\n",
 			mmc_hostname(card->host), csd_struct);
 		return -EINVAL;
 	}
@@ -187,7 +187,7 @@ static int mmc_decode_scr(struct mmc_card *card)
 
 	scr_struct = UNSTUFF_BITS(resp, 60, 4);
 	if (scr_struct != 0) {
-		pr_err("%s: unrecognised SCR structure version %d\n",
+		printk(KERN_ERR "%s: unrecognised SCR structure version %d\n",
 			mmc_hostname(card->host), scr_struct);
 		return -EINVAL;
 	}
@@ -218,7 +218,7 @@ static int mmc_read_ssr(struct mmc_card *card)
 	u32 *ssr;
 
 	if (!(card->csd.cmdclass & CCC_APP_SPEC)) {
-		pr_warning("%s: card lacks mandatory SD Status "
+		printk(KERN_WARNING "%s: card lacks mandatory SD Status "
 			"function.\n", mmc_hostname(card->host));
 		return 0;
 	}
@@ -229,7 +229,7 @@ static int mmc_read_ssr(struct mmc_card *card)
 
 	err = mmc_app_sd_status(card, ssr);
 	if (err) {
-		pr_warning("%s: problem reading SD Status "
+		printk(KERN_WARNING "%s: problem reading SD Status "
 			"register.\n", mmc_hostname(card->host));
 		err = 0;
 		goto out;
@@ -253,7 +253,7 @@ static int mmc_read_ssr(struct mmc_card *card)
 			card->ssr.erase_offset = eo * 1000;
 		}
 	} else {
-		pr_warning("%s: SD Status: Invalid Allocation Unit "
+		printk(KERN_WARNING "%s: SD Status: Invalid Allocation Unit "
 			"size.\n", mmc_hostname(card->host));
 	}
 out:
@@ -273,7 +273,7 @@ static int mmc_read_switch(struct mmc_card *card)
 		return 0;
 
 	if (!(card->csd.cmdclass & CCC_SWITCH)) {
-		pr_warning("%s: card lacks mandatory switch "
+		printk(KERN_WARNING "%s: card lacks mandatory switch "
 			"function, performance might suffer.\n",
 			mmc_hostname(card->host));
 		return 0;
@@ -283,7 +283,7 @@ static int mmc_read_switch(struct mmc_card *card)
 
 	status = kmalloc(64, GFP_KERNEL);
 	if (!status) {
-		pr_err("%s: could not allocate a buffer for "
+		printk(KERN_ERR "%s: could not allocate a buffer for "
 			"switch capabilities.\n",
 			mmc_hostname(card->host));
 		return -ENOMEM;
@@ -299,7 +299,7 @@ static int mmc_read_switch(struct mmc_card *card)
 		if (err != -EINVAL && err != -ENOSYS && err != -EFAULT)
 			goto out;
 
-		pr_warning("%s: problem reading Bus Speed modes.\n",
+		printk(KERN_WARNING "%s: problem reading Bus Speed modes.\n",
 			mmc_hostname(card->host));
 		err = 0;
 
@@ -319,7 +319,7 @@ static int mmc_read_switch(struct mmc_card *card)
 			if (err != -EINVAL && err != -ENOSYS && err != -EFAULT)
 				goto out;
 
-			pr_warning("%s: problem reading "
+			printk(KERN_WARNING "%s: problem reading "
 				"Driver Strength.\n",
 				mmc_hostname(card->host));
 			err = 0;
@@ -339,7 +339,7 @@ static int mmc_read_switch(struct mmc_card *card)
 			if (err != -EINVAL && err != -ENOSYS && err != -EFAULT)
 				goto out;
 
-			pr_warning("%s: problem reading "
+			printk(KERN_WARNING "%s: problem reading "
 				"Current Limit.\n",
 				mmc_hostname(card->host));
 			err = 0;
@@ -383,7 +383,7 @@ int mmc_sd_switch_hs(struct mmc_card *card)
 
 	status = kmalloc(64, GFP_KERNEL);
 	if (!status) {
-		pr_err("%s: could not allocate a buffer for "
+		printk(KERN_ERR "%s: could not allocate a buffer for "
 			"switch capabilities.\n", mmc_hostname(card->host));
 		return -ENOMEM;
 	}
@@ -393,7 +393,7 @@ int mmc_sd_switch_hs(struct mmc_card *card)
 		goto out;
 
 	if ((status[16] & 0xF) != 1) {
-		pr_warning("%s: Problem switching card "
+		printk(KERN_WARNING "%s: Problem switching card "
 			"into high-speed mode!\n",
 			mmc_hostname(card->host));
 		err = 0;
@@ -459,7 +459,7 @@ static int sd_select_driver_type(struct mmc_card *card, u8 *status)
 		return err;
 
 	if ((status[15] & 0xF) != drive_strength) {
-		pr_warning("%s: Problem setting drive strength!\n",
+		printk(KERN_WARNING "%s: Problem setting drive strength!\n",
 			mmc_hostname(card->host));
 		return 0;
 	}
@@ -537,12 +537,13 @@ static int sd_set_bus_speed_mode(struct mmc_card *card, u8 *status)
 	if (err)
 		return err;
 
-	if ((status[16] & 0xF) != card->sd_bus_speed) {
-		pr_warning("%s: Problem setting bus speed mode!\n",
+	if ((status[16] & 0xF) != card->sd_bus_speed)
+		printk(KERN_WARNING "%s: Problem setting bus speed mode!\n",
 			mmc_hostname(card->host));
-	}
 	else {
 		mmc_set_timing(card->host, timing);
+		if (timing == MMC_TIMING_UHS_DDR50)
+			mmc_card_set_ddr_mode(card);
 		mmc_set_clock(card->host, card->sw_caps.uhs_max_dtr);
 	}
 
@@ -601,7 +602,7 @@ static int sd_set_current_limit(struct mmc_card *card, u8 *status)
 		return err;
 
 	if (((status[15] >> 4) & 0x0F) != current_limit)
-		pr_warning("%s: Problem setting current limit!\n",
+		printk(KERN_WARNING "%s: Problem setting current limit!\n",
 			mmc_hostname(card->host));
 
 	return 0;
@@ -623,7 +624,7 @@ static int mmc_sd_init_uhs_card(struct mmc_card *card)
 
 	status = kmalloc(64, GFP_KERNEL);
 	if (!status) {
-		pr_err("%s: could not allocate a buffer for "
+		printk(KERN_ERR "%s: could not allocate a buffer for "
 			"switch capabilities.\n", mmc_hostname(card->host));
 		return -ENOMEM;
 	}
@@ -662,6 +663,7 @@ static int mmc_sd_init_uhs_card(struct mmc_card *card)
 	/* SPI mode doesn't define CMD19 */
 	if (!mmc_host_is_spi(card->host) && card->host->ops->execute_tuning)
 		err = card->host->ops->execute_tuning(card->host);
+
 out:
 	kfree(status);
 
@@ -833,13 +835,15 @@ int mmc_sd_setup_card(struct mmc_host *host, struct mmc_card *card,
 			err = mmc_read_switch(card);
 			if (!err) {
 				if (retries > 1) {
-					pr_warning("%s: recovered\n", 
-						   mmc_hostname(host));
+					printk(KERN_WARNING
+					       "%s: recovered\n", 
+					       mmc_hostname(host));
 				}
 				break;
 			} else {
-				pr_warning("%s: read switch failed (attempt %d)\n",
-					   mmc_hostname(host), retries);
+				printk(KERN_WARNING
+				       "%s: read switch failed (attempt %d)\n",
+				       mmc_hostname(host), retries);
 			}
 		}
 #else
@@ -872,7 +876,7 @@ int mmc_sd_setup_card(struct mmc_host *host, struct mmc_card *card,
 			ro = host->ops->get_ro(host);
 
 		if (ro < 0) {
-			pr_warning("%s: host does not "
+			printk(KERN_WARNING "%s: host does not "
 				"support reading read-only "
 				"switch. assuming write-enable.\n",
 				mmc_hostname(host));
@@ -981,7 +985,7 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 			goto free_card;
 
 		/* Card is an ultra-high-speed card */
-		mmc_card_set_uhs(card);
+		mmc_sd_card_set_uhs(card);
 
 		/*
 		 * Since initialization is now complete, enable preset
@@ -1068,7 +1072,7 @@ static void mmc_sd_detect(struct mmc_host *host)
 		break;
 	}
 	if (!retries) {
-		pr_err("%s(%s): Unable to re-detect card (%d)\n",
+		printk(KERN_ERR "%s(%s): Unable to re-detect card (%d)\n",
 		       __func__, mmc_hostname(host), err);
 	}
 #else
@@ -1081,6 +1085,7 @@ static void mmc_sd_detect(struct mmc_host *host)
 
 		mmc_claim_host(host);
 		mmc_detach_bus(host);
+		mmc_power_off(host);
 		mmc_release_host(host);
 	}
 }
@@ -1125,7 +1130,7 @@ static int mmc_sd_resume(struct mmc_host *host)
 		err = mmc_sd_init_card(host, host->ocr, host->card);
 
 		if (err) {
-			pr_err("%s: Re-init card rc = %d (retries = %d)\n",
+			printk(KERN_ERR "%s: Re-init card rc = %d (retries = %d)\n",
 			       mmc_hostname(host), err, retries);
 			mdelay(5);
 			retries--;
@@ -1227,7 +1232,7 @@ int mmc_attach_sd(struct mmc_host *host)
 	 * support.
 	 */
 	if (ocr & 0x7F) {
-		pr_warning("%s: card claims to support voltages "
+		printk(KERN_WARNING "%s: card claims to support voltages "
 		       "below the defined range. These will be ignored.\n",
 		       mmc_hostname(host));
 		ocr &= ~0x7F;
@@ -1235,7 +1240,7 @@ int mmc_attach_sd(struct mmc_host *host)
 
 	if ((ocr & MMC_VDD_165_195) &&
 	    !(host->ocr_avail_sd & MMC_VDD_165_195)) {
-		pr_warning("%s: SD card claims to support the "
+		printk(KERN_WARNING "%s: SD card claims to support the "
 		       "incompletely defined 'low voltage range'. This "
 		       "will be ignored.\n", mmc_hostname(host));
 		ocr &= ~MMC_VDD_165_195;
@@ -1266,7 +1271,7 @@ int mmc_attach_sd(struct mmc_host *host)
 	}
 
 	if (!retries) {
-		pr_err("%s: mmc_sd_init_card() failure (err = %d)\n",
+		printk(KERN_ERR "%s: mmc_sd_init_card() failure (err = %d)\n",
 		       mmc_hostname(host), err);
 		goto err;
 	}
@@ -1292,7 +1297,7 @@ remove_card:
 err:
 	mmc_detach_bus(host);
 
-	pr_err("%s: error %d whilst initialising SD card\n",
+	printk(KERN_ERR "%s: error %d whilst initialising SD card\n",
 		mmc_hostname(host), err);
 
 	return err;

@@ -29,9 +29,12 @@
 
 #define DEV_NAME "emapi"
 
-#if 1 /*HTC_CSP_START*/
 #define MAX_NVS_SIZE	0x800U
-#endif /*HTC_CSP_END*/
+#define NVS_MAX_SIZE	0x400U
+#define NVS_LEN_OFFSET	0x0C
+#define NVS_DATA_OFFSET	0x40
+
+static unsigned char wifi_nvs_ram[NVS_MAX_SIZE];
 
 struct _emapi {
 	struct class		*emapi_class;
@@ -49,9 +52,14 @@ static const struct sdio_device_id emapi_sdio_ids[] = {
 	{	SDIO_DEVICE_CLASS(SDIO_CLASS_WLAN)	},
 	{					},
 };
-
 MODULE_DEVICE_TABLE(sdio, emapi_sdio_ids);
 
+/* wifi nvs ram */
+unsigned char *get_wifi_nvs_ram( void )
+{
+	return wifi_nvs_ram;
+}
+EXPORT_SYMBOL(get_wifi_nvs_ram);
 
 /* calibration read func */
 static int emapi_calibration_read(char *page, char **start, off_t off,
@@ -83,7 +91,7 @@ static int emapi_calibration_write(struct file *file, const char __user *buffer,
 }
 
 /* most content happens here */
-static long int emapi_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static int emapi_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 /*Raymond- static int emapi_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, unsigned long arg)*/
 {
 	int error = 0;
