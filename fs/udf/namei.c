@@ -774,8 +774,6 @@ static int udf_rmdir(struct inode *dir, struct dentry *dentry)
 	struct fileIdentDesc *fi, cfi;
 	struct kernel_lb_addr tloc;
 
-	dentry_unhash(dentry);
-
 	retval = -ENOENT;
 	fi = udf_find_entry(dir, &dentry->d_name, &fibh, &cfi);
 	if (!fi)
@@ -792,9 +790,8 @@ static int udf_rmdir(struct inode *dir, struct dentry *dentry)
 	if (retval)
 		goto end_rmdir;
 	if (inode->i_nlink != 2)
-		udf_warning(inode->i_sb, "udf_rmdir",
-			    "empty directory has nlink != 2 (%d)",
-			    inode->i_nlink);
+		udf_warn(inode->i_sb, "empty directory has nlink != 2 (%d)\n",
+			 inode->i_nlink);
 	clear_nlink(inode);
 	inode->i_size = 0;
 	inode_dec_link_count(dir);
@@ -1070,9 +1067,6 @@ static int udf_rename(struct inode *old_dir, struct dentry *old_dentry,
 	int retval = -ENOENT;
 	struct kernel_lb_addr tloc;
 	struct udf_inode_info *old_iinfo = UDF_I(old_inode);
-
-	if (new_inode && S_ISDIR(new_inode->i_mode))
-		dentry_unhash(new_dentry);
 
 	ofi = udf_find_entry(old_dir, &old_dentry->d_name, &ofibh, &ocfi);
 	if (ofi) {
