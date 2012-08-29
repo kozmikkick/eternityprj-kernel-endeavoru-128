@@ -1773,6 +1773,13 @@ int __get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
 			continue;
 		}
 
+		/*
+		 * If we don't actually want the page itself,
+		 * and it's the stack guard page, just skip it.
+		 */
+		if (!pages && stack_guard_page(vma, start))
+			goto next_page;
+
 		do {
 			struct page *page;
 			unsigned int foll_flags = gup_flags;
