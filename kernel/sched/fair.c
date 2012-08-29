@@ -2694,8 +2694,6 @@ static int select_idle_sibling(struct task_struct *p, int target)
 	/*
 	 * Otherwise, iterate the domains and find an elegible idle cpu.
 	 */
-	rcu_read_lock();
-
 	sd = highest_flag_domain(target, SD_SHARE_PKG_RESOURCES);
 	for_each_lower_domain(sd) {
 		sg = sd->groups;
@@ -2717,8 +2715,6 @@ next:
 		} while (sg != sd->groups);
 	}
 done:
-	rcu_read_unlock();
-
 	return target;
 }
 
