@@ -10,6 +10,7 @@
 #define _INCLUDE_GUARD_LATENCYTOP_H_
 
 #include <linux/compiler.h>
+#include <linux/sched.h>
 #ifdef CONFIG_LATENCYTOP
 
 #define LT_SAVECOUNT		32
