@@ -205,7 +205,7 @@ static noinline int tegra_cpu_speed_balance(void)
 	unsigned int nr_cpus = num_online_cpus();
 	unsigned int max_cpus = pm_qos_request(PM_QOS_MAX_ONLINE_CPUS) ? : 4;
 	unsigned int min_cpus = pm_qos_request(PM_QOS_MIN_ONLINE_CPUS);
-	unsigned int avg_nr_run = avg_nr_running();
+/*	unsigned int avg_nr_run = avg_nr_running();*/
 	unsigned int nr_run;
 
 	/* Evaluate:
@@ -221,8 +221,8 @@ static noinline int tegra_cpu_speed_balance(void)
 		unsigned int nr_threshold = nr_run_thresholds[nr_run - 1];
 		if (nr_run_last <= nr_run)
 			nr_threshold += nr_run_hysteresis;
-		if (avg_nr_run <= (nr_threshold << (FSHIFT - NR_FSHIFT)))
-			break;
+/*		if (avg_nr_run <= (nr_threshold << (FSHIFT - NR_FSHIFT)))
+			break;*/
 	}
 	nr_run_last = nr_run;
 
