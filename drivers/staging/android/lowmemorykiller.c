@@ -36,6 +36,7 @@
 #include <linux/oom.h>
 #include <linux/sched.h>
 #include <linux/rcupdate.h>
+#include <linux/profile.h>
 #include <linux/notifier.h>
 
 static uint32_t lowmem_debug_level = 2;
@@ -53,29 +54,8 @@ static int lowmem_minfree[6] = {
 	16 * 1024,	/* 64MB */
 };
 static int lowmem_minfree_size = 4;
-static size_t lowmem_fork_boost_minfree[6] = {
-	0,
-	0,
-	0,
-	0,
-	6177,
-	6177,
-};
-static size_t minfree_tmp[6] = {0, 0, 0, 0, 0, 0};
-
-static size_t fork_boost_adj[6] = {
-	0,
-	2,
-	4,
-	7,
-	9,
-	12
-};
 
 static unsigned long lowmem_deathpending_timeout;
-static unsigned long lowmem_fork_boost_timeout;
-static uint32_t lowmem_fork_boost = 1;
-static int last_min_adj = OOM_SCORE_ADJ_MAX + 1;;
 
 #define lowmem_print(level, x...)			\
 	do {						\
@@ -83,74 +63,7 @@ static int last_min_adj = OOM_SCORE_ADJ_MAX + 1;;
 			printk(x);			\
 	} while (0)
 
-
-static void show_meminfo(void)
-{
-	printk(" free:%lu \n"
-		" active_file:%luK inactive_file:%luK shem:%luK mlock:%luK [cache]\n"
-		" anon:%luK mapped:%luK [PSS]\n"
-		" slab_reclaimable:%luK slab_unreclaimable:%luK\n"
-		" pagetables:%luK\n",
-		global_page_state(NR_FREE_PAGES) << 2,
-		global_page_state(NR_ACTIVE_FILE) << 2,
-		global_page_state(NR_INACTIVE_FILE) << 2,
-		global_page_state(NR_SHMEM) << 2,
-		global_page_state(NR_MLOCK) << 2,
-		(global_page_state(NR_ACTIVE_ANON) + global_page_state(NR_INACTIVE_ANON)) << 2,
-		global_page_state(NR_FILE_MAPPED) << 2,
-		global_page_state(NR_SLAB_RECLAIMABLE) << 2, global_page_state(NR_SLAB_UNRECLAIMABLE) << 2,
-		global_page_state(NR_PAGETABLE) << 2);
-}
-
-/**
- * dump_tasks - dump current memory state of all system tasks
- *
- * State information includes task's pid, uid, tgid, vm size, rss, cpu,
- * oom_score_adj value, and name.
- *
- * Call with tasklist_lock read-locked.
- */
-static void dump_tasks(void)
-{
-	struct task_struct *p;
-	struct task_struct *task;
-
-	pr_info("[ pid ]   uid  total_vm      rss cpu oom_adj  name\n");
-	for_each_process(p) {
-		task = find_lock_task_mm(p);
-		if (!task) {
-			/*
-			 * This is a kthread or all of p's threads have already
-			 * detached their mm's.  There's no need to report
-			 * them; they can't be oom killed anyway.
-			 */
-			continue;
-		}
-
-		pr_info("[%5d] %5d  %8lu %8lu %3u     %3d  %s\n",
-			task->pid, task_uid(task),
-			task->mm->total_vm, get_mm_rss(task->mm),
-			task_cpu(task), task->signal->oom_adj, task->comm);
-		task_unlock(task);
-	}
-}
-
-static int
-task_fork_notify_func(struct notifier_block *self, unsigned long val, void *data);
-
-static struct notifier_block task_fork_nb = {
-	.notifier_call  = task_fork_notify_func,
-};
-
-static int
-task_fork_notify_func(struct notifier_block *self, unsigned long val, void *data)
-{
-	lowmem_fork_boost_timeout = jiffies + (HZ << 1);
-
-	return NOTIFY_OK;
-}
-
-static int lowmem_shrink(struct shrinker *s, int nr_to_scan, gfp_t gfp_mask)
+static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 {
 	struct task_struct *tsk;
 	struct task_struct *selected = NULL;
@@ -163,48 +76,30 @@ static int lowmem_shrink(struct shrinker *s, int nr_to_scan, gfp_t gfp_mask)
 	int array_size = ARRAY_SIZE(lowmem_adj);
 	int other_free = global_page_state(NR_FREE_PAGES);
 	int other_file = global_page_state(NR_FILE_PAGES) -
-		global_page_state(NR_SHMEM) - global_page_state(NR_MLOCK);
-
-	int fork_boost = 0;
-	int *adj_array;
-	size_t *min_array;
-
-	if (lowmem_fork_boost &&
-	    time_before_eq(jiffies, lowmem_fork_boost_timeout)) {
-		for (i = 0; i < lowmem_minfree_size; i++)
-			minfree_tmp[i] = lowmem_minfree[i] + lowmem_fork_boost_minfree[i] ;
-
-		adj_array = fork_boost_adj;
-		min_array = minfree_tmp;
-	}
-	else {
-		adj_array = lowmem_adj;
-		min_array = lowmem_minfree;
-	}
+						global_page_state(NR_SHMEM);
 
 	if (lowmem_adj_size < array_size)
 		array_size = lowmem_adj_size;
 	if (lowmem_minfree_size < array_size)
 		array_size = lowmem_minfree_size;
 	for (i = 0; i < array_size; i++) {
-		if (other_free < min_array[i] &&
-		    (other_file < min_array[i])) {
-			min_score_adj = adj_array[i];
-			fork_boost = lowmem_fork_boost_minfree[i];
+		if (other_free < lowmem_minfree[i] &&
+		    other_file < lowmem_minfree[i]) {
+			min_score_adj = lowmem_adj[i];
 			break;
 		}
 	}
-	if (nr_to_scan > 0)
-		lowmem_print(3, "lowmem_shrink %d, %x, ofree %d %d, ma %d\n",
-			     nr_to_scan, gfp_mask, other_free, other_file,
-			     min_score_adj);
+	if (sc->nr_to_scan > 0)
+		lowmem_print(3, "lowmem_shrink %lu, %x, ofree %d %d, ma %d\n",
+				sc->nr_to_scan, sc->gfp_mask, other_free,
+				other_file, min_score_adj);
 	rem = global_page_state(NR_ACTIVE_ANON) +
 		global_page_state(NR_ACTIVE_FILE) +
 		global_page_state(NR_INACTIVE_ANON) +
 		global_page_state(NR_INACTIVE_FILE);
-	if (nr_to_scan <= 0 || min_score_adj == OOM_SCORE_ADJ_MAX + 1) {
-		lowmem_print(5, "lowmem_shrink %d, %x, return %d\n",
-			     nr_to_scan, gfp_mask, rem);
+	if (sc->nr_to_scan <= 0 || min_score_adj == OOM_SCORE_ADJ_MAX + 1) {
+		lowmem_print(5, "lowmem_shrink %lu, %x, return %d\n",
+			     sc->nr_to_scan, sc->gfp_mask, rem);
 		return rem;
 	}
 	selected_oom_score_adj = min_score_adj;
@@ -228,7 +123,6 @@ static int lowmem_shrink(struct shrinker *s, int nr_to_scan, gfp_t gfp_mask)
 			return 0;
 		}
 		oom_score_adj = p->signal->oom_score_adj;
-
 		if (oom_score_adj < min_score_adj) {
 			task_unlock(p);
 			continue;
@@ -250,33 +144,17 @@ static int lowmem_shrink(struct shrinker *s, int nr_to_scan, gfp_t gfp_mask)
 		lowmem_print(2, "select %d (%s), adj %d, size %d, to kill\n",
 			     p->pid, p->comm, oom_score_adj, tasksize);
 	}
-
 	if (selected) {
-		if (last_min_adj > selected_oom_score_adj &&
-			(selected_oom_score_adj == 12 || selected_oom_score_adj == 9 || selected_oom_score_adj == 7)) {
-			last_min_adj = selected_oom_score_adj;
-			lowmem_print(1, "lowmem_shrink: monitor memory status at selected_oom_score_adj=%d\n", selected_oom_score_adj);
-			show_meminfo();
-			dump_tasks();
-		}
-
-		lowmem_print(1, "[%s] send sigkill to %d (%s), adj %d, size %dK, min_score_adj=%d,"
-			" free=%dK, file=%dK, fork_boost=%d\n",
-			     current->comm, selected->pid, selected->comm,
-			     selected_oom_score_adj, selected_tasksize << 2, min_score_adj,
-			     other_free << 2, other_file << 2, fork_boost << 2);
+		lowmem_print(1, "send sigkill to %d (%s), adj %d, size %d\n",
+			     selected->pid, selected->comm,
+			     selected_oom_score_adj, selected_tasksize);
 		lowmem_deathpending_timeout = jiffies + HZ;
-		if (selected_oom_score_adj < 7)
-		{
-			show_meminfo();
-			dump_tasks();
-		}
-		force_sig(SIGKILL, selected);
+		send_sig(SIGKILL, selected, 0);
 		set_tsk_thread_flag(selected, TIF_MEMDIE);
 		rem -= selected_tasksize;
 	}
-	lowmem_print(4, "lowmem_shrink %d, %x, return %d\n",
-		     nr_to_scan, gfp_mask, rem);
+	lowmem_print(4, "lowmem_shrink %lu, %x, return %d\n",
+		     sc->nr_to_scan, sc->gfp_mask, rem);
 	rcu_read_unlock();
 	return rem;
 }
@@ -288,7 +166,6 @@ static struct shrinker lowmem_shrinker = {
 
 static int __init lowmem_init(void)
 {
-	task_fork_register(&task_fork_nb);
 	register_shrinker(&lowmem_shrinker);
 	return 0;
 }
@@ -296,7 +173,6 @@ static int __init lowmem_init(void)
 static void __exit lowmem_exit(void)
 {
 	unregister_shrinker(&lowmem_shrinker);
-	task_fork_unregister(&task_fork_nb);
 }
 
 module_param_named(cost, lowmem_shrinker.seeks, int, S_IRUGO | S_IWUSR);
@@ -305,9 +181,6 @@ module_param_array_named(adj, lowmem_adj, int, &lowmem_adj_size,
 module_param_array_named(minfree, lowmem_minfree, uint, &lowmem_minfree_size,
 			 S_IRUGO | S_IWUSR);
 module_param_named(debug_level, lowmem_debug_level, uint, S_IRUGO | S_IWUSR);
-module_param_named(fork_boost, lowmem_fork_boost, uint, S_IRUGO | S_IWUSR);
-module_param_array_named(fork_boost_minfree, lowmem_fork_boost_minfree, uint, &lowmem_minfree_size,
-			 S_IRUGO | S_IWUSR);
 
 module_init(lowmem_init);
 module_exit(lowmem_exit);
