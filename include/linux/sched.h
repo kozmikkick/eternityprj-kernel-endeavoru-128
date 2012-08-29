@@ -90,6 +90,7 @@ struct sched_param {
 #include <linux/task_io_accounting.h>
 #include <linux/latencytop.h>
 #include <linux/cred.h>
+#include <linux/llist.h>
 
 #include <asm/processor.h>
 
@@ -139,7 +140,6 @@ extern int nr_processes(void);
 extern unsigned long nr_running(void);
 extern unsigned long nr_uninterruptible(void);
 extern unsigned long nr_iowait(void);
-extern unsigned long avg_nr_running(void);
 extern unsigned long nr_iowait_cpu(int cpu);
 extern unsigned long this_cpu_load(void);
 
@@ -271,7 +271,6 @@ extern void init_idle_bootup_task(struct task_struct *idle);
 
 extern int runqueue_is_locked(int cpu);
 
-extern cpumask_var_t nohz_cpu_mask;
 #if defined(CONFIG_SMP) && defined(CONFIG_NO_HZ)
 extern void select_nohz_load_balancer(int stop_tick);
 extern int get_nohz_timer_target(void);
@@ -484,8 +483,8 @@ struct task_cputime {
 
 #define INIT_CPUTIME	\
 	(struct task_cputime) {					\
-		.utime = 0,					\
-		.stime = 0,					\
+		.utime = cputime_zero,				\
+		.stime = cputime_zero,				\
 		.sum_exec_runtime = 0,				\
 	}
 
@@ -511,7 +510,7 @@ struct task_cputime {
 struct thread_group_cputimer {
 	struct task_cputime cputime;
 	int running;
-	spinlock_t lock;
+	raw_spinlock_t lock;
 };
 
 #include <linux/rwsem.h>
@@ -636,13 +635,13 @@ struct signal_struct {
 #endif
 #ifdef CONFIG_CGROUPS
 	/*
-	 * The group_rwsem prevents threads from forking with
+	 * The threadgroup_fork_lock prevents threads from forking with
 	 * CLONE_THREAD while held for writing. Use this for fork-sensitive
 	 * threadgroup-wide operations. It's taken for reading in fork.c in
 	 * copy_process().
 	 * Currently only needed write-side by cgroups.
 	 */
-	struct rw_semaphore group_rwsem;
+	struct rw_semaphore threadgroup_fork_lock;
 #endif
 
 	int oom_adj;		/* OOM kill score adjustment (bit shift) */
@@ -664,9 +663,8 @@ struct signal_struct {
  * Bits in flags field of signal_struct.
  */
 #define SIGNAL_STOP_STOPPED	0x00000001 /* job control stop in effect */
-#define SIGNAL_STOP_DEQUEUED	0x00000002 /* stop signal dequeued */
-#define SIGNAL_STOP_CONTINUED	0x00000004 /* SIGCONT since WCONTINUED reap */
-#define SIGNAL_GROUP_EXIT	0x00000008 /* group exit in progress */
+#define SIGNAL_STOP_CONTINUED	0x00000002 /* SIGCONT since WCONTINUED reap */
+#define SIGNAL_GROUP_EXIT	0x00000004 /* group exit in progress */
 /*
  * Pending notifications to parent.
  */
@@ -820,11 +818,7 @@ enum cpu_idle_type {
 # define scale_load_down(w)	(w)
 #endif
 
-
-/*
- * Increase resolution of nice-level calculations:
- */
-#define SCHED_LOAD_SHIFT	10
+#define SCHED_LOAD_SHIFT	(10 + SCHED_LOAD_RESOLUTION)
 #define SCHED_LOAD_SCALE	(1L << SCHED_LOAD_SHIFT)
 
 /*
@@ -850,6 +844,7 @@ enum cpu_idle_type {
 #define SD_SERIALIZE		0x0400	/* Only a single load balancing instance */
 #define SD_ASYM_PACKING		0x0800  /* Place busy groups earlier in the domain */
 #define SD_PREFER_SIBLING	0x1000	/* Prefer to place tasks in a sibling domain */
+#define SD_OVERLAP		0x2000	/* sched_domains of this level overlap */
 
 enum powersavings_balance_level {
 	POWERSAVINGS_BALANCE_NONE = 0,  /* No power saving load balance */
@@ -899,16 +894,21 @@ static inline int sd_power_saving_flags(void)
 	return 0;
 }
 
-struct sched_group {
-	struct sched_group *next;	/* Must be a circular list */
+struct sched_group_power {
 	atomic_t ref;
-
 	/*
 	 * CPU power of this group, SCHED_LOAD_SCALE being max power for a
 	 * single CPU.
 	 */
-	unsigned int cpu_power, cpu_power_orig;
+	unsigned int power, power_orig;
+};
+
+struct sched_group {
+	struct sched_group *next;	/* Must be a circular list */
+	atomic_t ref;
+
 	unsigned int group_weight;
+	struct sched_group_power *sgp;
 
 	/*
 	 * The CPUs this group covers.
@@ -916,9 +916,6 @@ struct sched_group {
 	 * NOTE: this field is variable length. (Allocated dynamically
 	 * by attaching extra space to the end of the structure,
 	 * depending on how many CPUs the kernel has booted up with)
-	 *
-	 * It is also be embedded into static data structures at build
-	 * time. (See 'struct static_sched_group' in kernel/sched.c)
 	 */
 	unsigned long cpumask[0];
 };
@@ -926,6 +923,15 @@ struct sched_group {
 static inline struct cpumask *sched_group_cpus(struct sched_group *sg)
 {
 	return to_cpumask(sg->cpumask);
+}
+
+/**
+ * group_first_cpu - Returns the first cpu in the cpumask of a sched_group.
+ * @group: The group whose first cpu is to be returned.
+ */
+static inline unsigned int group_first_cpu(struct sched_group *group)
+{
+	return cpumask_first(sched_group_cpus(group));
 }
 
 struct sched_domain_attr {
@@ -1010,9 +1016,6 @@ struct sched_domain {
 	 * NOTE: this field is variable length. (Allocated dynamically
 	 * by attaching extra space to the end of the structure,
 	 * depending on how many CPUs the kernel has booted up with)
-	 *
-	 * It is also be embedded into static data structures at build
-	 * time. (See 'struct static_sched_domain' in kernel/sched.c)
 	 */
 	unsigned long span[0];
 };
@@ -1075,7 +1078,7 @@ struct sched_domain;
  */
 #define WF_SYNC		0x01		/* waker goes to sleep after wakup */
 #define WF_FORK		0x02		/* child wakeup after fork */
-#define WF_MIGRATED	0x03		/* internal use, task got migrated */
+#define WF_MIGRATED	0x04		/* internal use, task got migrated */
 
 #define ENQUEUE_WAKEUP		1
 #define ENQUEUE_HEAD		2
@@ -1084,6 +1087,7 @@ struct sched_domain;
 #else
 #define ENQUEUE_WAKING		0
 #endif
+
 #define DEQUEUE_SLEEP		1
 
 struct sched_class {
@@ -1230,7 +1234,7 @@ struct task_struct {
 	unsigned int ptrace;
 
 #ifdef CONFIG_SMP
-	struct task_struct *wake_entry;
+	struct llist_node wake_entry;
 	int on_cpu;
 #endif
 	int on_rq;
@@ -1306,11 +1310,6 @@ struct task_struct {
 	/* Revert to default priority/policy when forking */
 	unsigned sched_reset_on_fork:1;
 	unsigned sched_contributes_to_load:1;
-
-#ifdef CONFIG_GENERIC_HARDIRQS
-	/* IRQ handler threads */
-	unsigned irq_thread:1;
-#endif
 
 	pid_t pid;
 	pid_t tgid;
@@ -1420,6 +1419,11 @@ struct task_struct {
  * mempolicy */
 	spinlock_t alloc_lock;
 
+#ifdef CONFIG_GENERIC_HARDIRQS
+	/* IRQ handler threads */
+	struct irqaction *irqaction;
+#endif
+
 	/* Protection of the PI data structures: */
 	raw_spinlock_t pi_lock;
 
@@ -1526,15 +1530,13 @@ struct task_struct {
 #ifdef CONFIG_FAULT_INJECTION
 	int make_it_fail;
 #endif
+	struct prop_local_single dirties;
 	/*
 	 * when (nr_dirtied >= nr_dirtied_pause), it's time to call
 	 * balance_dirty_pages() for some dirty throttling pause
 	 */
 	int nr_dirtied;
 	int nr_dirtied_pause;
-	unsigned long dirty_paused_when; /* start of a write-and-pause period */
-
-	struct prop_local_single dirties;
 
 #ifdef CONFIG_LATENCYTOP
 	int latency_record_count;
@@ -1566,7 +1568,7 @@ struct task_struct {
 #ifdef CONFIG_TRACING
 	/* state flags for use by tracers */
 	unsigned long trace;
-	/* bitmask of trace recursion */
+	/* bitmask and counter of trace recursion */
 	unsigned long trace_recursion;
 #endif /* CONFIG_TRACING */
 #ifdef CONFIG_CGROUP_MEM_RES_CTLR /* memcg uses this to do batch job */
@@ -1764,12 +1766,6 @@ static inline void put_task_struct(struct task_struct *t)
 extern void task_times(struct task_struct *p, cputime_t *ut, cputime_t *st);
 extern void thread_group_times(struct task_struct *p, cputime_t *ut, cputime_t *st);
 
-extern int task_free_register(struct notifier_block *n);
-extern int task_free_unregister(struct notifier_block *n);
-
-extern int task_fork_register(struct notifier_block *n);
-extern int task_fork_unregister(struct notifier_block *n);
-
 /*
  * Per process flags
  */
@@ -1832,10 +1828,11 @@ extern int task_fork_unregister(struct notifier_block *n);
 /*
  * task->jobctl flags
  */
-#define JOBCTL_STOP_SIGMASK	 0xffff	/* signr of the last group stop */
-#define JOBCTL_STOP_DEQUEUED_BIT 16
-#define JOBCTL_STOP_PENDING_BIT		17	/* task should stop for group stop */
-#define JOBCTL_STOP_CONSUME_BIT		18	/* consume group stop count */
+#define JOBCTL_STOP_SIGMASK	0xffff	/* signr of the last group stop */
+
+#define JOBCTL_STOP_DEQUEUED_BIT 16	/* stop signal dequeued */
+#define JOBCTL_STOP_PENDING_BIT	17	/* task should stop for group stop */
+#define JOBCTL_STOP_CONSUME_BIT	18	/* consume group stop count */
 #define JOBCTL_TRAP_STOP_BIT	19	/* trap for STOP */
 #define JOBCTL_TRAP_NOTIFY_BIT	20	/* trap for NOTIFY */
 #define JOBCTL_TRAPPING_BIT	21	/* switching to TRACED */
@@ -1846,7 +1843,7 @@ extern int task_fork_unregister(struct notifier_block *n);
 #define JOBCTL_STOP_CONSUME	(1 << JOBCTL_STOP_CONSUME_BIT)
 #define JOBCTL_TRAP_STOP	(1 << JOBCTL_TRAP_STOP_BIT)
 #define JOBCTL_TRAP_NOTIFY	(1 << JOBCTL_TRAP_NOTIFY_BIT)
-#define JOBCTL_TRAPPING			(1 << JOBCTL_TRAPPING_BIT)
+#define JOBCTL_TRAPPING		(1 << JOBCTL_TRAPPING_BIT)
 #define JOBCTL_LISTENING	(1 << JOBCTL_LISTENING_BIT)
 
 #define JOBCTL_TRAP_MASK	(JOBCTL_TRAP_STOP | JOBCTL_TRAP_NOTIFY)
@@ -2083,14 +2080,6 @@ extern int sched_setscheduler(struct task_struct *, int,
 extern int sched_setscheduler_nocheck(struct task_struct *, int,
 				      const struct sched_param *);
 extern struct task_struct *idle_task(int cpu);
-/**
- * is_idle_task - is the specified task an idle task?
- * @tsk: the task in question.
- */
-static inline bool is_idle_task(const struct task_struct *p)
-{
-	return p->pid == 0;
-}
 extern struct task_struct *curr_task(int cpu);
 extern void set_curr_task(int cpu, struct task_struct *p);
 
@@ -2256,12 +2245,6 @@ static inline void mmdrop(struct mm_struct * mm)
 extern void mmput(struct mm_struct *);
 /* Grab a reference to a task's mm, if it is not already going away */
 extern struct mm_struct *get_task_mm(struct task_struct *task);
-/*
- * Grab a reference to a task's mm, if it is not already going away
- * and ptrace_may_access with the mode parameter passed to it
- * succeeds.
- */
-extern struct mm_struct *mm_access(struct task_struct *task, unsigned int mode);
 /* Remove the current tasks stale references to the old mm_struct */
 extern void mm_release(struct task_struct *, struct mm_struct *);
 /* Allocate a new mm structure and copy contents from tsk->mm */
@@ -2278,7 +2261,7 @@ extern void __cleanup_sighand(struct sighand_struct *);
 extern void exit_itimers(struct signal_struct *);
 extern void flush_itimer_signals(void);
 
-extern void do_group_exit(int);
+extern NORET_TYPE void do_group_exit(int);
 
 extern void daemonize(const char *, ...);
 extern int allow_signal(int);
@@ -2400,29 +2383,29 @@ static inline void unlock_task_sighand(struct task_struct *tsk,
 	spin_unlock_irqrestore(&tsk->sighand->siglock, *flags);
 }
 
-/* See the declaration of group_rwsem in signal_struct. */
+/* See the declaration of threadgroup_fork_lock in signal_struct. */
 #ifdef CONFIG_CGROUPS
-static inline void threadgroup_change_begin(struct task_struct *tsk)
+static inline void threadgroup_fork_read_lock(struct task_struct *tsk)
 {
-	down_read(&tsk->signal->group_rwsem);
+	down_read(&tsk->signal->threadgroup_fork_lock);
 }
-static inline void threadgroup_change_end(struct task_struct *tsk)
+static inline void threadgroup_fork_read_unlock(struct task_struct *tsk)
 {
-	up_read(&tsk->signal->group_rwsem);
+	up_read(&tsk->signal->threadgroup_fork_lock);
 }
-static inline void threadgroup_lock(struct task_struct *tsk)
+static inline void threadgroup_fork_write_lock(struct task_struct *tsk)
 {
-	down_write(&tsk->signal->group_rwsem);
+	down_write(&tsk->signal->threadgroup_fork_lock);
 }
-static inline void threadgroup_unlock(struct task_struct *tsk)
+static inline void threadgroup_fork_write_unlock(struct task_struct *tsk)
 {
-	up_write(&tsk->signal->group_rwsem);
+	up_write(&tsk->signal->threadgroup_fork_lock);
 }
 #else
-static inline void threadgroup_change_begin(struct task_struct *tsk) {}
-static inline void threadgroup_change_end(struct task_struct *tsk) {}
-static inline void threadgroup_lock(struct task_struct *tsk) {}
-static inline void threadgroup_unlock(struct task_struct *tsk) {}
+static inline void threadgroup_fork_read_lock(struct task_struct *tsk) {}
+static inline void threadgroup_fork_read_unlock(struct task_struct *tsk) {}
+static inline void threadgroup_fork_write_lock(struct task_struct *tsk) {}
+static inline void threadgroup_fork_write_unlock(struct task_struct *tsk) {}
 #endif
 
 #ifndef __HAVE_THREAD_FUNCTIONS
@@ -2600,7 +2583,7 @@ void thread_group_cputimer(struct task_struct *tsk, struct task_cputime *times);
 
 static inline void thread_group_cputime_init(struct signal_struct *sig)
 {
-	spin_lock_init(&sig->cputimer.lock);
+	raw_spin_lock_init(&sig->cputimer.lock);
 }
 
 /*

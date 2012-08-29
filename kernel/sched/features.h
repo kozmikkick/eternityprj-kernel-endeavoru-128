@@ -56,7 +56,7 @@ SCHED_FEAT(LB_BIAS, 1)
 SCHED_FEAT(OWNER_SPIN, 1)
 
 /*
- * Decrement CPU power based on irq activity
+ * Decrement CPU power based on time not spent running tasks
  */
 SCHED_FEAT(NONTASK_POWER, 1)
 
@@ -65,3 +65,6 @@ SCHED_FEAT(NONTASK_POWER, 1)
  * using the scheduler IPI. Reduces rq->lock contention/bounces.
  */
 SCHED_FEAT(TTWU_QUEUE, 1)
+
+SCHED_FEAT(FORCE_SD_OVERLAP, 0)
+SCHED_FEAT(RT_RUNTIME_SHARE, 1)
