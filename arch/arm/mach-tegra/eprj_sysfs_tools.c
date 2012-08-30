@@ -148,10 +148,10 @@ void set_sysfs_param(char *param_path, char *name, char *value)
 
 void manage_auto_hotplug(bool active)
 {
-	if (active)
+/*	if (active)
 		set_sysfs_param(T3PARMS, "auto_hotplug", "1");
 	else
-		set_sysfs_param(T3PARMS, "auto_hotplug", "0");
+		set_sysfs_param(T3PARMS, "auto_hotplug", "0");*/
 }
 
 /*
