@@ -508,7 +508,7 @@ static const struct file_operations stats_fops = {
 	.release	= single_release,
 };
 
-static void __devexit tegra_dc_remove_debugfs(struct tegra_dc *dc)
+static void tegra_dc_remove_debugfs(struct tegra_dc *dc)
 {
 	if (dc->debugdir)
 		debugfs_remove_recursive(dc->debugdir);

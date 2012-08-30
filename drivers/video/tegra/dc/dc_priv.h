@@ -212,7 +212,7 @@ extern struct tegra_dc_out_ops tegra_dc_hdmi_ops;
 extern struct tegra_dc_out_ops tegra_dc_dsi_ops;
 
 /* defined in dc_sysfs.c, used by dc.c */
-void __devexit tegra_dc_remove_sysfs(struct device *dev);
+void tegra_dc_remove_sysfs(struct device *dev);
 void tegra_dc_create_sysfs(struct device *dev);
 
 /* defined in dc.c, used by dc_sysfs.c */
