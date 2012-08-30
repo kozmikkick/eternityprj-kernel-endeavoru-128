@@ -33,7 +33,7 @@ static DEFINE_PER_CPU(struct sys_device *, cpu_sys_devices);
 static long int target_number_of_online_cpus = 0;
 static long int cpu_on_mdelay = 0;
 
-static void tegra_cpuplug_work_func(struct work_struct *work)
+static void __cpuinit tegra_cpuplug_work_func(struct work_struct *work)
 {
 	unsigned int cpu;
 	int should_on_cpu;
