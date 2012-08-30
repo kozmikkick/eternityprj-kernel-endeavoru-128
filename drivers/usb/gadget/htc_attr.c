@@ -272,7 +272,7 @@ int android_show_function(char *buf)
 }
 
 
-int __devinit android_switch_function(unsigned func)
+int android_switch_function(unsigned func)
 {
 	struct android_dev *dev = _android_dev;
 	struct android_usb_function **functions = dev->functions;
@@ -425,13 +425,13 @@ void android_set_serialno(char *serialno)
 	strings_dev[STRING_SERIAL_IDX].s = serialno;
 }
 
-void __devinit android_switch_adb_ums(void)
+void android_switch_adb_ums(void)
 {
 	android_switch_function((1 << USB_FUNCTION_ADB) |
 				(1 << USB_FUNCTION_UMS));
 }
 
-void __devinit android_switch_htc_mode(void)
+void android_switch_htc_mode(void)
 {
 	android_switch_function((1 << USB_FUNCTION_ADB) |
 				(1 << USB_FUNCTION_PROJECTOR) |
@@ -465,7 +465,7 @@ static ssize_t show_usb_function_switch(struct device *dev,
 	return android_show_function(buf);
 }
 
-static ssize_t __devinit store_usb_function_switch(struct device *dev,
+static ssize_t store_usb_function_switch(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	unsigned u;

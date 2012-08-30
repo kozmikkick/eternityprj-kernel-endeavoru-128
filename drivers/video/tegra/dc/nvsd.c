@@ -898,7 +898,7 @@ int nvsd_create_sysfs(struct device *dev)
 }
 
 /* Sysfs destructor */
-void nvsd_remove_sysfs(struct device *dev)
+void __devexit nvsd_remove_sysfs(struct device *dev)
 {
 	if (nvsd_kobj) {
 		sysfs_remove_group(nvsd_kobj, &nvsd_attr_group);

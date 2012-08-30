@@ -59,7 +59,7 @@ const struct cpumask *const tegra_cpu_init_mask = to_cpumask(tegra_cpu_init_bits
 
 static void __iomem *scu_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE);
 
-static unsigned int __cpuinit available_cpus(void)
+static unsigned int available_cpus(void)
 {
 	static unsigned int ncores;
 
@@ -184,7 +184,7 @@ void __cpuinit platform_secondary_init(unsigned int cpu)
 			tegra_all_cpus_booted = true;
 }
 
-int __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
+int boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
 	int status;
 

@@ -1319,7 +1319,7 @@ static void __init tps80031_debuginit(struct tps80031 *tpsi)
 }
 #endif
 
-static int tps80031_i2c_remove(struct i2c_client *client)
+static int __devexit tps80031_i2c_remove(struct i2c_client *client)
 {
 	struct tps80031 *tps80031 = i2c_get_clientdata(client);
 	int i;

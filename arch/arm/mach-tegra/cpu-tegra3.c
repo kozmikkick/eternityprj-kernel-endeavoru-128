@@ -243,7 +243,7 @@ static noinline int tegra_cpu_speed_balance(void)
 	return TEGRA_CPU_SPEED_BALANCED;
 }
 
-static void __cpuinit tegra_auto_hotplug_work_func(struct work_struct *work)
+static void tegra_auto_hotplug_work_func(struct work_struct *work)
 {
 	bool up = false;
 	unsigned int cpu = nr_cpu_ids;

@@ -621,7 +621,7 @@ static int acc_ctrlrequest(struct usb_composite_dev *cdev,
 	return value;
 }
 
-static int __devinit
+static int
 acc_function_bind(struct usb_configuration *c, struct usb_function *f)
 {
 	struct usb_composite_dev *cdev = c->cdev;

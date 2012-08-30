@@ -313,7 +313,7 @@ static ssize_t nvdps_store(struct device *dev,
 
 static DEVICE_ATTR(nvdps, S_IRUGO|S_IWUSR, nvdps_show, nvdps_store);
 
-void tegra_dc_remove_sysfs(struct device *dev)
+void __devexit tegra_dc_remove_sysfs(struct device *dev)
 {
 	struct nvhost_device *ndev = to_nvhost_device(dev);
 	struct tegra_dc *dc = nvhost_get_drvdata(ndev);
