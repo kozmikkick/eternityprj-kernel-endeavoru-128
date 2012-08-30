@@ -34,6 +34,8 @@
 #include <linux/seq_file.h>
 #include <linux/pm_qos_params.h>
 
+#include <mach/eternityproject.h>
+
 #include "pm.h"
 #include "cpu-tegra.h"
 #include "clock.h"
@@ -578,8 +580,18 @@ err_out:
 late_initcall(tegra_auto_hotplug_debug_init);
 #endif
 
+void autohp_reinit(void)
+{
+	printk("[EPRJ] autohp_reinit\n");
+	tegra_auto_hotplug_init(tegra3_cpu_lock);
+#ifdef CONFIG_DEBUG_FS
+	tegra_auto_hotplug_debug_init();
+#endif
+}
+
 void tegra_auto_hotplug_exit(void)
 {
+	printk("[EPRJ] auto hotplug exit\n");
 	destroy_workqueue(hotplug_wq);
 #ifdef CONFIG_DEBUG_FS
 	debugfs_remove_recursive(hp_debugfs_root);

@@ -34,6 +34,8 @@
 #include <asm/uaccess.h>
 #include <mach/eternityproject.h>
 
+#include "cpu-tegra.h"
+
 static struct eprj_sysfs android_release = {
 	.attr.name = "android_apirev",
 	.attr.mode = 0644,
@@ -146,12 +148,22 @@ void set_sysfs_param(char *param_path, char *name, char *value)
 	set_fs(old_fs);
 }
 
+static bool already_activated = 1;
+
 void manage_auto_hotplug(bool active)
 {
-/*	if (active)
-		set_sysfs_param(T3PARMS, "auto_hotplug", "1");
+	if (active)
+		if (!already_activated) {
+			printk("[EPRJ] Activating Tegra AutoHP...\n");
+			autohp_reinit();
+			already_activated = 1;
+		}
 	else
-		set_sysfs_param(T3PARMS, "auto_hotplug", "0");*/
+		if (already_activated) {
+			printk("[EPRJ] Deactivating Tegra AutoHP...\n");
+			tegra_auto_hotplug_exit();
+			already_activated = 0;
+		}
 }
 
 /*

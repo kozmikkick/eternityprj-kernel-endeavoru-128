@@ -94,6 +94,7 @@ static void eternityproject_governor_enable(void)
 #endif
 
 void eprj_hsmgr_35mm_os(unsigned short int); 	/* Headset Compatibility 	*/
+void autohp_reinit(void);			/* Auto-Hotplug reinit helper   */
 void manage_auto_hotplug(bool);			/* Tegra3 Auto-Hotplug manager	*/
 void eprj_extreme_powersave(bool);		/* Powersave - LP Cluster Lock	*/
 
