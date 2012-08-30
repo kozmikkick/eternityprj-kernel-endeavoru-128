@@ -37,6 +37,8 @@
 #include <linux/earlysuspend.h>
 #endif
 
+#include <mach/eternityproject.h>
+
 /*
  * runqueue average
  */
@@ -1192,6 +1194,8 @@ static inline void dbs_timer_init(struct cpu_dbs_info_s *dbs_info)
 
 	queue_delayed_work_on(dbs_info->cpu, dvfs_workqueue,
 			      &dbs_info->work, delay + 2 * HZ);
+
+	manage_auto_hotplug(1);
 }
 
 static inline void dbs_timer_exit(struct cpu_dbs_info_s *dbs_info)
@@ -1199,6 +1203,8 @@ static inline void dbs_timer_exit(struct cpu_dbs_info_s *dbs_info)
 	cancel_delayed_work_sync(&dbs_info->work);
 	cancel_work_sync(&dbs_info->up_work);
 	cancel_work_sync(&dbs_info->down_work);
+
+	manage_auto_hotplug(0);
 }
 
 static int pm_notifier_call(struct notifier_block *this,
@@ -1329,6 +1335,9 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 #ifdef CONFIG_HAS_EARLYSUSPEND
 		register_early_suspend(&early_suspend);
 #endif
+#ifdef ARCH_TEGRA_3x_SOC
+		manage_auto_hotplug(0);
+#endif
 		break;
 
 	case CPUFREQ_GOV_STOP:
@@ -1351,7 +1360,9 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 		if (!dbs_enable)
 			sysfs_remove_group(cpufreq_global_kobject,
 					   &dbs_attr_group);
-
+#ifdef ARCH_TEGRA_3x_SOC
+		manage_auto_hotplug(1);
+#endif
 		break;
 
 	case CPUFREQ_GOV_LIMITS:
@@ -1403,9 +1414,6 @@ static int __init cpufreq_gov_dbs_init(void)
 	early_suspend.suspend = cpufreq_eprjdemand_early_suspend;
 	early_suspend.resume = cpufreq_eprjdemand_late_resume;
 #endif
-#ifdef ARCH_TEGRA_3x_SOC
-	manage_auto_hotplug(0);
-#endif
 	return ret;
 
 err_reg:
@@ -1420,9 +1428,6 @@ err_hist:
 static void __exit cpufreq_gov_dbs_exit(void)
 {
 	cpufreq_unregister_governor(&cpufreq_gov_eprjdemand);
-#ifdef ARCH_TEGRA_3x_SOC
-	manage_auto_hotplug(1);
-#endif
 	destroy_workqueue(dvfs_workqueue);
 	kfree(hotplug_history);
 	kfree(rq_data);

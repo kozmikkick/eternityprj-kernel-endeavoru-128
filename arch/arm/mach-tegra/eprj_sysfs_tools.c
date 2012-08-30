@@ -152,7 +152,7 @@ static bool already_activated = 1;
 
 void manage_auto_hotplug(bool active)
 {
-	if (active)
+/*	if (active)
 		if (!already_activated) {
 			printk("[EPRJ] Activating Tegra AutoHP...\n");
 			autohp_reinit();
@@ -163,7 +163,8 @@ void manage_auto_hotplug(bool active)
 			printk("[EPRJ] Deactivating Tegra AutoHP...\n");
 			tegra_auto_hotplug_exit();
 			already_activated = 0;
-		}
+		}*/
+	printk("******EPRJ****** AUTOHP MANAGEMENT TEMPORAIRILY DEACTIVATED\n");
 }
 
 /*

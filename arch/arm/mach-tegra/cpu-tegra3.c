@@ -583,19 +583,19 @@ late_initcall(tegra_auto_hotplug_debug_init);
 void autohp_reinit(void)
 {
 	printk("[EPRJ] autohp_reinit\n");
-	tegra_auto_hotplug_init(tegra3_cpu_lock);
-#ifdef CONFIG_DEBUG_FS
-	tegra_auto_hotplug_debug_init();
-#endif
+	hp_state = TEGRA_HP_IDLE;
+
+	hp_init_stats();
+	tegra_cpu_set_speed_cap(NULL);
+	mutex_unlock(tegra3_cpu_lock);
 }
 
 void tegra_auto_hotplug_exit(void)
 {
 	printk("[EPRJ] auto hotplug exit\n");
-	destroy_workqueue(hotplug_wq);
-#ifdef CONFIG_DEBUG_FS
-	debugfs_remove_recursive(hp_debugfs_root);
-	pm_qos_remove_request(&min_cpu_req);
-	pm_qos_remove_request(&max_cpu_req);
-#endif
+	hp_state = TEGRA_HP_DISABLED;
+
+	mutex_unlock(tegra3_cpu_lock);
+	cancel_delayed_work_sync(&hotplug_work);
+	mutex_lock(tegra3_cpu_lock);
 }
