@@ -205,26 +205,25 @@ static noinline int tegra_cpu_speed_balance(void)
 	unsigned int nr_cpus = num_online_cpus();
 	unsigned int max_cpus = pm_qos_request(PM_QOS_MAX_ONLINE_CPUS) ? : 4;
 	unsigned int min_cpus = pm_qos_request(PM_QOS_MIN_ONLINE_CPUS);
-/*	unsigned int avg_nr_run = avg_nr_running();*/
-	unsigned int nr_run;
 
-	/* Evaluate:
-	 * - distribution of freq targets for already on-lined CPUs
-	 * - average number of runnable threads
-	 * - effective MIPS available within EDP frequency limits,
-	 * and return:
+	/*
+	 * EternityProject, 20/06/2012:
+	 * After some examination, we don't REALLY need the avg_nr_running
+	 * calculation. From the code that I read, it is meant for avoiding
+	 * to call the tegra_count_slow_cpus function multiple times or to
+	 * not call it at all.
+	 * It would be smart if it didn't require a bad scheduler hack
+	 * and if the Linux kernel couldn't do the whole thing "alone".
+	 * 
+	 * After some tests, it came up that it is totally useless and it is
+	 * only executing useless cycles in the high majority of the cases.
+	 * I decided to make it lighter, reflecting the previous implementation.
+	 *
+	 * The function returns:
 	 * TEGRA_CPU_SPEED_BALANCED to bring one more CPU core on-line
 	 * TEGRA_CPU_SPEED_BIASED to keep CPU core composition unchanged
 	 * TEGRA_CPU_SPEED_SKEWED to remove CPU core off-line
 	 */
-	for (nr_run = 1; nr_run < ARRAY_SIZE(nr_run_thresholds); nr_run++) {
-		unsigned int nr_threshold = nr_run_thresholds[nr_run - 1];
-		if (nr_run_last <= nr_run)
-			nr_threshold += nr_run_hysteresis;
-/*		if (avg_nr_run <= (nr_threshold << (FSHIFT - NR_FSHIFT)))
-			break;*/
-	}
-	nr_run_last = nr_run;
 
 	if (((tegra_count_slow_cpus(skewed_speed) >= 2) ||
 	     (nr_run < nr_cpus) ||
