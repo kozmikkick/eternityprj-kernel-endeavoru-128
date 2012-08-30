@@ -23,6 +23,12 @@ static inline pmd_t *pmd_off(pgd_t *pgd, unsigned long virt)
 /* PFN alias flushing, for VIPT caches */
 #define FLUSH_ALIAS_START	0xffff4000
 
+static inline void set_top_pte(unsigned long va, pte_t pte)
+{
+	set_pte_ext(TOP_PTE(va), pte, 0);
+	local_flush_tlb_kernel_page(va);
+}
+
 static inline pmd_t *pmd_off_k(unsigned long virt)
 {
 	return pmd_off(pgd_offset_k(virt), virt);
