@@ -33,20 +33,19 @@
 #include <linux/errno.h>
 #include <linux/usb.h>
 #include <linux/workqueue.h>
-#include <asm/ioctls.h>
 #include <linux/uaccess.h>
-#include "baseband_usb_chr.h"
 #include <linux/vmalloc.h>
 
-/* HTC include file */
+#include <asm/ioctls.h>
+
 #include <mach/htc_hostdbg.h>
 
-/* HTC variables */
-/* extern unsigned int host_dbg_flag; // EternityProject: Redefine that variable. */
-unsigned int host_dbg_flag = 0;
+#include "baseband_usb_chr.h"
+
+extern unsigned int host_dbg_flag;
 #define MODULE_NAME "[USBCHRv1] "
 
-/* HTC: debug flag */
+
 /*	chrlog1: ipc write file log for modem download */
 #define chrlog1(x...) do {\
 	if (host_dbg_flag & DBG_USBCHR_L1) {\
@@ -405,7 +404,7 @@ static ssize_t baseband_ipc_file_read(struct baseband_ipc *ipc,
 	}
 
 	/* acquire rx buffer semaphores */
-/* retry: //EternityProject, 24/07/2012: We aren't using this label actually. Remove it. */
+
 	if (down_interruptible(&ipc->buf_sem)) {
 		pr_err("baseband_ipc_file_read - "
 			"cannot acquire buffer semaphore\n");
@@ -1318,10 +1317,6 @@ static struct baseband_usb *baseband_usb_open(unsigned int vid,
 	err = baseband_usb_chr_rx_urb_submit(usb);
 	if (err < 0) {
 		pr_err("submit rx failed - err %d\n", err);
-		/* return -ENODEV;
-		 * EternityProject, 24/07/2012:
-		 * Why aren't we exiting from that correctly?!?
-		 */
 		goto error_exit;
 	}
 
