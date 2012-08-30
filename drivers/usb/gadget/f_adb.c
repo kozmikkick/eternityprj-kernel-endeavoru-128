@@ -469,8 +469,8 @@ static struct miscdevice adb_device = {
 	.fops = &adb_fops,
 };
 //++ htc ++
-int htc_usb_enable_function(char *name, int ebl);
-static int adb_enable_open(struct inode *ip, struct file *fp)
+int __devinit htc_usb_enable_function(char *name, int ebl);
+static int __devinit adb_enable_open(struct inode *ip, struct file *fp)
 {
 	printk(KERN_INFO "[USB] %s: %s(parent:%s): tgid=%d\n", /* htc */
 			__func__, current->comm, current->parent->comm, current->tgid);
@@ -478,7 +478,7 @@ static int adb_enable_open(struct inode *ip, struct file *fp)
 	return 0;
 }
 
-static int adb_enable_release(struct inode *ip, struct file *fp)
+static int __devinit adb_enable_release(struct inode *ip, struct file *fp)
 {
 	printk(KERN_INFO "[USB] %s: %s(parent:%s): tgid=%d\n", /* htc */
 			__func__, current->comm, current->parent->comm, current->tgid);
@@ -535,7 +535,7 @@ static struct miscdevice adb_enable_device = {
 };
 //-- htc --
 
-static int
+static int __devinit
 adb_function_bind(struct usb_configuration *c, struct usb_function *f)
 {
 	struct usb_composite_dev *cdev = c->cdev;

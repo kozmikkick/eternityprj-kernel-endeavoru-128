@@ -308,7 +308,7 @@ static ssize_t func_en_show(struct device *dev, struct device_attribute *attr,
 	return sprintf(buf, "%d", ebl);
 }
 
-static ssize_t func_en_store(
+static ssize_t __devinit func_en_store(
 		struct device *dev, struct device_attribute *attr,
 		const char *buf, size_t size)
 {
@@ -792,7 +792,7 @@ static struct android_usb_function serial_function = {
 #endif	//CONFIG_USB_ANDROID_SERIAL
 
 /* ADB */
-static int adb_function_init(struct android_usb_function *f, struct usb_composite_dev *cdev)
+static int __devinit adb_function_init(struct android_usb_function *f, struct usb_composite_dev *cdev)
 {
 	return adb_setup();
 }
@@ -1734,7 +1734,7 @@ static ssize_t enable_show(struct device *pdev, struct device_attribute *attr,
 	return snprintf(buf, PAGE_SIZE, "%d\n", dev->enabled);
 }
 
-static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
+static ssize_t __devinit enable_store(struct device *pdev, struct device_attribute *attr,
 			    const char *buff, size_t size)
 {
 	struct android_dev *dev = dev_get_drvdata(pdev);
@@ -2128,7 +2128,7 @@ static struct platform_driver android_platform_driver = {
 	.driver = { .name = "android_usb"},
 };
 
-static void android_usb_init_work(struct work_struct *data)
+static void __devinit android_usb_init_work(struct work_struct *data)
 {
 	struct android_dev *dev = _android_dev;
 	struct android_usb_platform_data *pdata = dev->pdata;
