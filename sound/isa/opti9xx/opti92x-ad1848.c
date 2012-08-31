@@ -28,7 +28,7 @@
 #include <linux/isa.h>
 #include <linux/delay.h>
 #include <linux/pnp.h>
-#include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <asm/io.h>
 #include <asm/dma.h>
 #include <sound/core.h>
@@ -63,7 +63,7 @@ MODULE_SUPPORTED_DEVICE("{{OPTi,82C924 (AD1848)},"
 
 static int index = SNDRV_DEFAULT_IDX1;	/* Index 0-MAX */
 static char *id = SNDRV_DEFAULT_STR1;		/* ID for this card */
-//static bool enable = SNDRV_DEFAULT_ENABLE1;	/* Enable this card */
+//static int enable = SNDRV_DEFAULT_ENABLE1;	/* Enable this card */
 #ifdef CONFIG_PNP
 static int isapnp = 1;			/* Enable ISA PnP detection */
 #endif

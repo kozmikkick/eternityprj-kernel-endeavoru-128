@@ -36,7 +36,7 @@
 #include <linux/spi-tegra.h>
 #include <../arch/arm/mach-tegra/htc_audio_power.h>
 #include <mach/board_htc.h>
-#include <linux/pm_qos.h>
+#include <linux/pm_qos_params.h>
 
 #undef LOG_TAG
 #define LOG_TAG "AUD"
@@ -46,21 +46,18 @@
 
 #undef AUDIO_DEBUG_BEEP
 #undef AUDIO_DEBUG
+#define AUDIO_DEBUG 0
 
 #define AUD_ERR(fmt, ...) pr_tag_err(LOG_TAG, fmt, ##__VA_ARGS__)
 #define AUD_INFO(fmt, ...) pr_tag_info(LOG_TAG, fmt, ##__VA_ARGS__)
 
-#ifdef AUDIO_DEBUG
-// EternityProject 02/06/2012: Use AUDIO_DEBUG for showing printks
-// and use AUDIO_DEBUG_BEEP only if we really need strong debugging.
-//#define AUDIO_DEBUG_BEEP 1
+#if AUDIO_DEBUG
+#define AUDIO_DEBUG_BEEP 1
 #define AUD_DBG(fmt, ...) pr_tag_info(LOG_TAG, fmt, ##__VA_ARGS__)
 #else
 #define AUDIO_DEBUG_BEEP 0
 #define AUD_DBG(fmt, ...) do { } while (0)
 #endif
-
-/* #define AUD_CPU_FREQ_MIN 102000 */
 
 /* for quattro --- */
 int64_t pwr_up_time;
@@ -100,7 +97,6 @@ static const struct snd_soc_dapm_route intercon[] = { };
 static int aic3008_set_config(int config_tbl, int idx, int en);
 static void aic3008_powerdown(void);
 static void aic3008_powerup(void);
-/* void aic3008_votecpuminfreq(bool bflag); */
 
 /*****************************************************************************/
 /* Specific SPI read/write command for AIC3008                               */
@@ -252,9 +248,7 @@ static int32_t spi_read_list(CODEC_SPI_CMD *cmds, int num)
 		/* if writing page, then don't read its value */
 		if(i==2)
 		{
-#ifdef AUDIO_DEBUG
 			AUD_INFO("Skip software reset cmd when dump spi! %02X\n", cmds[i].reg);
-#endif
 			continue;
 		}
 		if (cmds[i].reg == 0x00) {
@@ -265,9 +259,7 @@ static int32_t spi_read_list(CODEC_SPI_CMD *cmds, int num)
 			{
 				return rc;
 			}
-#ifdef AUDIO_DEBUG
 			AUD_INFO("====== write page %02X ======", buffer[0]);
-#endif
 			page = buffer[0];
 		} else if (cmds[i].reg == 0x7F && page == 0x00) {
 			buffer[1] = cmds[i].reg << 1;
@@ -277,17 +269,13 @@ static int32_t spi_read_list(CODEC_SPI_CMD *cmds, int num)
 			{
 				return rc;
 			}
-#ifdef AUDIO_DEBUG
 			AUD_INFO("====== write book %02X ======", buffer[0]);
-#endif
 		} else {
 			buffer[1] = cmds[i].reg << 1 | 1;
 			rc = spi_write_then_read(codec_spi_dev, buffer, 2, result, 2);
 			if (rc < 0)
 				return rc;
-#ifdef AUDIO_DEBUG
 			AUD_INFO("read: reg: 0x%02X , data: 0x%02X\n", cmds[i].reg, result[0]);
-#endif
 		}
 	}
 	return 0;
@@ -408,31 +396,6 @@ bool aic3008_IsSoundPlayBack(int idx)
     else
         return false;
 }
-/* void aic3008_votecpuminfreq(bool bflag)
-{
-    static bool boldCPUMinReq = false;
-    if (bflag == boldCPUMinReq)
-    {
-        return;
-    }
-    boldCPUMinReq = bflag;
-    if (bflag)
-    {
-        pm_qos_update_request(&aud_cpu_minfreq_req, (s32)AUD_CPU_FREQ_MIN);
-#ifdef AUDIO_DEBUG
-        AUD_INFO("VoteMinFreqS:%d", AUD_CPU_FREQ_MIN);
-#endif
-    }
-    else
-    {
-        pm_qos_update_request(&aud_cpu_minfreq_req, (s32)PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
-#ifdef AUDIO_DEBUG
-        AUD_INFO("VoteMinFreqE:%d", PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
-#endif
-    }
-
-    return;
-} */
 
 void aic3008_CodecInit()
 {
@@ -493,9 +456,7 @@ static int aic3008_config(CODEC_SPI_CMD *cmds, int size)
 	unsigned char data;
 	if(!aic3008_power_ctl->isPowerOn)
 	{
-#ifdef AUDIO_DEBUG
 		AUD_INFO("aic3008_config: AIC3008 is power off now");
-#endif
 		return -EINVAL;
 	}
 
@@ -521,7 +482,7 @@ static int aic3008_config(CODEC_SPI_CMD *cmds, int size)
 					ret = codec_spi_read(cmds[i].reg, &data, true);
 					if (ret < 0) {
 						AUD_ERR("read fail %d, retry\n", ret);
-						hr_msleep(1);
+						mdelay(1);
 					} else if (data == cmds[i].data) {
 						AUD_DBG("data == cmds\n");
 						break;
@@ -550,21 +511,15 @@ static int aic3008_config(CODEC_SPI_CMD *cmds, int size)
 void aic3008_set_mic_bias(int on)
 {
 	if (on) {
-#ifdef AUDIO_DEBUG
 		AUD_INFO("[PWR] enalbe_AUD_HPMIC_BIAS\n");
-#endif
 		if (!aic3008_power_ctl->isPowerOn) {
-#ifdef AUDIO_DEBUG
 			AUD_INFO("[PWR] codec was power off wakeup first\n");
-#endif
 			aic3008_powerup();
 			aic3008_config(ENABLE_AUD_HPMIC_EXT, ARRAY_SIZE(ENABLE_AUD_HPMIC_EXT));
 			aic3008_powerdown();
 		} else aic3008_config(ENABLE_AUD_HPMIC_EXT, ARRAY_SIZE(ENABLE_AUD_HPMIC_EXT));
 	} else {
-#ifdef AUDIO_DEBUG
 		AUD_INFO("[PWR] disalbe_AUD_HPMIC_BIAS\n");
-#endif
 		if (aic3008_tx_mode == CALL_UPLINK_IMIC_SPEAKER ||
 				aic3008_tx_mode == CALL_UPLINK_IMIC_SPEAKER_DUALMIC ||
 				aic3008_tx_mode == VOIP_UPLINK_IMIC_SPEAKER ||
@@ -572,9 +527,7 @@ void aic3008_set_mic_bias(int on)
 				)
 		{
 			if (!aic3008_power_ctl->isPowerOn) {
-#ifdef AUDIO_DEBUG
 				AUD_INFO("[PWR] codec was power off wakeup first\n");
-#endif
 				aic3008_powerup();
 				aic3008_config(DISABLE_AUD_HPMIC_EXT_ONLY, ARRAY_SIZE(DISABLE_AUD_HPMIC_EXT_ONLY));
 				aic3008_powerdown();
@@ -583,9 +536,7 @@ void aic3008_set_mic_bias(int on)
 		else
 		{
 			if (!aic3008_power_ctl->isPowerOn) {
-#ifdef AUDIO_DEBUG
 				AUD_INFO("[PWR] codec was power off wakeup first\n");
-#endif
 				aic3008_powerup();
 				aic3008_config(DISABLE_AUD_HPMIC_EXT, ARRAY_SIZE(DISABLE_AUD_HPMIC_EXT));
 				aic3008_powerdown();
@@ -690,26 +641,20 @@ int route_rx_enable(int path, int en)
 	AUD_DBG("[RX] (%d, %d) uses AIC3008 default RX setting...\n", path, en);
 	if (en) {
 		/* Downlink_Wakeup */
-#ifdef AUDIO_DEBUG
 		AUD_INFO("[RX] route_rx_enable call Downlink_Wakeup");
-#endif
 		aic3008_config(CODEC_DOWNLINK_ON, ARRAY_SIZE(CODEC_DOWNLINK_ON));
 		/* Path switching */
 		switch (path) {
 		default:
 			/* By pass */
-#ifdef AUDIO_DEBUG
 			AUD_INFO("[RX] route_rx_enable call DOWNLINK_IMIC_RECEIVER");
-#endif
 			aic3008_config(DOWNLINK_IMIC_RECEIVER,
 					ARRAY_SIZE(DOWNLINK_IMIC_RECEIVER));
 			break;
 		}
 	} else {
 		/* Downlink_Off */
-#ifdef AUDIO_DEBUG
 		AUD_INFO("[RX] route_rx_enable call CODEC_DOWNLINK_OFF");
-#endif
 		aic3008_config(CODEC_DOWNLINK_OFF, ARRAY_SIZE(CODEC_DOWNLINK_OFF));
 	}
 
@@ -721,9 +666,7 @@ int route_tx_enable(int path, int en)
 	AUD_DBG("[TX] (%d, %d) uses aic3008 default TX setting\n", path, en);
 	if (en) {
 		/* Uplink_Wakeup */
-#ifdef AUDIO_DEBUG
 		AUD_INFO("[TX] route_tx_enable call Uplink_Wakeup");
-#endif
 		aic3008_config(CODEC_UPLINK_ON, ARRAY_SIZE(CODEC_UPLINK_ON));
 		/* Path switching */
 		switch (path) {
@@ -732,24 +675,18 @@ int route_tx_enable(int path, int en)
 		case CALL_UPLINK_IMIC_SPEAKER:
 		case VOICERECORD_IMIC:
 			/* By pass */
-#ifdef AUDIO_DEBUG
 			AUD_INFO("[TX] route_tx_enable call MECHA_UPLINK_IMIC");
-#endif
 			aic3008_config(MECHA_UPLINK_IMIC, ARRAY_SIZE(MECHA_UPLINK_IMIC));
 			break;
 		case CALL_UPLINK_EMIC_HEADPHONE:
 		case VOICERECORD_EMIC:
-#ifdef AUDIO_DEBUG
 			AUD_INFO("[TX] route_tx_enable call UPLINK_EMIC,");
-#endif
 			aic3008_config(UPLINK_EMIC, ARRAY_SIZE(UPLINK_EMIC));
 			break;
 		}
 	} else {
 		/* Uplink_Off */
-#ifdef AUDIO_DEBUG
 		AUD_INFO("[TX] route_tx_enable call CODEC_UPLINK_OFF");
-#endif
 		aic3008_config(CODEC_UPLINK_OFF, ARRAY_SIZE(CODEC_UPLINK_OFF));
 	}
 	return 0;
@@ -780,10 +717,8 @@ static void aic3008_tx_config(int mode)
 	}
 
 	/* route tx device */
-#ifdef AUDIO_DEBUG
 	AUD_INFO("[TX] ----- change i/o uplink TX %d len(%d) -----\n", mode,
 			(aic3008_uplink[mode][0].data-1));
-#endif
 
 	aic3008_config(&aic3008_uplink[mode][1], aic3008_uplink[mode][0].data);
 }
@@ -809,17 +744,10 @@ static void aic3008_rx_config(int mode)
 	}
 
 	/* route rx device */
-#ifdef AUDIO_DEBUG
 	AUD_INFO("[RX] ----- change i/o downlink RX %d len(%d) -----\n", mode,
 			(aic3008_downlink[mode][0].data-1));
-#endif
 
 	aic3008_config(&aic3008_downlink[mode][1], aic3008_downlink[mode][0].data);
-
-/*    if (aic3008_IsSoundPlayBack(mode))
-        aic3008_votecpuminfreq(true);
-    else
-        aic3008_votecpuminfreq(false); */
 }
 
 static void aic3008_powerdown(void)
@@ -842,9 +770,7 @@ static void aic3008_powerdown(void)
 	aic3008_power_ctl->suspend();
 
 	t2 = ktime_to_ms(ktime_get()) - t1;
-#ifdef AUDIO_DEBUG
 	AUD_INFO("[PWR] power down AIC3008 %lldms\n", t2);
-#endif
 
 	return;
 }
@@ -858,9 +784,7 @@ static void aic3008_powerup(void)
 	aic3008_power_ctl->resume();
 
 	t2 = ktime_to_ms(ktime_get()) - t1;
-#ifdef AUDIO_DEBUG
 	AUD_INFO("[PWR] power on AIC3008 %lldms\n", t2);
-#endif
 
 	return;
 }
@@ -949,24 +873,18 @@ static int aic3008_set_config(int config_tbl, int idx, int en)
 			break;
 		}
 		if (en) {
-#ifdef AUDIO_DEBUG
 			AUD_INFO("[TX] AIC3008_IO_CONFIG_TX: UPLINK idx = %d",idx);
-#endif
 			aic3008_tx_config(idx);
 			aic3008_tx_mode = idx;
 		} else {
-#ifdef AUDIO_DEBUG
 			AUD_INFO("[TX] AIC3008_IO_CONFIG_TX: UPLINK_PATH_OFF");
-#endif
 			aic3008_tx_config(UPLINK_PATH_OFF);
 			aic3008_tx_mode = UPLINK_PATH_OFF;
 		}
 
 		if ((aic3008_tx_mode == UPLINK_PATH_OFF) && (aic3008_rx_mode == DOWNLINK_PATH_OFF))
 		{
-#ifdef AUDIO_DEBUG
 			AUD_INFO("[TX] AIC3008_IO_CONFIG_TX: PATH OFF Call aic3008_powerdown()");
-#endif
 			aic3008_powerdown();
 		}
 		break;
@@ -981,32 +899,24 @@ static int aic3008_set_config(int config_tbl, int idx, int en)
 		}
 		if(!first_boot_path && idx == 10)
 		{
-#ifdef AUDIO_DEBUG
 			AUD_INFO("[RX] AIC3008_IO_CONFIG_RX: first_boot_path = 10\n");
-#endif
 			idx = DOWNLINK_PATH_OFF;
 			aic3008_rx_mode = DOWNLINK_PATH_OFF;
 			first_boot_path = true;
 		}
 		if (en) {
-#ifdef AUDIO_DEBUG
 			AUD_INFO("[RX] AIC3008_IO_CONFIG_RX: DOWNLINK idx = %d",idx);
-#endif
 			aic3008_rx_config(idx);
 			aic3008_rx_mode = idx;
 			aic3008_AmpSwitch(idx, 1);
 		} else {
-#ifdef AUDIO_DEBUG
 			AUD_INFO("[RX] AIC3008_IO_CONFIG_RX: DOWNLINK_PATH_OFF");
-#endif
 			aic3008_rx_config(DOWNLINK_PATH_OFF);
 			aic3008_rx_mode = DOWNLINK_PATH_OFF;
 		}
 		if ((aic3008_tx_mode == UPLINK_PATH_OFF) && (aic3008_rx_mode == DOWNLINK_PATH_OFF))
 		{
-#ifdef AUDIO_DEBUG
 			AUD_INFO("[RX] AIC3008_IO_CONFIG_RX: PATH OFF Call aic3008_powerdown()");
-#endif
 			aic3008_powerdown();
 		}
 		break;
@@ -1056,49 +966,37 @@ static int aic3008_set_config(int config_tbl, int idx, int en)
 		}
 		else if(idx == 53)
 		{
-#ifdef AUDIO_DEBUG
 			AUD_INFO("[DSP] idx = %d, BEATS_ON!!", idx);
-#endif
 			aic3008_config(BEATS_ON, ARRAY_SIZE(BEATS_ON));	// Increase the gain for BEATS_EFFECT_ON
 			break;
 		}
 		else if(idx == 54)
 		{
-#ifdef AUDIO_DEBUG
 			AUD_INFO("[DSP] idx = %d, BEATS_OFF!!", idx);
-#endif
 			aic3008_config(BEATS_OFF, ARRAY_SIZE(BEATS_OFF)); // Decrease the gain for BEATS_EFFECT_OFF
 			break;
 		}
 		else if(idx == 55)
 		{
-#ifdef AUDIO_DEBUG
 			AUD_INFO("[DSP] idx = %d, disable SPK_AMP!!", idx);
-#endif
 			aic3008_AmpSwitch(PLAYBACK_SPEAKER, 0);
 			break;
 		}
 		else if(idx == 56)
 		{
-#ifdef AUDIO_DEBUG
 			AUD_INFO("[DSP] idx = %d, enable SPK_AMP!!", idx);
-#endif
 			aic3008_AmpSwitch(PLAYBACK_SPEAKER, 1);
 			break;
 		}
 		else if(idx == 57)
 		{
-#ifdef AUDIO_DEBUG
 			AUD_INFO("[DSP] idx = %d, disable HS_Output!!", idx);
-#endif
 			aic3008_config(HS_MUTE, ARRAY_SIZE(HS_MUTE));
 			break;
 		}
 		else if(idx == 58)
 		{//Might have noise when unmute, use this carefully.
-#ifdef AUDIO_DEBUG
 			AUD_INFO("[DSP] idx = %d, enable HS_Output!!", idx);
-#endif
 			aic3008_config(HS_UNMUTE, ARRAY_SIZE(HS_UNMUTE));
 			break;
 		}
@@ -1107,14 +1005,10 @@ static int aic3008_set_config(int config_tbl, int idx, int en)
 //			AUD_ERR("[DSP] AIC3008 is power off now, do you want change DSP = %d??", idx);
 //			AUD_ERR("[DSP] If DSP %d must to be done, please make sure I/O config won't be forgot!!", idx);
 			aic3008_powerup();
-#ifdef AUDIO_DEBUG
 			AUD_INFO("[DSP] Recovery this condition, AIC3008 is power up now and DSP %d will be config", idx);
-#endif
 		}
 		if (aic3008_minidsp == NULL) {
-#ifdef AUDIO_DEBUG
 			AUD_INFO("[DSP] AIC3008_IO_CONFIG_MEDIA: aic3008_minidsp == NULL");
-#endif
 			rc = -EFAULT;
 			break;
 		}
@@ -1123,10 +1017,8 @@ static int aic3008_set_config(int config_tbl, int idx, int en)
 
 		len = (aic3008_minidsp[idx][0].reg << 8) | aic3008_minidsp[idx][0].data;
 
-#ifdef AUDIO_DEBUG
 		AUD_INFO("[DSP] AIC3008_IO_CONFIG_MEDIA: Original RX %d, TX %d. start DSP = %d, len = %d ++. ",
 				aic3008_rx_mode, aic3008_tx_mode, idx, len);
-#endif
 
 		t1 = ktime_to_ms(ktime_get());
 		/* step 1: path off first */
@@ -1138,9 +1030,7 @@ static int aic3008_set_config(int config_tbl, int idx, int en)
 
 		t2 = ktime_to_ms(ktime_get()) - t1;
 
-#ifdef AUDIO_DEBUG
 		AUD_INFO("[DSP] AIC3008_IO_CONFIG_MEDIA: configure miniDSP index(%d) time: %lldms --\n", idx, (t2));
-#endif
 		break;
 	}
 
@@ -1273,10 +1163,8 @@ static long aic3008_ioctl(struct file *file, unsigned int cmd,
 		if (cmd == AIC3008_IO_SET_TX_PARAM)
 			aic3008_tx_config(INITIAL);
 
-#ifdef AUDIO_DEBUG
 		AUD_INFO("update RX/TX tables(%d, %d) successfully\n",
 				para.row_num, para.col_num);
-#endif
 		break;
 
 		/* third io command from HAL */
@@ -1305,10 +1193,8 @@ static long aic3008_ioctl(struct file *file, unsigned int cmd,
 			return -EFAULT;
 		}
 
-#ifdef AUDIO_DEBUG
 		AUD_INFO("update dsp table(%d, %d) successfully\n",
 				para.row_num, para.col_num);
-#endif
 		break;
 
 		/* these IO commands are called to set path */
@@ -1381,10 +1267,8 @@ static long aic3008_ioctl(struct file *file, unsigned int cmd,
 			ret = codec_spi_read(i, &data, true);
 			if (ret < 0) {
 				AUD_ERR("read fail on register 0x%X\n", i);
-				0;
 			} else {
 				AUD_DBG("(addr:0x%02X, data:0x%02X)\n", i, data);
-				0;
 			}
 		}
 		AUD_DBG("=============================================\n");
@@ -1401,9 +1285,7 @@ static long aic3008_ioctl(struct file *file, unsigned int cmd,
 
 		/* write specific audio codec register */
 	case AIC3008_IO_WRITE_REG:
-#ifdef AUDIO_DEBUG
 		AUD_INFO("========== WRITE_REG ==========\n");
-#endif
 		if (copy_from_user(&reg, (void *) argc, sizeof(CODEC_SPI_CMD) * 4)) {
 			AUD_ERR("failed on copy_from_user\n");
 			return -EFAULT;
@@ -1422,16 +1304,12 @@ static long aic3008_ioctl(struct file *file, unsigned int cmd,
 			else
 				return -EINVAL;
 		}
-#ifdef AUDIO_DEBUG
 		AUD_INFO("========== WRITE_REG end ==========\n");
-#endif
 		break;
 
 		/* read specific audio codec register */
 	case AIC3008_IO_READ_REG:
-#ifdef AUDIO_DEBUG
 		AUD_INFO("========== READ_REG ==========\n");
-#endif
 		if (copy_from_user(&reg, (void *) argc, sizeof(CODEC_SPI_CMD) * 4)) {
 			AUD_ERR("failed on copy_from_user\n");
 			return -EFAULT;
@@ -1448,9 +1326,7 @@ static long aic3008_ioctl(struct file *file, unsigned int cmd,
 			AUD_ERR("failed on copy_to_user\n");
 			return -EFAULT;
 		}
-#ifdef AUDIO_DEBUG
 		AUD_INFO("========== READ_REG end==========\n");
-#endif
 		break;
 
 	case AIC3008_IO_POWERDOWN: /* power down IO command */
@@ -1629,10 +1505,8 @@ static int aic3008_dai_hw_params(struct snd_pcm_substream *substream,
 			      SNDRV_PCM_RATE_44100 |	\
 			      SNDRV_PCM_RATE_48000)
 
-#define AIC3008_FORMATS (SNDRV_PCM_FMTBIT_S16_LE |\
-			SNDRV_PCM_FMTBIT_S20_3LE |\
-			SNDRV_PCM_FMTBIT_S24_LE  |\
-			SNDRV_PCM_FMTBIT_S32_LE)
+#define AIC3008_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE | \
+			SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
 
 static struct snd_soc_dai_ops aic3008_dai_ops = {
 		.startup = aic3008_dai_startup,
@@ -1672,15 +1546,14 @@ static int __devinit aic3008_probe(struct snd_soc_codec *codec)
 
 	struct aic3008_priv *aic3008 = snd_soc_codec_get_drvdata(codec);
 	aic3008->codec = codec;
+
+	AUD_INFO("aic3008_probe() start... aic3008_codec:%p", codec);
+
 	aic3008->codec->control_data = (void *)codec_spi_dev;
 
-#ifdef AUDIO_DEBUG
-	AUD_INFO("aic3008_probe() start... aic3008_codec:%p", codec);
-#endif
-
 	if (!aic3008) {
-		AUD_ERR("%s: Codec not registered, SPI device not yet probed\n",
-				(char *)&aic3008->codec->name);
+		AUD_ERR("%p: Codec not registered, SPI device not yet probed\n",
+				&aic3008->codec->name);
 		return -ENODEV;
 	}
 	aic3008_sw_reset(codec); // local call to reset codec
@@ -1692,10 +1565,8 @@ static int __devinit aic3008_probe(struct snd_soc_codec *codec)
 	aic3008_minidsp = init_2d_array(MINIDSP_ROW_MAX, MINIDSP_COL_MAX);
 	bulk_tx = kcalloc(MINIDSP_COL_MAX * 2 , sizeof(uint8_t), GFP_KERNEL);
 
-#ifdef AUDIO_DEBUG
 	AUD_INFO("Audio Codec Driver init complete in %lld ms\n",
 			 ktime_to_ms(ktime_get()) - drv_up_time);
-#endif
 	return ret;
 }
 
@@ -1734,17 +1605,17 @@ static struct snd_soc_codec_driver soc_codec_dev_aic3008 __refdata = {
 /*****************************************************************************/
 static int spi_aic3008_probe(struct spi_device *spi_aic3008)
 {
+
 	int ret = 0;
-	struct aic3008_priv *aic3008 = kzalloc(sizeof(struct aic3008_priv), GFP_KERNEL);
-	codec_spi_dev = spi_aic3008; /* assign global pointer to SPI device. */
-	
-	
-	AUD_DBG("spi device: %s, addr = 0x%p. YAY! ***** Start to Test *****\n",
-		spi_aic3008->modalias, spi_aic3008);
-		
+
+	struct aic3008_priv *aic3008 = kzalloc(sizeof(struct aic3008_priv), GFP_KERNEL);;
 	if (aic3008 == NULL)
 		return -ENOMEM;
-	
+
+	AUD_DBG("spi device: %s, addr = 0x%p. YAY! ***** Start to Test *****\n",
+		spi_aic3008->modalias, spi_aic3008);
+	codec_spi_dev = spi_aic3008; /* assign global pointer to SPI device. */	
+
 	spi_set_drvdata(spi_aic3008, aic3008);
 
 	ret = snd_soc_register_codec(&spi_aic3008->dev,
@@ -1754,9 +1625,7 @@ static int spi_aic3008_probe(struct spi_device *spi_aic3008)
 		AUD_ERR("snd_soc_register_codec() Failed\n");
 		kfree(aic3008);
 	}
-#ifdef AUDIO_DEBUG
 	AUD_INFO("SPI control for AIC3008 started successfully...\n");
-#endif
 
 	return ret;
 }

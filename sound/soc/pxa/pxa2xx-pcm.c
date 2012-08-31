@@ -11,7 +11,6 @@
  */
 
 #include <linux/dma-mapping.h>
-#include <linux/module.h>
 
 #include <sound/core.h>
 #include <sound/soc.h>
@@ -89,7 +88,6 @@ static u64 pxa2xx_pcm_dmamask = DMA_BIT_MASK(32);
 static int pxa2xx_soc_pcm_new(struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_card *card = rtd->card->snd_card;
-	struct snd_soc_dai *dai = rtd->cpu_dai;
 	struct snd_pcm *pcm = rtd->pcm;
 	int ret = 0;
 

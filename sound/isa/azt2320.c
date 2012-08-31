@@ -35,7 +35,7 @@
 #include <linux/time.h>
 #include <linux/wait.h>
 #include <linux/pnp.h>
-#include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <sound/core.h>
 #include <sound/initval.h>
 #include <sound/wss.h>
@@ -55,7 +55,7 @@ MODULE_SUPPORTED_DEVICE("{{Aztech Systems,PRO16V},"
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
-static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_ISAPNP; /* Enable this card */
+static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_ISAPNP; /* Enable this card */
 static long port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;	/* PnP setup */
 static long wss_port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;	/* PnP setup */
 static long mpu_port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;	/* PnP setup */

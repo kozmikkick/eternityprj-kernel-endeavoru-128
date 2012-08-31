@@ -32,7 +32,7 @@
 #include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
-#include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/ac97_codec.h>
@@ -73,9 +73,9 @@ static int index = SNDRV_DEFAULT_IDX1;	/* Index 0-MAX */
 static char *id = SNDRV_DEFAULT_STR1;	/* ID for this card */
 static int ac97_clock;
 static char *ac97_quirk;
-static bool buggy_semaphore;
+static int buggy_semaphore;
 static int buggy_irq = -1; /* auto-check */
-static bool xbox;
+static int xbox;
 static int spdif_aclink = -1;
 
 module_param(index, int, 0444);
@@ -96,7 +96,7 @@ module_param(spdif_aclink, int, 0444);
 MODULE_PARM_DESC(spdif_aclink, "S/PDIF over AC-link.");
 
 /* just for backward compatibility */
-static bool enable;
+static int enable;
 module_param(enable, bool, 0444);
 static int joystick;
 module_param(joystick, int, 0444);
@@ -1884,6 +1884,12 @@ static struct ac97_quirk ac97_quirks[] __devinitdata = {
 	},
 	{
 		.subvendor = 0x1028,
+		.subdevice = 0x0189,
+		.name = "Dell Inspiron 9300",
+		.type = AC97_TUNE_HP_MUTE_LED
+	},
+	{
+		.subvendor = 0x1028,
 		.subdevice = 0x0191,
 		.name = "Dell Inspiron 8600",
 		.type = AC97_TUNE_HP_ONLY
@@ -2647,7 +2653,7 @@ static int intel8x0_resume(struct pci_dev *pci)
 	pci_set_master(pci);
 	snd_intel8x0_chip_init(chip, 0);
 	if (request_irq(pci->irq, snd_intel8x0_interrupt,
-			IRQF_SHARED, card->shortname, chip)) {
+			IRQF_SHARED, KBUILD_MODNAME, chip)) {
 		printk(KERN_ERR "intel8x0: unable to grab IRQ %d, "
 		       "disabling device\n", pci->irq);
 		snd_card_disconnect(card);
@@ -3106,7 +3112,7 @@ static int __devinit snd_intel8x0_create(struct snd_card *card,
 
 	/* request irq after initializaing int_sta_mask, etc */
 	if (request_irq(pci->irq, snd_intel8x0_interrupt,
-			IRQF_SHARED, card->shortname, chip)) {
+			IRQF_SHARED, KBUILD_MODNAME, chip)) {
 		snd_printk(KERN_ERR "unable to grab IRQ %d\n", pci->irq);
 		snd_intel8x0_free(chip);
 		return -EBUSY;
@@ -3266,7 +3272,7 @@ static void __devexit snd_intel8x0_remove(struct pci_dev *pci)
 }
 
 static struct pci_driver driver = {
-	.name = "Intel ICH",
+	.name = KBUILD_MODNAME,
 	.id_table = snd_intel8x0_ids,
 	.probe = snd_intel8x0_probe,
 	.remove = __devexit_p(snd_intel8x0_remove),

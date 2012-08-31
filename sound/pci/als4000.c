@@ -69,7 +69,7 @@
 #include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/gameport.h>
-#include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <linux/dma-mapping.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -90,7 +90,7 @@ MODULE_SUPPORTED_DEVICE("{{Avance Logic,ALS4000}}");
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
-static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;	/* Enable this card */
+static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;	/* Enable this card */
 #ifdef SUPPORT_JOYSTICK
 static int joystick_port[SNDRV_CARDS];
 #endif
@@ -1036,7 +1036,7 @@ static int snd_als4000_resume(struct pci_dev *pci)
 
 
 static struct pci_driver driver = {
-	.name = "ALS4000",
+	.name = KBUILD_MODNAME,
 	.id_table = snd_als4000_ids,
 	.probe = snd_card_als4000_probe,
 	.remove = __devexit_p(snd_card_als4000_remove),

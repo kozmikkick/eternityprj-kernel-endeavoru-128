@@ -27,7 +27,6 @@
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
 #include <linux/mutex.h>
-#include <linux/module.h>
 
 #include <sound/core.h>
 #include <sound/control.h>
@@ -2381,7 +2380,7 @@ int __devinit snd_ymfpci_create(struct snd_card *card,
 		return -EBUSY;
 	}
 	if (request_irq(pci->irq, snd_ymfpci_interrupt, IRQF_SHARED,
-			"YMFPCI", chip)) {
+			KBUILD_MODNAME, chip)) {
 		snd_printk(KERN_ERR "unable to grab IRQ %d\n", pci->irq);
 		snd_ymfpci_free(chip);
 		return -EBUSY;

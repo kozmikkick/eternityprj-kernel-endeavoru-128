@@ -70,7 +70,6 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/atomic.h>
-#include <linux/module.h>
 
 MODULE_AUTHOR("Rudolf Koenig, Brent Baccala and Martin Habets");
 MODULE_DESCRIPTION("Sun DBRI");
@@ -80,7 +79,7 @@ MODULE_SUPPORTED_DEVICE("{{Sun,DBRI}}");
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
 /* Enable this card */
-static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;
+static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;
 
 module_param_array(index, int, NULL, 0444);
 MODULE_PARM_DESC(index, "Index value for Sun DBRI soundcard.");

@@ -11,16 +11,17 @@
 #include <linux/lockdep.h>
 #include <linux/kobject_ns.h>
 #include <linux/fs.h>
+#include <linux/rbtree.h>
 
 struct sysfs_open_dirent;
 
 /* type-specific structures for sysfs_dirent->s_* union members */
 struct sysfs_elem_dir {
 	struct kobject		*kobj;
-	/* children list starts here and goes through sd->s_sibling */
-	struct sysfs_dirent	*children;
 
 	unsigned long		subdirs;
+	/* children rbtree starts here and goes through sd->s_rb */
+	struct rb_root		children;
 };
 
 struct sysfs_elem_symlink {
@@ -58,8 +59,9 @@ struct sysfs_dirent {
 	struct lockdep_map	dep_map;
 #endif
 	struct sysfs_dirent	*s_parent;
-	struct sysfs_dirent	*s_sibling;
 	const char		*s_name;
+
+	struct rb_node		s_rb;
 
 	union {
 		struct completion	*completion;
@@ -67,6 +69,7 @@ struct sysfs_dirent {
 	} u;
 
 	const void		*s_ns; /* namespace tag */
+	unsigned int		s_hash; /* ns + name hash */
 	union {
 		struct sysfs_elem_dir		s_dir;
 		struct sysfs_elem_symlink	s_symlink;
@@ -74,9 +77,9 @@ struct sysfs_dirent {
 		struct sysfs_elem_bin_attr	s_bin_attr;
 	};
 
-	unsigned int		s_flags;
+	unsigned short		s_flags;
 	umode_t 		s_mode;
-	ino_t			s_ino;
+	unsigned int		s_ino;
 	struct sysfs_inode_attrs *s_iattr;
 };
 
@@ -91,11 +94,11 @@ struct sysfs_dirent {
 #define SYSFS_ACTIVE_REF		(SYSFS_KOBJ_ATTR | SYSFS_KOBJ_BIN_ATTR)
 
 /* identify any namespace tag on sysfs_dirents */
-#define SYSFS_NS_TYPE_MASK		0xff00
+#define SYSFS_NS_TYPE_MASK		0xf00
 #define SYSFS_NS_TYPE_SHIFT		8
 
 #define SYSFS_FLAG_MASK			~(SYSFS_NS_TYPE_MASK|SYSFS_TYPE_MASK)
-#define SYSFS_FLAG_REMOVED		0x020000
+#define SYSFS_FLAG_REMOVED		0x02000
 
 static inline unsigned int sysfs_type(struct sysfs_dirent *sd)
 {

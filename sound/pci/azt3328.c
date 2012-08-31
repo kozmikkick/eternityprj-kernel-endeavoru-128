@@ -186,7 +186,7 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/gameport.h>
-#include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <linux/dma-mapping.h>
 #include <sound/core.h>
 #include <sound/control.h>
@@ -301,7 +301,7 @@ static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
 module_param_array(id, charp, NULL, 0444);
 MODULE_PARM_DESC(id, "ID string for AZF3328 soundcard.");
 
-static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;	/* Enable this card */
+static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;	/* Enable this card */
 module_param_array(enable, bool, NULL, 0444);
 MODULE_PARM_DESC(enable, "Enable AZF3328 soundcard.");
 
@@ -2559,7 +2559,7 @@ snd_azf3328_create(struct snd_card *card,
 	codec_setup->name = "I2S_OUT";
 
 	if (request_irq(pci->irq, snd_azf3328_interrupt,
-			IRQF_SHARED, card->shortname, chip)) {
+			IRQF_SHARED, KBUILD_MODNAME, chip)) {
 		snd_printk(KERN_ERR "unable to grab IRQ %d\n", pci->irq);
 		err = -EBUSY;
 		goto out_err;
@@ -2625,16 +2625,19 @@ snd_azf3328_probe(struct pci_dev *pci, const struct pci_device_id *pci_id)
 	int err;
 
 	snd_azf3328_dbgcallenter();
-	if (dev >= SNDRV_CARDS)
-		return -ENODEV;
+	if (dev >= SNDRV_CARDS) {
+		err = -ENODEV;
+		goto out;
+	}
 	if (!enable[dev]) {
 		dev++;
-		return -ENOENT;
+		err = -ENOENT;
+		goto out;
 	}
 
 	err = snd_card_create(index[dev], id[dev], THIS_MODULE, 0, &card);
 	if (err < 0)
-		return err;
+		goto out;
 
 	strcpy(card->driver, "AZF3328");
 	strcpy(card->shortname, "Aztech AZF3328 (PCI168)");
@@ -2860,7 +2863,7 @@ snd_azf3328_resume(struct pci_dev *pci)
 
 
 static struct pci_driver driver = {
-	.name = "AZF3328",
+	.name = KBUILD_MODNAME,
 	.id_table = snd_azf3328_ids,
 	.probe = snd_azf3328_probe,
 	.remove = __devexit_p(snd_azf3328_remove),

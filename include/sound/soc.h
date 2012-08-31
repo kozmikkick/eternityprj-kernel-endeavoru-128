@@ -258,8 +258,7 @@ typedef int (*hw_write_t)(void *,const char* ,int);
 extern struct snd_ac97_bus_ops soc_ac97_ops;
 
 enum snd_soc_control_type {
-	SND_SOC_CUSTOM = 1,
-	SND_SOC_I2C,
+	SND_SOC_I2C = 1,
 	SND_SOC_SPI,
 };
 
@@ -581,7 +580,7 @@ struct snd_soc_codec {
 	/* dapm */
 	struct snd_soc_dapm_context dapm;
 
-	/* htc */
+	/* endeavoru requirements */
 	bool is_call_mode;
 	int pla_device;
 	int capture_deviece;
@@ -589,7 +588,7 @@ struct snd_soc_codec {
 	int uplink_id;
 	int aic3008_dsp_id;
 	int es305_cfg_id;
-	
+
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *debugfs_codec_root;
 	struct dentry *debugfs_reg;
@@ -640,13 +639,9 @@ struct snd_soc_codec_driver {
 	/* codec bias level */
 	int (*set_bias_level)(struct snd_soc_codec *,
 			      enum snd_soc_bias_level level);
-	bool idle_bias_off;
 
 	void (*seq_notifier)(struct snd_soc_dapm_context *,
 			     enum snd_soc_dapm_type, int);
-
-	/* codec stream completion event */
-	int (*stream_event)(struct snd_soc_dapm_context *dapm, int event);
 
 	/* probe ordering - for components with runtime dependencies */
 	int probe_order;
@@ -682,9 +677,6 @@ struct snd_soc_platform_driver {
 
 	/* platform stream ops */
 	struct snd_pcm_ops *ops;
-
-	/* platform stream completion event */
-	int (*stream_event)(struct snd_soc_dapm_context *dapm, int event);
 
 	/* probe ordering - for components with runtime dependencies */
 	int probe_order;
@@ -817,9 +809,9 @@ struct snd_soc_card {
 	/*
 	 * Card-specific routes and widgets.
 	 */
-	struct snd_soc_dapm_widget *dapm_widgets;
+	const struct snd_soc_dapm_widget *dapm_widgets;
 	int num_dapm_widgets;
-	struct snd_soc_dapm_route *dapm_routes;
+	const struct snd_soc_dapm_route *dapm_routes;
 	int num_dapm_routes;
 
 	struct work_struct deferred_resume_work;
@@ -885,7 +877,7 @@ struct soc_enum {
 	unsigned char shift_r;
 	unsigned int max;
 	unsigned int mask;
-	const char **texts;
+	const char * const *texts;
 	const unsigned int *values;
 	void *dapm;
 };

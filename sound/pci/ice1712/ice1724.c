@@ -28,7 +28,7 @@
 #include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
-#include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <linux/mutex.h>
 #include <sound/core.h>
 #include <sound/info.h>
@@ -80,7 +80,7 @@ MODULE_SUPPORTED_DEVICE("{"
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
-static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;		/* Enable this card */
+static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;		/* Enable this card */
 static char *model[SNDRV_CARDS];
 
 module_param_array(index, int, NULL, 0444);
@@ -2509,7 +2509,7 @@ static int __devinit snd_vt1724_create(struct snd_card *card,
 	ice->profi_port = pci_resource_start(pci, 1);
 
 	if (request_irq(pci->irq, snd_vt1724_interrupt,
-			IRQF_SHARED, "ICE1724", ice)) {
+			IRQF_SHARED, KBUILD_MODNAME, ice)) {
 		snd_printk(KERN_ERR "unable to grab IRQ %d\n", pci->irq);
 		snd_vt1724_free(ice);
 		return -EIO;
@@ -2802,7 +2802,7 @@ static int snd_vt1724_resume(struct pci_dev *pci)
 #endif
 
 static struct pci_driver driver = {
-	.name = "ICE1724",
+	.name = KBUILD_MODNAME,
 	.id_table = snd_vt1724_ids,
 	.probe = snd_vt1724_probe,
 	.remove = __devexit_p(snd_vt1724_remove),

@@ -2604,10 +2604,6 @@ static void soc_dapm_stream_event(struct snd_soc_dapm_context *dapm,
 	}
 
 	dapm_power_widgets(dapm, event);
-
-	/* do we need to notify any clients that DAPM stream is complete */
-	if (dapm->stream_event)
-		dapm->stream_event(dapm, event);
 }
 
 /**
@@ -2767,7 +2763,7 @@ EXPORT_SYMBOL_GPL(snd_soc_dapm_ignore_suspend);
 
 /**
  * snd_soc_dapm_free - free dapm resources
- * @card: SoC device
+ * @dapm: DAPM context
  *
  * Free all dapm widgets and resources.
  */

@@ -155,7 +155,7 @@ static int snd_imx_pcm_hw_params(struct snd_pcm_substream *substream,
 
 	iprtd->buf = (unsigned int *)substream->dma_buffer.area;
 
-	iprtd->desc = chan->device->device_prep_dma_cyclic(chan, dma_addr,
+	iprtd->desc = dmaengine_prep_dma_cyclic(chan, dma_addr,
 			iprtd->period_bytes * iprtd->periods,
 			iprtd->period_bytes,
 			substream->stream == SNDRV_PCM_STREAM_PLAYBACK ?
@@ -337,3 +337,5 @@ static void __exit snd_imx_pcm_exit(void)
 	platform_driver_unregister(&imx_pcm_driver);
 }
 module_exit(snd_imx_pcm_exit);
+MODULE_LICENSE("GPL");
+MODULE_ALIAS("platform:imx-pcm-audio");

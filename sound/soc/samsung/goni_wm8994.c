@@ -11,7 +11,6 @@
  *
  */
 
-#include <linux/module.h>
 #include <sound/soc.h>
 #include <sound/jack.h>
 
@@ -247,7 +246,6 @@ static struct snd_soc_dai_link goni_dai[] = {
 	.stream_name = "Voice",
 	.cpu_dai_name = "goni-voice-dai",
 	.codec_dai_name = "wm8994-aif2",
-	.platform_name = "samsung-audio",
 	.codec_name = "wm8994-codec.0-001a",
 	.ops = &goni_voice_ops,
 },

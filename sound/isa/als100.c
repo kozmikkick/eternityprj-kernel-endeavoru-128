@@ -28,7 +28,7 @@
 #include <linux/wait.h>
 #include <linux/time.h>
 #include <linux/pnp.h>
-#include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <sound/core.h>
 #include <sound/initval.h>
 #include <sound/mpu401.h>
@@ -54,7 +54,7 @@ MODULE_LICENSE("GPL");
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
-static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;	/* Enable this card */
+static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;	/* Enable this card */
 static long port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;	/* PnP setup */
 static long mpu_port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;	/* PnP setup */
 static long fm_port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;	/* PnP setup */

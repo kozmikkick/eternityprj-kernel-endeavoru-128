@@ -382,7 +382,8 @@ static void wm8903_seq_notifier(struct snd_soc_dapm_context *dapm,
 static int wm8903_class_w_put(struct snd_kcontrol *kcontrol,
 			      struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_dapm_widget *widget = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_dapm_widget_list *wlist = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_dapm_widget *widget = wlist->widgets[0];
 	struct snd_soc_codec *codec = widget->codec;
 	struct wm8903_priv *wm8903 = snd_soc_codec_get_drvdata(codec);
 	u16 reg;
@@ -634,6 +635,13 @@ static const struct soc_enum lsidetone_enum =
 static const struct soc_enum rsidetone_enum =
 	SOC_ENUM_SINGLE(WM8903_DAC_DIGITAL_0, 0, 3, sidetone_text);
 
+static const char *adcinput_text[] = {
+	"ADC", "DMIC"
+};
+
+static const struct soc_enum adcinput_enum =
+	SOC_ENUM_SINGLE(WM8903_CLOCK_RATE_TEST_4, 9, 2, adcinput_text);
+
 static const char *aif_text[] = {
 	"Left", "Right"
 };
@@ -767,6 +775,9 @@ static const struct snd_kcontrol_new lsidetone_mux =
 static const struct snd_kcontrol_new rsidetone_mux =
 	SOC_DAPM_ENUM("DACR Sidetone Mux", rsidetone_enum);
 
+static const struct snd_kcontrol_new adcinput_mux =
+	SOC_DAPM_ENUM("ADC Input", adcinput_enum);
+
 static const struct snd_kcontrol_new lcapture_mux =
 	SOC_DAPM_ENUM("Left Capture Mux", lcapture_enum);
 
@@ -817,6 +828,7 @@ SND_SOC_DAPM_INPUT("IN2L"),
 SND_SOC_DAPM_INPUT("IN2R"),
 SND_SOC_DAPM_INPUT("IN3L"),
 SND_SOC_DAPM_INPUT("IN3R"),
+SND_SOC_DAPM_INPUT("DMICDAT"),
 
 SND_SOC_DAPM_OUTPUT("HPOUTL"),
 SND_SOC_DAPM_OUTPUT("HPOUTR"),
@@ -841,6 +853,9 @@ SND_SOC_DAPM_MUX("Right Input Mode Mux", SND_SOC_NOPM, 0, 0, &rinput_mode_mux),
 
 SND_SOC_DAPM_PGA("Left Input PGA", WM8903_POWER_MANAGEMENT_0, 1, 0, NULL, 0),
 SND_SOC_DAPM_PGA("Right Input PGA", WM8903_POWER_MANAGEMENT_0, 0, 0, NULL, 0),
+
+SND_SOC_DAPM_MUX("Left ADC Input", SND_SOC_NOPM, 0, 0, &adcinput_mux),
+SND_SOC_DAPM_MUX("Right ADC Input", SND_SOC_NOPM, 0, 0, &adcinput_mux),
 
 SND_SOC_DAPM_ADC("ADCL", NULL, WM8903_POWER_MANAGEMENT_6, 1, 0),
 SND_SOC_DAPM_ADC("ADCR", NULL, WM8903_POWER_MANAGEMENT_6, 0, 0),
@@ -930,7 +945,7 @@ SND_SOC_DAPM_SUPPLY("CLK_DSP", WM8903_CLOCK_RATES_2, 1, 0, NULL, 0),
 SND_SOC_DAPM_SUPPLY("CLK_SYS", WM8903_CLOCK_RATES_2, 2, 0, NULL, 0),
 };
 
-static const struct snd_soc_dapm_route intercon[] = {
+static const struct snd_soc_dapm_route wm8903_intercon[] = {
 
 	{ "CLK_DSP", NULL, "CLK_SYS" },
 	{ "Mic Bias", NULL, "CLK_SYS" },
@@ -979,6 +994,11 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{ "Left Input PGA", NULL, "Left Input Mode Mux" },
 	{ "Right Input PGA", NULL, "Right Input Mode Mux" },
 
+	{ "Left ADC Input", "ADC", "Left Input PGA" },
+	{ "Left ADC Input", "DMIC", "DMICDAT" },
+	{ "Right ADC Input", "ADC", "Right Input PGA" },
+	{ "Right ADC Input", "DMIC", "DMICDAT" },
+
 	{ "Left Capture Mux", "Left", "ADCL" },
 	{ "Left Capture Mux", "Right", "ADCR" },
 
@@ -988,9 +1008,9 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{ "AIFTXL", NULL, "Left Capture Mux" },
 	{ "AIFTXR", NULL, "Right Capture Mux" },
 
-	{ "ADCL", NULL, "Left Input PGA" },
+	{ "ADCL", NULL, "Left ADC Input" },
 	{ "ADCL", NULL, "CLK_DSP" },
-	{ "ADCR", NULL, "Right Input PGA" },
+	{ "ADCR", NULL, "Right ADC Input" },
 	{ "ADCR", NULL, "CLK_DSP" },
 
 	{ "Left Playback Mux", "Left", "AIFRXL" },
@@ -1086,17 +1106,6 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{ "Left Line Output PGA", NULL, "Charge Pump" },
 	{ "Right Line Output PGA", NULL, "Charge Pump" },
 };
-
-static int wm8903_add_widgets(struct snd_soc_codec *codec)
-{
-	struct snd_soc_dapm_context *dapm = &codec->dapm;
-
-	snd_soc_dapm_new_controls(dapm, wm8903_dapm_widgets,
-				  ARRAY_SIZE(wm8903_dapm_widgets));
-	snd_soc_dapm_add_routes(dapm, intercon, ARRAY_SIZE(intercon));
-
-	return 0;
-}
 
 static int wm8903_set_bias_level(struct snd_soc_codec *codec,
 				 enum snd_soc_bias_level level)
@@ -1259,9 +1268,9 @@ static int wm8903_set_dai_fmt(struct snd_soc_dai *codec_dai,
 		aif1 |= 0x2;
 		break;
 	case SND_SOC_DAIFMT_RIGHT_J:
-		aif1 |= 0x1;
 		break;
 	case SND_SOC_DAIFMT_LEFT_J:
+		aif1 |= 0x1;
 		break;
 	default:
 		return -EINVAL;
@@ -1395,6 +1404,7 @@ static struct {
 	{ 1500, 0x9, 0x2, 2 },
 };
 
+#ifdef SYS_BCLK_RATIO
 /* CLK_SYS/BCLK ratios - multiplied by 10 due to .5s */
 static struct {
 	int ratio;
@@ -1418,6 +1428,7 @@ static struct {
 	{ 440, 19 },
 	{ 480, 20 },
 };
+#endif
 
 /* Sample rates for DSP */
 static struct {
@@ -1448,6 +1459,7 @@ static int wm8903_hw_params(struct snd_pcm_substream *substream,
 	int fs = params_rate(params);
 	int bclk;
 	int bclk_div;
+	int real_bclk_div;
 	int i;
 	int dsp_config;
 	int clk_config;
@@ -1484,7 +1496,7 @@ static int wm8903_hw_params(struct snd_pcm_substream *substream,
 	clock1 |= sample_rates[dsp_config].value;
 
 	aif1 &= ~WM8903_AIF_WL_MASK;
-	bclk = 2 * fs;
+	bclk = 4 * fs;
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
 		bclk *= 16;
@@ -1552,27 +1564,22 @@ static int wm8903_hw_params(struct snd_pcm_substream *substream,
 	 * higher than the target (we need to ensure that there enough
 	 * BCLKs to clock out the samples).
 	 */
-	bclk_div = 0;
-	best_val = ((clk_sys * 10) / bclk_divs[0].ratio) - bclk;
-	i = 1;
-	while (i < ARRAY_SIZE(bclk_divs)) {
-		cur_val = ((clk_sys * 10) / bclk_divs[i].ratio) - bclk;
-		if (cur_val < 0) /* BCLK table is sorted */
-			break;
-		bclk_div = i;
-		best_val = cur_val;
-		i++;
-	}
 
 	aif2 &= ~WM8903_BCLK_DIV_MASK;
 	aif3 &= ~WM8903_LRCLK_RATE_MASK;
 
-	dev_dbg(codec->dev, "BCLK ratio %d for %dHz - actual BCLK = %dHz\n",
-		bclk_divs[bclk_div].ratio / 10, bclk,
-		(clk_sys * 10) / bclk_divs[bclk_div].ratio);
-
-	aif2 |= bclk_divs[bclk_div].div;
-	aif3 |= bclk / fs;
+	bclk_div = real_bclk_div = 0;
+	cur_val = clk_sys;
+	best_val = clk_sys;
+	while(!(best_val % fs) &&
+			(cur_val >= bclk)){
+		real_bclk_div = bclk_div;
+		bclk_div++;
+		cur_val = best_val;
+		best_val /= 2;
+	}
+	aif2 |= (real_bclk_div ? 1<<real_bclk_div : 0);
+	aif3 |= cur_val / fs;
 
 	wm8903->fs = params_rate(params);
 	wm8903_set_deemph(codec);
@@ -1752,6 +1759,11 @@ static struct snd_soc_dai_driver wm8903_dai = {
 
 static int wm8903_suspend(struct snd_soc_codec *codec, pm_message_t state)
 {
+	struct wm8903_priv *wm8903 = snd_soc_codec_get_drvdata(codec);
+
+	if (wm8903->irq)
+		disable_irq(wm8903->irq);
+
 	wm8903_set_bias_level(codec, SND_SOC_BIAS_OFF);
 
 	return 0;
@@ -1759,13 +1771,14 @@ static int wm8903_suspend(struct snd_soc_codec *codec, pm_message_t state)
 
 static int wm8903_resume(struct snd_soc_codec *codec)
 {
+	struct wm8903_priv *wm8903 = snd_soc_codec_get_drvdata(codec);
 	int i;
 	u16 *reg_cache = codec->reg_cache;
 	u16 *tmp_cache = kmemdup(reg_cache, sizeof(wm8903_reg_defaults),
 				 GFP_KERNEL);
 
-	/* Bring the codec back up to standby first to minimise pop/clicks */
-	wm8903_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
+	if (wm8903->irq)
+		enable_irq(wm8903->irq);
 
 	/* Sync back everything else */
 	if (tmp_cache) {
@@ -1776,6 +1789,9 @@ static int wm8903_resume(struct snd_soc_codec *codec)
 	} else {
 		dev_err(codec->dev, "Failed to allocate temporary cache\n");
 	}
+
+	/* Bring the codec back up to standby first to minimise pop/clicks */
+	wm8903_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
 	return 0;
 }
@@ -2028,7 +2044,6 @@ static int wm8903_probe(struct snd_soc_codec *codec)
 
 	snd_soc_add_controls(codec, wm8903_snd_controls,
 				ARRAY_SIZE(wm8903_snd_controls));
-	wm8903_add_widgets(codec);
 
 	wm8903_init_gpio(codec);
 
@@ -2038,8 +2053,13 @@ static int wm8903_probe(struct snd_soc_codec *codec)
 /* power down chip */
 static int wm8903_remove(struct snd_soc_codec *codec)
 {
+	struct wm8903_priv *wm8903 = snd_soc_codec_get_drvdata(codec);
+
 	wm8903_free_gpio(codec);
 	wm8903_set_bias_level(codec, SND_SOC_BIAS_OFF);
+	if (wm8903->irq)
+		free_irq(wm8903->irq, codec);
+
 	return 0;
 }
 
@@ -2054,6 +2074,10 @@ static struct snd_soc_codec_driver soc_codec_dev_wm8903 = {
 	.reg_cache_default = wm8903_reg_defaults,
 	.volatile_register = wm8903_volatile_register,
 	.seq_notifier = wm8903_seq_notifier,
+	.dapm_widgets = wm8903_dapm_widgets,
+	.num_dapm_widgets = ARRAY_SIZE(wm8903_dapm_widgets),
+	.dapm_routes = wm8903_intercon,
+	.num_dapm_routes = ARRAY_SIZE(wm8903_intercon),
 };
 
 #if defined(CONFIG_I2C) || defined(CONFIG_I2C_MODULE)

@@ -268,7 +268,7 @@ static void close_delayed_work(struct work_struct *work)
  * freed here. The cpu DAI, codec DAI, machine and platform are also
  * shutdown.
  */
-static int soc_codec_close(struct snd_pcm_substream *substream)
+static int soc_pcm_close(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_platform *platform = rtd->platform;
@@ -289,6 +289,9 @@ static int soc_codec_close(struct snd_pcm_substream *substream)
 	cpu_dai->active--;
 	codec_dai->active--;
 	codec->active--;
+
+	if (!cpu_dai->active && !codec_dai->active)
+		rtd->rate = 0;
 
 	/* Muting the DAC suppresses artifacts caused during digital
 	 * shutdown, for example from stopping clocks.
@@ -567,7 +570,7 @@ static snd_pcm_uframes_t soc_pcm_pointer(struct snd_pcm_substream *substream)
 /* ASoC PCM operations */
 static struct snd_pcm_ops soc_pcm_ops = {
 	.open		= soc_pcm_open,
-	.close		= soc_codec_close,
+	.close		= soc_pcm_close,
 	.hw_params	= soc_pcm_hw_params,
 	.hw_free	= soc_pcm_hw_free,
 	.prepare	= soc_pcm_prepare,

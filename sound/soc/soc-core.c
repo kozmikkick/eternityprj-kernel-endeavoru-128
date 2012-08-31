@@ -30,6 +30,7 @@
 #include <linux/bitops.h>
 #include <linux/debugfs.h>
 #include <linux/platform_device.h>
+#include <linux/ctype.h>
 #include <linux/slab.h>
 #include <sound/ac97_codec.h>
 #include <sound/core.h>
@@ -105,7 +106,7 @@ static int format_register_str(struct snd_soc_codec *codec,
 	if (wordsize + regsize + 2 + 1 != len)
 		return -EINVAL;
 
-	ret = snd_soc_read(codec, reg);
+	ret = snd_soc_read(codec , reg);
 	if (ret < 0) {
 		memset(regbuf, 'X', regsize);
 		regbuf[regsize] = '\0';
@@ -956,8 +957,6 @@ static int soc_probe_codec(struct snd_soc_card *card,
 		snd_soc_dapm_new_controls(&codec->dapm, driver->dapm_widgets,
 					  driver->num_dapm_widgets);
 
-	codec->dapm.idle_bias_off = driver->idle_bias_off;
-
 	if (driver->probe) {
 		ret = driver->probe(codec);
 		if (ret < 0) {
@@ -1387,14 +1386,6 @@ static void snd_soc_instantiate_card(struct snd_soc_card *card)
 	INIT_WORK(&card->deferred_resume_work, soc_resume_deferred);
 #endif
 
-	/* We should have a non-codec control add function but we don't */
-	if (card->controls)
-		snd_soc_add_controls(list_first_entry(&card->codec_dev_list,
-						      struct snd_soc_codec,
-						      card_list),
-				     card->controls,
-				     card->num_controls);
-
 	if (card->dapm_widgets)
 		snd_soc_dapm_new_controls(&card->dapm, card->dapm_widgets,
 					  card->num_dapm_widgets);
@@ -1428,6 +1419,14 @@ static void snd_soc_instantiate_card(struct snd_soc_card *card)
 		}
 	}
 
+	/* We should have a non-codec control add function but we don't */
+	if (card->controls)
+		snd_soc_add_controls(list_first_entry(&card->codec_dev_list,
+						      struct snd_soc_codec,
+						      card_list),
+				     card->controls,
+				     card->num_controls);
+
 	if (card->dapm_routes)
 		snd_soc_dapm_add_routes(&card->dapm, card->dapm_routes,
 					card->num_dapm_routes);
@@ -1436,9 +1435,20 @@ static void snd_soc_instantiate_card(struct snd_soc_card *card)
 		 "%s", card->name);
 	snprintf(card->snd_card->longname, sizeof(card->snd_card->longname),
 		 "%s", card->long_name ? card->long_name : card->name);
-	if (card->driver_name)
-		strlcpy(card->snd_card->driver, card->driver_name,
-			sizeof(card->snd_card->driver));
+	snprintf(card->snd_card->driver, sizeof(card->snd_card->driver),
+		 "%s", card->driver_name ? card->driver_name : card->name);
+	for (i = 0; i < ARRAY_SIZE(card->snd_card->driver); i++) {
+		switch (card->snd_card->driver[i]) {
+		case '_':
+		case '-':
+		case '\0':
+			break;
+		default:
+			if (!isalnum(card->snd_card->driver[i]))
+				card->snd_card->driver[i] = '_';
+			break;
+		}
+	}
 
 	if (card->late_probe) {
 		ret = card->late_probe(card);
@@ -1635,7 +1645,7 @@ int snd_soc_codec_readable_register(struct snd_soc_codec *codec,
 	if (codec->readable_register)
 		return codec->readable_register(codec, reg);
 	else
-		return 0;
+		return 1;
 }
 EXPORT_SYMBOL_GPL(snd_soc_codec_readable_register);
 
@@ -1653,7 +1663,7 @@ int snd_soc_codec_writable_register(struct snd_soc_codec *codec,
 	if (codec->writable_register)
 		return codec->writable_register(codec, reg);
 	else
-		return 0;
+		return 1;
 }
 EXPORT_SYMBOL_GPL(snd_soc_codec_writable_register);
 
@@ -1915,7 +1925,7 @@ struct snd_kcontrol *snd_soc_cnew(const struct snd_kcontrol_new *_template,
 
 	if (prefix) {
 		name_len = strlen(long_name) + strlen(prefix) + 2;
-		name = kmalloc(name_len, GFP_ATOMIC);
+		name = kmalloc(name_len, GFP_KERNEL);
 		if (!name)
 			return NULL;
 
@@ -3143,7 +3153,6 @@ int snd_soc_register_platform(struct device *dev,
 	platform->driver = platform_drv;
 	platform->dapm.dev = dev;
 	platform->dapm.platform = platform;
-	platform->dapm.stream_event = platform_drv->stream_event;
 
 	mutex_lock(&client_mutex);
 	list_add(&platform->list, &platform_list);
@@ -3256,7 +3265,6 @@ int snd_soc_register_codec(struct device *dev,
 	codec->dapm.dev = dev;
 	codec->dapm.codec = codec;
 	codec->dapm.seq_notifier = codec_drv->seq_notifier;
-	codec->dapm.stream_event = codec_drv->stream_event;
 	codec->dev = dev;
 	codec->driver = codec_drv;
 	codec->num_dai = num_dai;

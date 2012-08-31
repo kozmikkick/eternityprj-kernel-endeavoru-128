@@ -24,7 +24,7 @@
 #include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/time.h>
-#include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <sound/core.h>
 #include <sound/trident.h>
 #include <sound/initval.h>
@@ -47,7 +47,7 @@ MODULE_SUPPORTED_DEVICE("{{Trident,4DWave DX},"
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
-static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;	/* Enable this card */
+static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;	/* Enable this card */
 static int pcm_channels[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 32};
 static int wavetable_size[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 8192};
 
@@ -172,7 +172,7 @@ static void __devexit snd_trident_remove(struct pci_dev *pci)
 }
 
 static struct pci_driver driver = {
-	.name = "Trident4DWaveAudio",
+	.name = KBUILD_MODNAME,
 	.id_table = snd_trident_ids,
 	.probe = snd_trident_probe,
 	.remove = __devexit_p(snd_trident_remove),

@@ -1028,8 +1028,7 @@ static int snd_interval_ratden(struct snd_interval *i,
  *
  * Returns non-zero if the value is changed, zero if not changed.
  */
-int snd_interval_list(struct snd_interval *i, unsigned int count,
-		      const unsigned int *list, unsigned int mask)
+int snd_interval_list(struct snd_interval *i, unsigned int count, unsigned int *list, unsigned int mask)
 {
         unsigned int k;
 	struct snd_interval list_range;
@@ -1399,32 +1398,6 @@ int snd_pcm_hw_constraint_pow2(struct snd_pcm_runtime *runtime,
 }
 
 EXPORT_SYMBOL(snd_pcm_hw_constraint_pow2);
-
-static int snd_pcm_hw_rule_noresample_func(struct snd_pcm_hw_params *params,
-					   struct snd_pcm_hw_rule *rule)
-{
-	unsigned int base_rate = (unsigned int)(uintptr_t)rule->private;
-	struct snd_interval *rate;
-
-	rate = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE);
-	return snd_interval_list(rate, 1, &base_rate, 0);
-}
-
-/**
- * snd_pcm_hw_rule_noresample - add a rule to allow disabling hw resampling
- * @runtime: PCM runtime instance
- * @base_rate: the rate at which the hardware does not resample
- */
-int snd_pcm_hw_rule_noresample(struct snd_pcm_runtime *runtime,
-			       unsigned int base_rate)
-{
-	return snd_pcm_hw_rule_add(runtime, SNDRV_PCM_HW_PARAMS_NORESAMPLE,
-				   SNDRV_PCM_HW_PARAM_RATE,
-				   snd_pcm_hw_rule_noresample_func,
-				   (void *)(uintptr_t)base_rate,
-				   SNDRV_PCM_HW_PARAM_RATE, -1);
-}
-EXPORT_SYMBOL(snd_pcm_hw_rule_noresample);
 
 static void _snd_pcm_hw_param_any(struct snd_pcm_hw_params *params,
 				  snd_pcm_hw_param_t var)

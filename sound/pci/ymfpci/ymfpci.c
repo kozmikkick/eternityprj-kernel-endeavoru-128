@@ -22,7 +22,7 @@
 #include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/time.h>
-#include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <sound/core.h>
 #include <sound/ymfpci.h>
 #include <sound/mpu401.h>
@@ -41,13 +41,13 @@ MODULE_SUPPORTED_DEVICE("{{Yamaha,YMF724},"
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
-static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;	/* Enable this card */
+static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;	/* Enable this card */
 static long fm_port[SNDRV_CARDS];
 static long mpu_port[SNDRV_CARDS];
 #ifdef SUPPORT_JOYSTICK
 static long joystick_port[SNDRV_CARDS];
 #endif
-static bool rear_switch[SNDRV_CARDS];
+static int rear_switch[SNDRV_CARDS];
 
 module_param_array(index, int, NULL, 0444);
 MODULE_PARM_DESC(index, "Index value for the Yamaha DS-1 PCI soundcard.");
@@ -345,7 +345,7 @@ static void __devexit snd_card_ymfpci_remove(struct pci_dev *pci)
 }
 
 static struct pci_driver driver = {
-	.name = "Yamaha DS-1 PCI",
+	.name = KBUILD_MODNAME,
 	.id_table = snd_ymfpci_ids,
 	.probe = snd_card_ymfpci_probe,
 	.remove = __devexit_p(snd_card_ymfpci_remove),

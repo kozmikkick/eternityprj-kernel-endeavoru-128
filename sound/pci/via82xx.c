@@ -53,7 +53,7 @@
 #include <linux/pci.h>
 #include <linux/slab.h>
 #include <linux/gameport.h>
-#include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -80,7 +80,7 @@ static int index = SNDRV_DEFAULT_IDX1;	/* Index 0-MAX */
 static char *id = SNDRV_DEFAULT_STR1;	/* ID for this card */
 static long mpu_port;
 #ifdef SUPPORT_JOYSTICK
-static bool joystick;
+static int joystick;
 #endif
 static int ac97_clock = 48000;
 static char *ac97_quirk;
@@ -110,7 +110,7 @@ module_param(nodelay, int, 0444);
 MODULE_PARM_DESC(nodelay, "Disable 500ms init delay");
 
 /* just for backward compatibility */
-static bool enable;
+static int enable;
 module_param(enable, bool, 0444);
 
 
@@ -2377,7 +2377,7 @@ static int __devinit snd_via82xx_create(struct snd_card *card,
 			chip_type == TYPE_VIA8233 ?
 			snd_via8233_interrupt :	snd_via686_interrupt,
 			IRQF_SHARED,
-			card->driver, chip)) {
+			KBUILD_MODNAME, chip)) {
 		snd_printk(KERN_ERR "unable to grab IRQ %d\n", pci->irq);
 		snd_via82xx_free(chip);
 		return -EBUSY;
@@ -2611,7 +2611,7 @@ static void __devexit snd_via82xx_remove(struct pci_dev *pci)
 }
 
 static struct pci_driver driver = {
-	.name = "VIA 82xx Audio",
+	.name = KBUILD_MODNAME,
 	.id_table = snd_via82xx_ids,
 	.probe = snd_via82xx_probe,
 	.remove = __devexit_p(snd_via82xx_remove),

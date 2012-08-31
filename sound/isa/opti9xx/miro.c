@@ -28,7 +28,7 @@
 #include <linux/pnp.h>
 #include <linux/delay.h>
 #include <linux/ioport.h>
-#include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <asm/io.h>
 #include <asm/dma.h>
 #include <sound/core.h>
@@ -61,7 +61,7 @@ static int dma2 = SNDRV_DEFAULT_DMA1;		/* 0,1,3 */
 static int wss;
 static int ide;
 #ifdef CONFIG_PNP
-static bool isapnp = 1;				/* Enable ISA PnP detection */
+static int isapnp = 1;				/* Enable ISA PnP detection */
 #endif
 
 module_param(index, int, 0444);

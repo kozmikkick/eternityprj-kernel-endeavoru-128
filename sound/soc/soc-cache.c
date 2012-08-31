@@ -20,799 +20,6 @@
 
 #include <trace/events/asoc.h>
 
-static unsigned int snd_soc_4_12_read(struct snd_soc_codec *codec,
-				     unsigned int reg)
-{
-	int ret;
-	unsigned int val;
-
-	if (reg >= codec->driver->reg_cache_size ||
-		snd_soc_codec_volatile_register(codec, reg) ||
-		codec->cache_bypass) {
-			if (codec->cache_only)
-				return -1;
-
-			BUG_ON(!codec->hw_read);
-			return codec->hw_read(codec, reg);
-	}
-
-	ret = snd_soc_cache_read(codec, reg, &val);
-	if (ret < 0)
-		return -1;
-	return val;
-}
-
-static int snd_soc_4_12_write(struct snd_soc_codec *codec, unsigned int reg,
-			     unsigned int value)
-{
-	u8 data[2];
-	int ret;
-
-	data[0] = (reg << 4) | ((value >> 8) & 0x000f);
-	data[1] = value & 0x00ff;
-
-	if (!snd_soc_codec_volatile_register(codec, reg) &&
-		reg < codec->driver->reg_cache_size &&
-		!codec->cache_bypass) {
-		ret = snd_soc_cache_write(codec, reg, value);
-		if (ret < 0)
-			return -1;
-	}
-
-	if (codec->cache_only) {
-		codec->cache_sync = 1;
-		return 0;
-	}
-
-	ret = codec->hw_write(codec->control_data, data, 2);
-	if (ret == 2)
-		return 0;
-	if (ret < 0)
-		return ret;
-	else
-		return -EIO;
-}
-
-#if defined(CONFIG_SPI_MASTER)
-static int snd_soc_4_12_spi_write(void *control_data, const char *data,
-				 int len)
-{
-	struct spi_device *spi = control_data;
-	struct spi_transfer t;
-	struct spi_message m;
-	u8 msg[2];
-
-	if (len <= 0)
-		return 0;
-
-	msg[0] = data[1];
-	msg[1] = data[0];
-
-	spi_message_init(&m);
-	memset(&t, 0, sizeof t);
-
-	t.tx_buf = &msg[0];
-	t.len = len;
-
-	spi_message_add_tail(&t, &m);
-	spi_sync(spi, &m);
-
-	return len;
-}
-#else
-#define snd_soc_4_12_spi_write NULL
-#endif
-
-static unsigned int snd_soc_7_9_read(struct snd_soc_codec *codec,
-				     unsigned int reg)
-{
-	int ret;
-	unsigned int val;
-
-	if (reg >= codec->driver->reg_cache_size ||
-		snd_soc_codec_volatile_register(codec, reg) ||
-		codec->cache_bypass) {
-			if (codec->cache_only)
-				return -1;
-
-			BUG_ON(!codec->hw_read);
-			return codec->hw_read(codec, reg);
-	}
-
-	ret = snd_soc_cache_read(codec, reg, &val);
-	if (ret < 0)
-		return -1;
-	return val;
-}
-
-static int snd_soc_7_9_write(struct snd_soc_codec *codec, unsigned int reg,
-			     unsigned int value)
-{
-	u8 data[2];
-	int ret;
-
-	data[0] = (reg << 1) | ((value >> 8) & 0x0001);
-	data[1] = value & 0x00ff;
-
-	if (!snd_soc_codec_volatile_register(codec, reg) &&
-		reg < codec->driver->reg_cache_size &&
-		!codec->cache_bypass) {
-		ret = snd_soc_cache_write(codec, reg, value);
-		if (ret < 0)
-			return -1;
-	}
-
-	if (codec->cache_only) {
-		codec->cache_sync = 1;
-		return 0;
-	}
-
-	ret = codec->hw_write(codec->control_data, data, 2);
-	if (ret == 2)
-		return 0;
-	if (ret < 0)
-		return ret;
-	else
-		return -EIO;
-}
-
-#if defined(CONFIG_SPI_MASTER)
-static int snd_soc_7_9_spi_write(void *control_data, const char *data,
-				 int len)
-{
-	struct spi_device *spi = control_data;
-	struct spi_transfer t;
-	struct spi_message m;
-	u8 msg[2];
-
-	if (len <= 0)
-		return 0;
-
-	msg[0] = data[0];
-	msg[1] = data[1];
-
-	spi_message_init(&m);
-	memset(&t, 0, sizeof t);
-
-	t.tx_buf = &msg[0];
-	t.len = len;
-
-	spi_message_add_tail(&t, &m);
-	spi_sync(spi, &m);
-
-	return len;
-}
-#else
-#define snd_soc_7_9_spi_write NULL
-#endif
-
-static int snd_soc_8_8_write(struct snd_soc_codec *codec, unsigned int reg,
-			     unsigned int value)
-{
-	u8 data[2];
-	int ret;
-
-	reg &= 0xff;
-	data[0] = reg;
-	data[1] = value & 0xff;
-
-	if (!snd_soc_codec_volatile_register(codec, reg) &&
-		reg < codec->driver->reg_cache_size &&
-		!codec->cache_bypass) {
-		ret = snd_soc_cache_write(codec, reg, value);
-		if (ret < 0)
-			return -1;
-	}
-
-	if (codec->cache_only) {
-		codec->cache_sync = 1;
-		return 0;
-	}
-
-	if (codec->hw_write(codec->control_data, data, 2) == 2)
-		return 0;
-	else
-		return -EIO;
-}
-
-static unsigned int snd_soc_8_8_read(struct snd_soc_codec *codec,
-				     unsigned int reg)
-{
-	int ret;
-	unsigned int val;
-
-	reg &= 0xff;
-	if (reg >= codec->driver->reg_cache_size ||
-		snd_soc_codec_volatile_register(codec, reg) ||
-		codec->cache_bypass) {
-			if (codec->cache_only)
-				return -1;
-
-			BUG_ON(!codec->hw_read);
-			return codec->hw_read(codec, reg);
-	}
-
-	ret = snd_soc_cache_read(codec, reg, &val);
-	if (ret < 0)
-		return -1;
-	return val;
-}
-
-#if defined(CONFIG_SPI_MASTER)
-static int snd_soc_8_8_spi_write(void *control_data, const char *data,
-				 int len)
-{
-	struct spi_device *spi = control_data;
-	struct spi_transfer t;
-	struct spi_message m;
-	u8 msg[2];
-
-	if (len <= 0)
-		return 0;
-
-	msg[0] = data[0];
-	msg[1] = data[1];
-
-	spi_message_init(&m);
-	memset(&t, 0, sizeof t);
-
-	t.tx_buf = &msg[0];
-	t.len = len;
-
-	spi_message_add_tail(&t, &m);
-	spi_sync(spi, &m);
-
-	return len;
-}
-#else
-#define snd_soc_8_8_spi_write NULL
-#endif
-
-static int snd_soc_8_16_write(struct snd_soc_codec *codec, unsigned int reg,
-			      unsigned int value)
-{
-	u8 data[3];
-	int ret;
-
-	data[0] = reg;
-	data[1] = (value >> 8) & 0xff;
-	data[2] = value & 0xff;
-
-	if (!snd_soc_codec_volatile_register(codec, reg) &&
-		reg < codec->driver->reg_cache_size &&
-		!codec->cache_bypass) {
-		ret = snd_soc_cache_write(codec, reg, value);
-		if (ret < 0)
-			return -1;
-	}
-
-	if (codec->cache_only) {
-		codec->cache_sync = 1;
-		return 0;
-	}
-
-	if (codec->hw_write(codec->control_data, data, 3) == 3)
-		return 0;
-	else
-		return -EIO;
-}
-
-static unsigned int snd_soc_8_16_read(struct snd_soc_codec *codec,
-				      unsigned int reg)
-{
-	int ret;
-	unsigned int val;
-
-	if (reg >= codec->driver->reg_cache_size ||
-	    snd_soc_codec_volatile_register(codec, reg) ||
-	    codec->cache_bypass) {
-		if (codec->cache_only)
-			return -1;
-
-		BUG_ON(!codec->hw_read);
-		return codec->hw_read(codec, reg);
-	}
-
-	ret = snd_soc_cache_read(codec, reg, &val);
-	if (ret < 0)
-		return -1;
-	return val;
-}
-
-#if defined(CONFIG_SPI_MASTER)
-static int snd_soc_8_16_spi_write(void *control_data, const char *data,
-				 int len)
-{
-	struct spi_device *spi = control_data;
-	struct spi_transfer t;
-	struct spi_message m;
-	u8 msg[3];
-
-	if (len <= 0)
-		return 0;
-
-	msg[0] = data[0];
-	msg[1] = data[1];
-	msg[2] = data[2];
-
-	spi_message_init(&m);
-	memset(&t, 0, sizeof t);
-
-	t.tx_buf = &msg[0];
-	t.len = len;
-
-	spi_message_add_tail(&t, &m);
-	spi_sync(spi, &m);
-
-	return len;
-}
-#else
-#define snd_soc_8_16_spi_write NULL
-#endif
-
-#if defined(CONFIG_I2C) || (defined(CONFIG_I2C_MODULE) && defined(MODULE))
-static unsigned int snd_soc_8_8_read_i2c(struct snd_soc_codec *codec,
-					  unsigned int r)
-{
-	struct i2c_msg xfer[2];
-	u8 reg = r;
-	u8 data;
-	int ret;
-	struct i2c_client *client = codec->control_data;
-
-	/* Write register */
-	xfer[0].addr = client->addr;
-	xfer[0].flags = 0;
-	xfer[0].len = 1;
-	xfer[0].buf = &reg;
-
-	/* Read data */
-	xfer[1].addr = client->addr;
-	xfer[1].flags = I2C_M_RD;
-	xfer[1].len = 1;
-	xfer[1].buf = &data;
-
-	ret = i2c_transfer(client->adapter, xfer, 2);
-	if (ret != 2) {
-		dev_err(&client->dev, "i2c_transfer() returned %d\n", ret);
-		return 0;
-	}
-
-	return data;
-}
-#else
-#define snd_soc_8_8_read_i2c NULL
-#endif
-
-#if defined(CONFIG_I2C) || (defined(CONFIG_I2C_MODULE) && defined(MODULE))
-static unsigned int snd_soc_8_16_read_i2c(struct snd_soc_codec *codec,
-					  unsigned int r)
-{
-	struct i2c_msg xfer[2];
-	u8 reg = r;
-	u16 data;
-	int ret;
-	struct i2c_client *client = codec->control_data;
-
-	/* Write register */
-	xfer[0].addr = client->addr;
-	xfer[0].flags = 0;
-	xfer[0].len = 1;
-	xfer[0].buf = &reg;
-
-	/* Read data */
-	xfer[1].addr = client->addr;
-	xfer[1].flags = I2C_M_RD;
-	xfer[1].len = 2;
-	xfer[1].buf = (u8 *)&data;
-
-	ret = i2c_transfer(client->adapter, xfer, 2);
-	if (ret != 2) {
-		dev_err(&client->dev, "i2c_transfer() returned %d\n", ret);
-		return 0;
-	}
-
-	return (data >> 8) | ((data & 0xff) << 8);
-}
-#else
-#define snd_soc_8_16_read_i2c NULL
-#endif
-
-#if defined(CONFIG_I2C) || (defined(CONFIG_I2C_MODULE) && defined(MODULE))
-static unsigned int snd_soc_16_8_read_i2c(struct snd_soc_codec *codec,
-					  unsigned int r)
-{
-	struct i2c_msg xfer[2];
-	u16 reg = r;
-	u8 data;
-	int ret;
-	struct i2c_client *client = codec->control_data;
-
-	/* Write register */
-	xfer[0].addr = client->addr;
-	xfer[0].flags = 0;
-	xfer[0].len = 2;
-	xfer[0].buf = (u8 *)&reg;
-
-	/* Read data */
-	xfer[1].addr = client->addr;
-	xfer[1].flags = I2C_M_RD;
-	xfer[1].len = 1;
-	xfer[1].buf = &data;
-
-	ret = i2c_transfer(client->adapter, xfer, 2);
-	if (ret != 2) {
-		dev_err(&client->dev, "i2c_transfer() returned %d\n", ret);
-		return 0;
-	}
-
-	return data;
-}
-#else
-#define snd_soc_16_8_read_i2c NULL
-#endif
-
-static unsigned int snd_soc_16_8_read(struct snd_soc_codec *codec,
-				     unsigned int reg)
-{
-	int ret;
-	unsigned int val;
-
-	reg &= 0xff;
-	if (reg >= codec->driver->reg_cache_size ||
-		snd_soc_codec_volatile_register(codec, reg) ||
-		codec->cache_bypass) {
-			if (codec->cache_only)
-				return -1;
-
-			BUG_ON(!codec->hw_read);
-			return codec->hw_read(codec, reg);
-	}
-
-	ret = snd_soc_cache_read(codec, reg, &val);
-	if (ret < 0)
-		return -1;
-	return val;
-}
-
-static int snd_soc_16_8_write(struct snd_soc_codec *codec, unsigned int reg,
-			     unsigned int value)
-{
-	u8 data[3];
-	int ret;
-
-	data[0] = (reg >> 8) & 0xff;
-	data[1] = reg & 0xff;
-	data[2] = value;
-
-	reg &= 0xff;
-	if (!snd_soc_codec_volatile_register(codec, reg) &&
-		reg < codec->driver->reg_cache_size &&
-		!codec->cache_bypass) {
-		ret = snd_soc_cache_write(codec, reg, value);
-		if (ret < 0)
-			return -1;
-	}
-
-	if (codec->cache_only) {
-		codec->cache_sync = 1;
-		return 0;
-	}
-
-	ret = codec->hw_write(codec->control_data, data, 3);
-	if (ret == 3)
-		return 0;
-	if (ret < 0)
-		return ret;
-	else
-		return -EIO;
-}
-
-#if defined(CONFIG_SPI_MASTER)
-static int snd_soc_16_8_spi_write(void *control_data, const char *data,
-				 int len)
-{
-	struct spi_device *spi = control_data;
-	struct spi_transfer t;
-	struct spi_message m;
-	u8 msg[3];
-
-	if (len <= 0)
-		return 0;
-
-	msg[0] = data[0];
-	msg[1] = data[1];
-	msg[2] = data[2];
-
-	spi_message_init(&m);
-	memset(&t, 0, sizeof t);
-
-	t.tx_buf = &msg[0];
-	t.len = len;
-
-	spi_message_add_tail(&t, &m);
-	spi_sync(spi, &m);
-
-	return len;
-}
-#else
-#define snd_soc_16_8_spi_write NULL
-#endif
-
-#if defined(CONFIG_I2C) || (defined(CONFIG_I2C_MODULE) && defined(MODULE))
-static unsigned int snd_soc_16_16_read_i2c(struct snd_soc_codec *codec,
-					   unsigned int r)
-{
-	struct i2c_msg xfer[2];
-	u16 reg = cpu_to_be16(r);
-	u16 data;
-	int ret;
-	struct i2c_client *client = codec->control_data;
-
-	/* Write register */
-	xfer[0].addr = client->addr;
-	xfer[0].flags = 0;
-	xfer[0].len = 2;
-	xfer[0].buf = (u8 *)&reg;
-
-	/* Read data */
-	xfer[1].addr = client->addr;
-	xfer[1].flags = I2C_M_RD;
-	xfer[1].len = 2;
-	xfer[1].buf = (u8 *)&data;
-
-	ret = i2c_transfer(client->adapter, xfer, 2);
-	if (ret != 2) {
-		dev_err(&client->dev, "i2c_transfer() returned %d\n", ret);
-		return 0;
-	}
-
-	return be16_to_cpu(data);
-}
-#else
-#define snd_soc_16_16_read_i2c NULL
-#endif
-
-static unsigned int snd_soc_16_16_read(struct snd_soc_codec *codec,
-				       unsigned int reg)
-{
-	int ret;
-	unsigned int val;
-
-	if (reg >= codec->driver->reg_cache_size ||
-	    snd_soc_codec_volatile_register(codec, reg) ||
-	    codec->cache_bypass) {
-		if (codec->cache_only)
-			return -1;
-
-		BUG_ON(!codec->hw_read);
-		return codec->hw_read(codec, reg);
-	}
-
-	ret = snd_soc_cache_read(codec, reg, &val);
-	if (ret < 0)
-		return -1;
-
-	return val;
-}
-
-static int snd_soc_16_16_write(struct snd_soc_codec *codec, unsigned int reg,
-			       unsigned int value)
-{
-	u8 data[4];
-	int ret;
-
-	data[0] = (reg >> 8) & 0xff;
-	data[1] = reg & 0xff;
-	data[2] = (value >> 8) & 0xff;
-	data[3] = value & 0xff;
-
-	if (!snd_soc_codec_volatile_register(codec, reg) &&
-		reg < codec->driver->reg_cache_size &&
-		!codec->cache_bypass) {
-		ret = snd_soc_cache_write(codec, reg, value);
-		if (ret < 0)
-			return -1;
-	}
-
-	if (codec->cache_only) {
-		codec->cache_sync = 1;
-		return 0;
-	}
-
-	ret = codec->hw_write(codec->control_data, data, 4);
-	if (ret == 4)
-		return 0;
-	if (ret < 0)
-		return ret;
-	else
-		return -EIO;
-}
-
-#if defined(CONFIG_SPI_MASTER)
-static int snd_soc_16_16_spi_write(void *control_data, const char *data,
-				 int len)
-{
-	struct spi_device *spi = control_data;
-	struct spi_transfer t;
-	struct spi_message m;
-	u8 msg[4];
-
-	if (len <= 0)
-		return 0;
-
-	msg[0] = data[0];
-	msg[1] = data[1];
-	msg[2] = data[2];
-	msg[3] = data[3];
-
-	spi_message_init(&m);
-	memset(&t, 0, sizeof t);
-
-	t.tx_buf = &msg[0];
-	t.len = len;
-
-	spi_message_add_tail(&t, &m);
-	spi_sync(spi, &m);
-
-	return len;
-}
-#else
-#define snd_soc_16_16_spi_write NULL
-#endif
-
-/* Primitive bulk write support for soc-cache.  The data pointed to by `data' needs
- * to already be in the form the hardware expects including any leading register specific
- * data.  Any data written through this function will not go through the cache as it
- * only handles writing to volatile or out of bounds registers.
- */
-static int snd_soc_hw_bulk_write_raw(struct snd_soc_codec *codec, unsigned int reg,
-				     const void *data, size_t len)
-{
-	int ret;
-
-	/* Ensure that the base register is volatile.  Subsequently
-	 * any other register that is touched by this routine should be
-	 * volatile as well to ensure that we don't get out of sync with
-	 * the cache.
-	 */
-	if (!snd_soc_codec_volatile_register(codec, reg)
-	    && reg < codec->driver->reg_cache_size)
-		return -EINVAL;
-
-	switch (codec->control_type) {
-	case SND_SOC_I2C:
-		ret = i2c_master_send(codec->control_data, data, len);
-		break;
-	case SND_SOC_SPI:
-		codec->hw_write = (hw_write_t)spi_write;
-		break;
-	default:
-		BUG();
-	}
-
-	if (ret == len)
-		return 0;
-	if (ret < 0)
-		return ret;
-	else
-		return -EIO;
-}
-
-static struct {
-	int addr_bits;
-	int data_bits;
-	int (*write)(struct snd_soc_codec *codec, unsigned int, unsigned int);
-	int (*spi_write)(void *, const char *, int);
-	unsigned int (*read)(struct snd_soc_codec *, unsigned int);
-	unsigned int (*i2c_read)(struct snd_soc_codec *, unsigned int);
-} io_types[] = {
-	{
-		.addr_bits = 4, .data_bits = 12,
-		.write = snd_soc_4_12_write, .read = snd_soc_4_12_read,
-		.spi_write = snd_soc_4_12_spi_write,
-	},
-	{
-		.addr_bits = 7, .data_bits = 9,
-		.write = snd_soc_7_9_write, .read = snd_soc_7_9_read,
-		.spi_write = snd_soc_7_9_spi_write,
-	},
-	{
-		.addr_bits = 8, .data_bits = 8,
-		.write = snd_soc_8_8_write, .read = snd_soc_8_8_read,
-		.i2c_read = snd_soc_8_8_read_i2c,
-		.spi_write = snd_soc_8_8_spi_write,
-	},
-	{
-		.addr_bits = 8, .data_bits = 16,
-		.write = snd_soc_8_16_write, .read = snd_soc_8_16_read,
-		.i2c_read = snd_soc_8_16_read_i2c,
-		.spi_write = snd_soc_8_16_spi_write,
-	},
-	{
-		.addr_bits = 16, .data_bits = 8,
-		.write = snd_soc_16_8_write, .read = snd_soc_16_8_read,
-		.i2c_read = snd_soc_16_8_read_i2c,
-		.spi_write = snd_soc_16_8_spi_write,
-	},
-	{
-		.addr_bits = 16, .data_bits = 16,
-		.write = snd_soc_16_16_write, .read = snd_soc_16_16_read,
-		.i2c_read = snd_soc_16_16_read_i2c,
-		.spi_write = snd_soc_16_16_spi_write,
-	},
-};
-
-/**
- * snd_soc_codec_set_cache_io: Set up standard I/O functions.
- *
- * @codec: CODEC to configure.
- * @addr_bits: Number of bits of register address data.
- * @data_bits: Number of bits of data per register.
- * @control: Control bus used.
- *
- * Register formats are frequently shared between many I2C and SPI
- * devices.  In order to promote code reuse the ASoC core provides
- * some standard implementations of CODEC read and write operations
- * which can be set up using this function.
- *
- * The caller is responsible for allocating and initialising the
- * actual cache.
- *
- * Note that at present this code cannot be used by CODECs with
- * volatile registers.
- */
-int snd_soc_codec_set_cache_io(struct snd_soc_codec *codec,
-			       int addr_bits, int data_bits,
-			       enum snd_soc_control_type control)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(io_types); i++)
-		if (io_types[i].addr_bits == addr_bits &&
-		    io_types[i].data_bits == data_bits)
-			break;
-	if (i == ARRAY_SIZE(io_types)) {
-		printk(KERN_ERR
-		       "No I/O functions for %d bit address %d bit data\n",
-		       addr_bits, data_bits);
-		return -EINVAL;
-	}
-
-	codec->write = io_types[i].write;
-	codec->read = io_types[i].read;
-	codec->bulk_write_raw = snd_soc_hw_bulk_write_raw;
-
-	switch (control) {
-	case SND_SOC_CUSTOM:
-		break;
-
-	case SND_SOC_I2C:
-#if defined(CONFIG_I2C) || (defined(CONFIG_I2C_MODULE) && defined(MODULE))
-		codec->hw_write = (hw_write_t)i2c_master_send;
-#endif
-		if (io_types[i].i2c_read)
-			codec->hw_read = io_types[i].i2c_read;
-
-		codec->control_data = container_of(codec->dev,
-						   struct i2c_client,
-						   dev);
-		break;
-
-	case SND_SOC_SPI:
-		if (io_types[i].spi_write)
-			codec->hw_write = io_types[i].spi_write;
-
-		codec->control_data = container_of(codec->dev,
-						   struct spi_device,
-						   dev);
-		break;
-	}
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(snd_soc_codec_set_cache_io);
-
 static bool snd_soc_set_cache_val(void *base, unsigned int idx,
 				  unsigned int val, unsigned int word_size)
 {
@@ -987,7 +194,7 @@ static int snd_soc_rbtree_cache_sync(struct snd_soc_codec *codec)
 	struct rb_node *node;
 	struct snd_soc_rbtree_node *rbnode;
 	unsigned int regtmp;
-	unsigned int val;
+	unsigned int val, def;
 	int ret;
 	int i;
 
@@ -996,9 +203,14 @@ static int snd_soc_rbtree_cache_sync(struct snd_soc_codec *codec)
 		rbnode = rb_entry(node, struct snd_soc_rbtree_node, node);
 		for (i = 0; i < rbnode->blklen; ++i) {
 			regtmp = rbnode->base_reg + i;
-			WARN_ON(codec->writable_register &&
-				codec->writable_register(codec, regtmp));
 			val = snd_soc_rbtree_get_register(rbnode, i);
+			def = snd_soc_get_cache_val(codec->reg_def_copy, i,
+						    rbnode->word_size);
+			if (val == def)
+				continue;
+
+			WARN_ON(!snd_soc_codec_writable_register(codec, regtmp));
+
 			codec->cache_bypass = 1;
 			ret = snd_soc_write(codec, regtmp, val);
 			codec->cache_bypass = 0;
@@ -1013,13 +225,13 @@ static int snd_soc_rbtree_cache_sync(struct snd_soc_codec *codec)
 }
 
 static int snd_soc_rbtree_insert_to_block(struct snd_soc_rbtree_node *rbnode,
-					 unsigned int pos, unsigned int reg,
-					 unsigned int value)
+					  unsigned int pos, unsigned int reg,
+					  unsigned int value)
 {
 	u8 *blk;
 
 	blk = krealloc(rbnode->block,
-			(rbnode->blklen + 1) * rbnode->word_size, GFP_KERNEL);
+		       (rbnode->blklen + 1) * rbnode->word_size, GFP_KERNEL);
 	if (!blk)
 		return -ENOMEM;
 
@@ -1351,6 +563,7 @@ static int snd_soc_lzo_cache_sync(struct snd_soc_codec *codec)
 
 	lzo_blocks = codec->reg_cache;
 	for_each_set_bit(i, lzo_blocks[0]->sync_bmp, lzo_blocks[0]->sync_bmp_nbits) {
+		WARN_ON(!snd_soc_codec_writable_register(codec, i));
 		ret = snd_soc_cache_read(codec, i, &val);
 		if (ret)
 			return ret;
@@ -1616,6 +829,9 @@ static int snd_soc_flat_cache_sync(struct snd_soc_codec *codec)
 			if (snd_soc_get_cache_val(codec->reg_def_copy,
 						  i, codec_drv->reg_word_size) == val)
 				continue;
+
+		WARN_ON(!snd_soc_codec_writable_register(codec, i));
+
 		ret = snd_soc_write(codec, i, val);
 		if (ret)
 			return ret;
@@ -1725,7 +941,7 @@ int snd_soc_cache_init(struct snd_soc_codec *codec)
 				codec->cache_ops->name, codec->name);
 		return codec->cache_ops->init(codec);
 	}
-	return -EINVAL;
+	return -ENOSYS;
 }
 
 /*
@@ -1740,7 +956,7 @@ int snd_soc_cache_exit(struct snd_soc_codec *codec)
 				codec->cache_ops->name, codec->name);
 		return codec->cache_ops->exit(codec);
 	}
-	return -EINVAL;
+	return -ENOSYS;
 }
 
 /**
@@ -1764,7 +980,7 @@ int snd_soc_cache_read(struct snd_soc_codec *codec,
 	}
 
 	mutex_unlock(&codec->cache_rw_mutex);
-	return -EINVAL;
+	return -ENOSYS;
 }
 EXPORT_SYMBOL_GPL(snd_soc_cache_read);
 
@@ -1789,7 +1005,7 @@ int snd_soc_cache_write(struct snd_soc_codec *codec,
 	}
 
 	mutex_unlock(&codec->cache_rw_mutex);
-	return -EINVAL;
+	return -ENOSYS;
 }
 EXPORT_SYMBOL_GPL(snd_soc_cache_write);
 
@@ -1812,7 +1028,7 @@ int snd_soc_cache_sync(struct snd_soc_codec *codec)
 	}
 
 	if (!codec->cache_ops || !codec->cache_ops->sync)
-		return -EINVAL;
+		return -ENOSYS;
 
 	if (codec->cache_ops->name)
 		name = codec->cache_ops->name;

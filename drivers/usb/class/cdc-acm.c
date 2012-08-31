@@ -1479,6 +1479,13 @@ static int acm_write_buffers_alloc(struct acm *acm)
 	int i;
 	struct acm_wb *wb;
 
+	if (!acm->dev)
+		printk("*********ACM DEV IS NULL!*********\n");
+	if (!acm->dev->bus)
+		printk("*********ACM DEV: NO BUS!!********\n");
+	if (!acm->writesize)
+		printk("*********ACM NO WRITESIZE*********\n");
+
 	for (wb = &acm->wb[0], i = 0; i < ACM_NW; i++, wb++) {
 		wb->buf = usb_alloc_coherent(acm->dev, acm->writesize, GFP_DMA,
 		    &wb->dmah);
@@ -1489,6 +1496,7 @@ static int acm_write_buffers_alloc(struct acm *acm)
 				usb_free_coherent(acm->dev, acm->writesize,
 				    wb->buf, wb->dmah);
 			}
+		printk("[CDCACM]**************ENOMEM1***************\n");
 			return -ENOMEM;
 		}
 	}
@@ -1862,6 +1870,7 @@ made_compressed_probe:
 
 	usb_set_intfdata(intf, acm);
 
+	printk("[CDCACM]**************DEVICE_CREATE_FILE1***************\n");
 	i = device_create_file(&intf->dev, &dev_attr_bmCapabilities);
 	if (i < 0)
 		goto alloc_fail8;
@@ -1875,12 +1884,14 @@ made_compressed_probe:
 							cfd->bLength - 4);
 		acm->country_rel_date = cfd->iCountryCodeRelDate;
 
+		printk("[CDCACM]**************DEVICE_CREATE_FILE_COUNTRYCODES***************\n");
 		i = device_create_file(&intf->dev, &dev_attr_wCountryCodes);
 		if (i < 0) {
 			kfree(acm->country_codes);
 			goto skip_countries;
 		}
 
+		printk("[CDCACM]**************DEVICE_CREATE_FILE_COUNTRYCODERELDATE***************\n");
 		i = device_create_file(&intf->dev,
 						&dev_attr_iCountryCodeRelDate);
 		if (i < 0) {
@@ -1936,6 +1947,7 @@ alloc_fail4:
 alloc_fail2:
 	kfree(acm);
 alloc_fail:
+	printk("[CDCACM]**************ENOMEM2 alloc_fail***************\n");
 	return -ENOMEM;
 }
 
