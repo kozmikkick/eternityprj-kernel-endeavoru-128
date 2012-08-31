@@ -689,7 +689,7 @@ static struct tegra_i2c_platform_data enterprise_i2c3_platform_data = {
 static struct tegra_i2c_platform_data enterprise_i2c4_platform_data = {
 	.adapter_nr	= 3,
 	.bus_count	= 1,
-	.bus_clk_rate	= { 100000 },
+	.bus_clk_rate	= { 384000 }, // EternityProject TEST: Why should it be at 100000 instead of 384000?
 	.scl_gpio		= {TEGRA_GPIO_PV4 },
 	.sda_gpio		= {TEGRA_GPIO_PV5 },
 	.arb_recovery = arb_lost_recovery,
@@ -698,7 +698,7 @@ static struct tegra_i2c_platform_data enterprise_i2c4_platform_data = {
 static struct tegra_i2c_platform_data enterprise_i2c5_platform_data = {
 	.adapter_nr	= 4,
 	.bus_count	= 1,
-	.bus_clk_rate	= { 100000 },
+	.bus_clk_rate	= { 384000 }, // EternityProject TEST: Why should it be at 100000 instead of 384000?
 	.scl_gpio		= {TEGRA_GPIO_PZ6 },
 	.sda_gpio		= {TEGRA_GPIO_PZ7 },
 	.arb_recovery = arb_lost_recovery,
@@ -1609,19 +1609,19 @@ static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
 			.phy_config = &utmi_phy_config[0],
 			.operating_mode = TEGRA_USB_HOST,
 			.power_down_on_bus_suspend = 1,
-			.default_enable = false,
+			.default_enable = true,
 	},
 	[1] = {
 			.phy_config = &utmi_phy_config[1],
 			.operating_mode = TEGRA_USB_HOST,
 			.power_down_on_bus_suspend = 1,
-			.default_enable = false,
+			.default_enable = true,
 	},
 	[2] = {
 			.phy_config = &utmi_phy_config[2],
 			.operating_mode = TEGRA_USB_HOST,
 			.power_down_on_bus_suspend = 1,
-			.default_enable = false,
+			.default_enable = true,
 	},
 };
 struct platform_device *tegra_usb_hsic_host_register(void)
