@@ -87,7 +87,7 @@
 #include <linux/ihex.h>
 #include "whiteheat.h"			/* WhiteHEAT specific commands */
 
-static bool debug;
+static int debug;
 
 #ifndef CMSPAR
 #define CMSPAR 0

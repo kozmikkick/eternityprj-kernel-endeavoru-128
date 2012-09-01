@@ -36,9 +36,9 @@
 #include <linux/uaccess.h>
 #include <linux/vmalloc.h>
 
-#include <asm/ioctls.h>
-
 #include <mach/htc_hostdbg.h>
+
+#include <asm/ioctls.h>
 
 #include "baseband_usb_chr.h"
 

@@ -71,7 +71,7 @@ struct moschip_port {
 	struct urb		*write_urb_pool[NUM_URBS];
 };
 
-static bool debug;
+static int debug;
 
 static struct usb_serial_driver moschip7720_2port_driver;
 

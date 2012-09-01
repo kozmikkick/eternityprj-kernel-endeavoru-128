@@ -2,8 +2,6 @@
  * message.c - synchronous message handling
  */
 
-#define DEBUG
-
 #include <linux/pci.h>	/* for scatterlist macros */
 #include <linux/usb.h>
 #include <linux/module.h>
@@ -20,8 +18,6 @@
 #include <asm/byteorder.h>
 
 #include "usb.h"
-
-#define MODULE_NAME "[USBMSG]"
 
 static void cancel_async_set_config(struct usb_device *udev);
 
@@ -55,20 +51,13 @@ static int usb_start_wait_urb(struct urb *urb, int timeout, int *actual_length)
 	urb->context = &ctx;
 	urb->actual_length = 0;
 	retval = usb_submit_urb(urb, GFP_NOIO);
-	if (unlikely(retval)) {
-		pr_info(MODULE_NAME "%s - usb_submit_urb retval=%d\n",
-				__func__, retval); /* HTC */
+	if (unlikely(retval))
 		goto out;
-	}
 
 	expire = timeout ? msecs_to_jiffies(timeout) : MAX_SCHEDULE_TIMEOUT;
 	if (!wait_for_completion_timeout(&ctx.done, expire)) {
 		usb_kill_urb(urb);
 		retval = (ctx.status == -ENOENT ? -ETIMEDOUT : ctx.status);
-
-#if 0 //HTC_CSP_START
-		dump_stack();
-#endif //HTC_END
 
 		dev_dbg(&urb->dev->dev,
 			"%s timed out on ep%d%s len=%u/%u\n",
@@ -80,18 +69,8 @@ static int usb_start_wait_urb(struct urb *urb, int timeout, int *actual_length)
 	} else
 		retval = ctx.status;
 out:
-	if (actual_length) {
-		if (false == IS_ERR_OR_NULL(urb)) /* HTC: potential protection */
+	if (actual_length)
 		*actual_length = urb->actual_length;
-		else
-			pr_info(MODULE_NAME "%s IS_ERR_OR_NULL urb skip it", __func__);
-	}
-
-	/* HTC */
-	/*
-	if (retval < 0)
-		urb_print(urb, "[dbg_urb]");
-	*/
 
 	usb_free_urb(urb);
 	return retval;
@@ -1156,8 +1135,6 @@ void usb_disable_interface(struct usb_device *dev, struct usb_interface *intf,
  * Deallocates hcd/hardware state for the endpoints (nuking all or most
  * pending urbs) and usbcore state for the interfaces, so that usbcore
  * must usb_set_configuration() before any interfaces could be used.
- *
- * Must be called with hcd->bandwidth_mutex held.
  */
 void usb_disable_device(struct usb_device *dev, int skip_ep0)
 {
@@ -1210,7 +1187,9 @@ void usb_disable_device(struct usb_device *dev, int skip_ep0)
 			usb_disable_endpoint(dev, i + USB_DIR_IN, false);
 		}
 		/* Remove endpoints from the host controller internal state */
+		mutex_lock(hcd->bandwidth_mutex);
 		usb_hcd_alloc_bandwidth(dev, NULL, NULL, NULL);
+		mutex_unlock(hcd->bandwidth_mutex);
 		/* Second pass: remove endpoint pointers */
 	}
 	for (i = skip_ep0; i < 16; ++i) {
@@ -1706,8 +1685,6 @@ int usb_set_configuration(struct usb_device *dev, int configuration)
 	struct usb_hcd *hcd = bus_to_hcd(dev->bus);
 	int n, nintf;
 
-	/* pr_info("[USBF] %s\n", __func__); */
-
 	if (dev->authorized == 0 || configuration == -1)
 		configuration = 0;
 	else {
@@ -1772,7 +1749,6 @@ free_interfaces:
 	/* if it's already configured, clear out old state first.
 	 * getting rid of old interfaces means unbinding their drivers.
 	 */
-	mutex_lock(hcd->bandwidth_mutex);
 	if (dev->state != USB_STATE_ADDRESS)
 		usb_disable_device(dev, 1);	/* Skip ep0 */
 
@@ -1785,6 +1761,7 @@ free_interfaces:
 	 * host controller will not allow submissions to dropped endpoints.  If
 	 * this call fails, the device state is unchanged.
 	 */
+	mutex_lock(hcd->bandwidth_mutex);
 	ret = usb_hcd_alloc_bandwidth(dev, cp, NULL, NULL);
 	if (ret < 0) {
 		mutex_unlock(hcd->bandwidth_mutex);
@@ -1869,16 +1846,12 @@ free_interfaces:
 	for (i = 0; i < nintf; ++i) {
 		struct usb_interface *intf = cp->interface[i];
 
-		/* HTC: change dev_dbg to dev_info */
-		dev_info(&dev->dev,
+		dev_dbg(&dev->dev,
 			"adding %s (config #%d, interface %d)\n",
 			dev_name(&intf->dev), configuration,
 			intf->cur_altsetting->desc.bInterfaceNumber);
 		device_enable_async_suspend(&intf->dev);
 		ret = device_add(&intf->dev);
-
-		/* HTC: device added, check if dev intf is for usb_chr */
-		pr_info("[USBF] %s: usb intf dev_add - %s\n", __func__, dev_name(&intf->dev));
 		if (ret != 0) {
 			dev_err(&dev->dev, "device_add(%s) --> %d\n",
 				dev_name(&intf->dev), ret);

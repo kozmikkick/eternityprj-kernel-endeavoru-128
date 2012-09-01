@@ -1,8 +1,4 @@
 /*
- * Enhanced Host Controller Interface (EHCI) driver for USB.
- *
- * Maintainer: Alan Stern <stern@rowland.harvard.edu>
- *
  * Copyright (c) 2000-2004 by David Brownell
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -74,7 +70,7 @@ static const char	hcd_name [] = "ehci_hcd";
 
 
 /* HTC */
-#ifdef CONFIG_MACH_ENDEARVORU
+#ifdef CONFIG_MACH_ENDEAVORU
 extern unsigned int host_dbg_flag;
 #endif
 
@@ -115,7 +111,7 @@ module_param (park, uint, S_IRUGO);
 MODULE_PARM_DESC (park, "park setting; 1-3 back-to-back async packets");
 
 /* for flakey hardware, ignore overcurrent indicators */
-static bool ignore_oc = 0;
+static int ignore_oc = 0;
 module_param (ignore_oc, bool, S_IRUGO);
 MODULE_PARM_DESC (ignore_oc, "ignore bogus hardware overcurrent indications");
 

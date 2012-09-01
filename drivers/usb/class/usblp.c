@@ -58,6 +58,7 @@
 #include <linux/mutex.h>
 #undef DEBUG
 #include <linux/usb.h>
+#include <linux/ratelimit.h>
 
 /*
  * Version Information
@@ -348,8 +349,7 @@ static int usblp_check_status(struct usblp *usblp, int err)
 	mutex_lock(&usblp->mut);
 	if ((error = usblp_read_status(usblp, usblp->statusbuf)) < 0) {
 		mutex_unlock(&usblp->mut);
-		if (printk_ratelimit())
-			printk(KERN_ERR
+		printk_ratelimited(KERN_ERR
 				"usblp%d: error %d reading printer status\n",
 				usblp->minor, error);
 		return 0;
@@ -653,8 +653,7 @@ static long usblp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 		case LPGETSTATUS:
 			if ((retval = usblp_read_status(usblp, usblp->statusbuf))) {
-				if (printk_ratelimit())
-					printk(KERN_ERR "usblp%d:"
+				printk_ratelimited(KERN_ERR "usblp%d:"
 					    "failed reading printer status (%d)\n",
 					    usblp->minor, retval);
 				retval = -EIO;
@@ -1046,7 +1045,7 @@ static const struct file_operations usblp_fops = {
 	.llseek =	noop_llseek,
 };
 
-static char *usblp_devnode(struct device *dev, umode_t *mode)
+static char *usblp_devnode(struct device *dev, mode_t *mode)
 {
 	return kasprintf(GFP_KERNEL, "usb/%s", dev_name(dev));
 }

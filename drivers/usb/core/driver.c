@@ -29,15 +29,7 @@
 #include <linux/usb/hcd.h>
 
 #include "usb.h"
-#ifdef CONFIG_MACH_EDGE_TD
-//#ifndef CONFIG_USB_PNX6718_MODEM
-extern struct wake_lock usbd_suspend_wl;
 
-static int autosuspend_during_lpm_entry = 1;
-module_param_named(lpm_autosuspend, autosuspend_during_lpm_entry, int, 0644);
-MODULE_PARM_DESC(lpm_autosuspend, "prevent autosuspend in Linux suspend path");
-//#endif
-#endif
 
 #ifdef CONFIG_HOTPLUG
 
@@ -1054,7 +1046,8 @@ static int usb_resume_device(struct usb_device *udev, pm_message_t msg)
 	/* Non-root devices on a full/low-speed bus must wait for their
 	 * companion high-speed root hub, in case a handoff is needed.
 	 */
-	if (!PMSG_IS_AUTO(msg) && udev->parent && udev->bus->hs_companion)
+	if (!(msg.event & PM_EVENT_AUTO) && udev->parent &&
+			udev->bus->hs_companion)
 		device_pm_wait_for_dev(&udev->dev,
 				&udev->bus->hs_companion->root_hub->dev);
 
@@ -1074,10 +1067,7 @@ static int usb_suspend_interface(struct usb_device *udev,
 {
 	struct usb_driver	*driver;
 	int			status = 0;
-/* EternityProject, 23/08 HTC PIGS! This is a PRODUCTION kernel!!!
-	pr_info("%s: cnt %d -> %d intf=%p &intf->dev=%p kobje=%s udev->state=%d intf->condition =%d\n",
-			__func__, atomic_read(&intf->dev.power.usage_count),status,intf,&intf->dev,kobject_name(&intf->dev.kobj),udev->state,intf->condition );
-*/
+
 	if (udev->state == USB_STATE_NOTATTACHED ||
 			intf->condition == USB_INTERFACE_UNBOUND)
 		goto done;
@@ -1085,16 +1075,21 @@ static int usb_suspend_interface(struct usb_device *udev,
 
 	if (driver->suspend) {
 		status = driver->suspend(intf, msg);
-		if (status && !PMSG_IS_AUTO(msg))
+		if (status && !(msg.event & PM_EVENT_AUTO))
 			dev_err(&intf->dev, "%s error %d\n",
 					"suspend", status);
 	} else {
 		/* Later we will unbind the driver and reprobe */
 		intf->needs_binding = 1;
-		//dev_warn(&intf->dev, "no %s for driver %s?\n",
-			//	"suspend", driver->name);
+#ifdef CONFIG_MACH_ENDEAVORU
 		pr_info("no %s for driver %s?\n",
 				"suspend", driver->name);
+#else
+		dev_warn(&intf->dev, "no %s for driver %s?\n",
+				"suspend", driver->name);
+#endif
+
+
 	}
 
  done:
@@ -1201,7 +1196,7 @@ static int usb_suspend_both(struct usb_device *udev, pm_message_t msg)
 			status = usb_suspend_interface(udev, intf, msg);
 
 			/* Ignore errors during system sleep transitions */
-			if (!PMSG_IS_AUTO(msg))
+			if (!(msg.event & PM_EVENT_AUTO))
 				status = 0;
 			if (status != 0)
 				break;
@@ -1211,7 +1206,7 @@ static int usb_suspend_both(struct usb_device *udev, pm_message_t msg)
 		status = usb_suspend_device(udev, msg);
 
 		/* Again, ignore errors during system sleep transitions */
-		if (!PMSG_IS_AUTO(msg))
+		if (!(msg.event & PM_EVENT_AUTO))
 			status = 0;
 	}
 
@@ -1262,18 +1257,16 @@ static int usb_resume_both(struct usb_device *udev, pm_message_t msg)
 	int			status = 0;
 	int			i;
 	struct usb_interface	*intf;
-	printk(KERN_INFO"%s ++(%d) udev->reset_resume=%d  kobject_name(&dev->kobj)=%s udev->state=%d\n",__func__,__LINE__,udev->reset_resume,kobject_name(&udev->dev.kobj),udev->state);
 
 	if (udev->state == USB_STATE_NOTATTACHED) {
 		status = -ENODEV;
 		goto done;
 	}
 	udev->can_submit = 1;
+
 	/* Resume the device */
-	if (udev->state == USB_STATE_SUSPENDED /*|| udev->reset_resume*/)
+	if (udev->state == USB_STATE_SUSPENDED || udev->reset_resume)
 		status = usb_resume_device(udev, msg);
-	else
-		goto done;
 
 	/* Resume the interfaces */
 	if (status == 0 && udev->actconfig) {
@@ -1289,8 +1282,6 @@ static int usb_resume_both(struct usb_device *udev, pm_message_t msg)
 	dev_vdbg(&udev->dev, "%s: status %d\n", __func__, status);
 	if (!status)
 		udev->reset_resume = 0;
-	
-	printk(KERN_INFO"%s --(%d) udev->reset_resume=%d  kobject_name(&dev->kobj)=%s udev->state=%d status=%d\n",__func__,__LINE__,udev->reset_resume,kobject_name(&udev->dev.kobj),udev->state,status);
 	return status;
 }
 
@@ -1483,11 +1474,11 @@ void usb_autopm_put_interface(struct usb_interface *intf)
 	usb_mark_last_busy(udev);
 	atomic_dec(&intf->pm_usage_cnt);
 	status = pm_runtime_put_sync(&intf->dev);
-	//dev_vdbg(&intf->dev, "%s: cnt %d -> %d\n",	
-
-//pr_info("%s: cnt %d -> %d intf=%p &intf->dev=%p kobje=%s\n",
-	//	__func__, atomic_read(&intf->dev.power.usage_count),status,intf,&intf->dev,kobject_name(&intf->dev.kobj));
-
+#ifndef CONFIG_MACH_ENDEAVORU
+	dev_vdbg(&intf->dev, "%s: cnt %d -> %d\n",
+			__func__, atomic_read(&intf->dev.power.usage_count),
+			status);
+#endif
 }
 EXPORT_SYMBOL_GPL(usb_autopm_put_interface);
 
@@ -1514,10 +1505,11 @@ void usb_autopm_put_interface_async(struct usb_interface *intf)
 	usb_mark_last_busy(udev);
 	atomic_dec(&intf->pm_usage_cnt);
 	status = pm_runtime_put(&intf->dev);
-	//pr_info("%s: cnt %d -> %d intf=%p &intf->dev=%p kobje=%s\n",
-		//	__func__, atomic_read(&intf->dev.power.usage_count),status,intf,&intf->dev,kobject_name(&intf->dev.kobj));
-
-
+#ifndef CONFIG_MACH_ENDEAVORU
+	dev_vdbg(&intf->dev, "%s: cnt %d -> %d\n",
+			__func__, atomic_read(&intf->dev.power.usage_count),
+			status);
+#endif
 }
 EXPORT_SYMBOL_GPL(usb_autopm_put_interface_async);
 
@@ -1536,8 +1528,6 @@ void usb_autopm_put_interface_no_suspend(struct usb_interface *intf)
 
 	usb_mark_last_busy(udev);
 	atomic_dec(&intf->pm_usage_cnt);
-	//pr_info("%s: cnt %d  intf=%p &intf->dev=%p kobje=%s\n",
-		//__func__, atomic_read(&intf->dev.power.usage_count),intf,&intf->dev,kobject_name(&intf->dev.kobj));
 	pm_runtime_put_noidle(&intf->dev);
 }
 EXPORT_SYMBOL_GPL(usb_autopm_put_interface_no_suspend);
@@ -1568,10 +1558,11 @@ int usb_autopm_get_interface(struct usb_interface *intf)
 		pm_runtime_put_sync(&intf->dev);
 	else
 		atomic_inc(&intf->pm_usage_cnt);
-	//dev_vdbg(&intf->dev, "%s: cnt %d -> %d\n",
-	//pr_info("%s: cnt %d -> %d intf=%p &intf->dev=%p kobje=%s\n",
-		//	__func__, atomic_read(&intf->dev.power.usage_count),status,intf,&intf->dev,kobject_name(&intf->dev.kobj));
-
+#ifndef CONFIG_MACH_ENDEAVORU
+	dev_vdbg(&intf->dev, "%s: cnt %d -> %d\n",
+			__func__, atomic_read(&intf->dev.power.usage_count),
+			status);
+#endif
 	if (status > 0)
 		status = 0;
 	return status;
@@ -1602,9 +1593,11 @@ int usb_autopm_get_interface_async(struct usb_interface *intf)
 		pm_runtime_put_noidle(&intf->dev);
 	else
 		atomic_inc(&intf->pm_usage_cnt);
-	//pr_info("%s: cnt %d -> %d intf=%p &intf->dev=%p kobje=%s\n",
-		//__func__, atomic_read(&intf->dev.power.usage_count),status,intf,&intf->dev,kobject_name(&intf->dev.kobj));
-
+#ifndef CONFIG_MACH_ENDEAVORU
+	dev_vdbg(&intf->dev, "%s: cnt %d -> %d\n",
+			__func__, atomic_read(&intf->dev.power.usage_count),
+			status);
+#endif
 	if (status > 0)
 		status = 0;
 	return status;
@@ -1626,8 +1619,6 @@ void usb_autopm_get_interface_no_resume(struct usb_interface *intf)
 
 	usb_mark_last_busy(udev);
 	atomic_inc(&intf->pm_usage_cnt);
-	//pr_info("%s: cnt %d  intf=%p &intf->dev=%p kobje=%s\n",
-		//__func__, atomic_read(&intf->dev.power.usage_count),intf,&intf->dev,kobject_name(&intf->dev.kobj));
 	pm_runtime_get_noresume(&intf->dev);
 }
 EXPORT_SYMBOL_GPL(usb_autopm_get_interface_no_resume);
@@ -1692,6 +1683,11 @@ int usb_runtime_suspend(struct device *dev)
 		return -EAGAIN;
 
 	status = usb_suspend_both(udev, PMSG_AUTO_SUSPEND);
+#ifndef CONFIG_MACH_ENDEAVORU
+	/* Allow a retry if autosuspend failed temporarily */
+	if (status == -EAGAIN || status == -EBUSY)
+		usb_mark_last_busy(udev);
+#endif
 	/* The PM core reacts badly unless the return code is 0,
 	 * -EAGAIN, or -EBUSY, so always return -EBUSY on an error.
 	 */

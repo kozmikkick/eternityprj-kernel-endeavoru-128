@@ -37,9 +37,10 @@
 #include <linux/switch.h>
 #include <mach/board_htc.h>
 #include <linux/regulator/consumer.h>
-#include <htc/log.h>
 #include <linux/wakelock.h>
 #include <linux/usb/htc_info.h>
+
+#include <htc/log.h>
 
 #define USB_PHY_WAKEUP		0x408
 #define  USB_ID_INT_EN		(1 << 0)
@@ -69,7 +70,7 @@ struct tegra_otg_data {
 static struct tegra_otg_data *tegra_clone;
 
 #if defined(CONFIG_CABLE_DETECT_ACCESSORY)
-extern void cable_detection_queue_recovery_host_work(int time);
+extern void cable_detection_queue_recovery_host_work(time);
 #endif
 
 static inline unsigned long otg_readl(struct tegra_otg_data *tegra,
@@ -100,18 +101,13 @@ static void tegra_otg_disable_clk(void)
 
 static const char *tegra_state_name(enum usb_otg_state state)
 {
-	switch (state) {
-		case OTG_STATE_A_HOST:
-			return "HOST";
-		case OTG_STATE_B_PERIPHERAL:
-			return "PERIPHERAL";
-		case OTG_STATE_A_SUSPEND:
-			return "SUSPEND";
-		case OTG_STATE_UNDEFINED:
-			return "UNDEFINED";
-		default:
-			return "INVALID";
-	}
+	if (state == OTG_STATE_A_HOST)
+		return "HOST";
+	if (state == OTG_STATE_B_PERIPHERAL)
+		return "PERIPHERAL";
+	if (state == OTG_STATE_A_SUSPEND)
+		return "SUSPEND";
+	return "INVALID";
 }
 
 static struct platform_device *
@@ -171,9 +167,9 @@ void tegra_start_host(struct tegra_otg_data *tegra)
 							  pdata->ehci_pdata);
 
 #if defined(CONFIG_CABLE_DETECT_ACCESSORY)
-// EternityProject 01/06/2012		if (board_mfg_mode() == 2 /* recovery mode */) {
+		if (board_mfg_mode() == 2 /* recovery mode */) {
 			cable_detection_queue_recovery_host_work(HZ);
-//		}
+		}
 #endif
 	}
 }
@@ -195,8 +191,6 @@ static void irq_work(struct work_struct *work)
 	enum usb_otg_state to = OTG_STATE_UNDEFINED;
 	unsigned long flags;
 	unsigned long status,val;
-// EternityProject 01/06/2012: UGLY HACK
-//	extern int eprj_usbh;
 
 	val = otg_readl(tegra, USB_PHY_WAKEUP);
 
@@ -237,14 +231,6 @@ static void irq_work(struct work_struct *work)
 					to = OTG_STATE_A_SUSPEND;
 			}
 		}
-
-/*
- * EternityProject 01/06/2012
- * UGLY HACK: FIXME!
- */
-		if (eprj_usbh)
-			to = OTG_STATE_A_HOST;
-
 	}
 	spin_unlock_irqrestore(&tegra->lock, flags);
 
@@ -266,12 +252,6 @@ static void irq_work(struct work_struct *work)
 		} else if (to == OTG_STATE_B_PERIPHERAL && otg->gadget) {
 			if (from == OTG_STATE_A_SUSPEND) {
 				usb_gadget_vbus_connect(otg->gadget);
-#if CONFIG_USB_ANDROID_PROJECTOR
-				if (check_htc_mode_status() != NOT_ON_AUTOBOT) {
-					htc_mode_enable(0);
-					android_switch_adb_ums();
-				}
-#endif
 			}
 		} else if (to == OTG_STATE_A_HOST) {
 			if (from == OTG_STATE_A_SUSPEND)
@@ -302,7 +282,7 @@ static irqreturn_t tegra_otg_irq(int irq, void *data)
 			tegra->int_status = val;
 			schedule_work(&tegra->work);
 		}
-	} 
+	}
 
 	spin_unlock_irqrestore(&tegra->lock, flags);
 
@@ -312,7 +292,6 @@ static irqreturn_t tegra_otg_irq(int irq, void *data)
 void tegra_otg_check_vbus_detection(void)
 {
 	pr_info("[USBOTG] %s \n", __func__);
-
 	tegra_otg_enable_clk();
 }
 EXPORT_SYMBOL(tegra_otg_check_vbus_detection);
@@ -505,7 +484,6 @@ static int tegra_otg_suspend(struct device *dev)
 	/* store the interupt enable for cable ID and VBUS */
 	clk_enable(tegra_otg->clk);
 	tegra_otg->intr_reg_data = readl(tegra_otg->regs + USB_PHY_WAKEUP);
-	writel(0, (tegra_otg->regs + USB_PHY_WAKEUP));
 	clk_disable(tegra_otg->clk);
 	tegra_otg_disable_clk();
 	return 0;
@@ -547,18 +525,6 @@ static void tegra_otg_resume(struct device *dev)
 	tegra_otg->int_status = (val | USB_VBUS_INT_STATUS );
 	spin_unlock_irqrestore(&tegra_otg->lock, flags);
 	schedule_work(&tegra_otg->work);
-#if 0
-	/* A device might be connected while CPU is in sleep mode. In this case no interrupt
-	 * will be triggered
-	 * force irq_work to recheck connected devices
-	 */
-	if (!(val & USB_ID_STATUS)) {
-		spin_lock_irqsave(&tegra_otg->lock, flags);
-		tegra_otg->int_status = (val | USB_ID_INT_STATUS );
-		spin_unlock_irqrestore(&tegra_otg->lock, flags);
-		schedule_work(&tegra_otg->work);
-	}
-#endif
 	return;
 }
 

@@ -42,7 +42,7 @@
 static int initial_mode = 1;
 
 /* debug flag */
-static bool debug;
+static int debug;
 
 #define GARMIN_VENDOR_ID             0x091E
 
@@ -1197,7 +1197,7 @@ static void garmin_read_process(struct garmin_data *garmin_data_p,
 		   send it directly to the tty port */
 		if (garmin_data_p->flags & FLAGS_QUEUING) {
 			pkt_add(garmin_data_p, data, data_length);
-		} else if (bulk_data ||
+		} else if (bulk_data || 
 			   getLayerId(data) == GARMIN_LAYERID_APPL) {
 
 			spin_lock_irqsave(&garmin_data_p->lock, flags);

@@ -51,32 +51,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-/** HTC: Modification History
- *	02: 2011-10-07 02:15 bert_lin - fix modem download issue
- *	03: 2011-10-08 14:15 bert_lin - add timer to print out statistics
- *		support ble flashless only. (flash not supported yet)
- *	04: 2011-10-12 20:55 bert_lin - add timer to print out statistics
- *		project support: edge
- *	05: 2011-10-14 03:44 bert_lin - add READ_WRITE_LOG debugging flag
- *		enable read/write logs by this definition
- *	06: 2011-10-20 21:51 bert_lin - delete timer when acm disconnect.
- *	07: 2011-10-20 23:10 bert_lin - add runtime debugging mechanism
- *	08: 2011-12-06 12:04 bert_lin - solve the MO call issue
- *		AP L2->L0 fail - runtime pm workaround
- *	09: 2011-12-14 15:10 bert_lin - 69327-2 patch
- *	10: 2011-12-21 bert_lin - add acm rw logs
- *	11: 2011-12-22 bert_lin - add acm susp_count logs
- *	12: 2011-12-28 bert_lin - add DBG_ACM1_RW flag for ttyACM1 debugging
- *	13: 2011-01-03 bert_lin - at timeout issue, prefix was sent twice
- *		rerrange usb anchor flow. 
- *	14:	2012-01-18 	at-command timeout due to process buffer sequence wrong when L2->L0
- */
-/*
-#define RIL_DBG
-*/
 #undef DEBUG
 #undef VERBOSE_DEBUG
+
 #define MODULE_NAME "[ACM14]"
+
 #include <linux/kernel.h>
 #include <linux/errno.h>
 #include <linux/init.h>
@@ -90,28 +69,28 @@
 #include <linux/uaccess.h>
 #include <linux/usb.h>
 #include <linux/usb/cdc.h>
+#include <linux/list.h>
+
+#include <htc/log.h>
+#include <mach/htc_hostdbg.h>
+
 #include <asm/byteorder.h>
 #include <asm/unaligned.h>
 #include <asm/cacheflush.h>
-#include <linux/list.h>
 
-/* HTC include file */
-#include <mach/htc_hostdbg.h>
-#include <asm/cacheflush.h>
-#include <htc/log.h>
+#include <mach/htc_ril_misc.h>
 
 #include "cdc-acm.h"
-/* HTC: PRINTRPT */
-#include <mach/htc_ril_misc.h>
+
 #include <linux/ctype.h>
 
 #define ACM_CLOSE_TIMEOUT	15	/* seconds to let writes drain */
 
-/* HTC: usage cnt checking */
+/* usage cnt checking */
 static int autopm_refcnt = 0;
 
-/* HTC: TP statistic variables */
-#define MAX_ACM_NUM 1 /* bert: currently support for ttyACM0 only */
+/* TP statistic variables */
+#define MAX_ACM_NUM 1
 static int is_mach_ble = 0;
 static int is_flashless = 0;
 static int is_mach_edge = 0;
@@ -128,18 +107,12 @@ struct acm_tp {
 static struct acm_tp acm_tp[MAX_ACM_NUM];
 struct timer_list acm_timer;
 static int timer_on = 0;
+
 #define is_minor_valid(m) (m >= 0 && m < MAX_ACM_NUM)? 1 : 0
 
-/* HTC: avoid QUO build break,
-	extern symbol because QUO_F doesn't have xmm-power */
-#ifdef CONFIG_MACH_QUATTRO_F
-unsigned int host_dbg_flag = 0;
-EXPORT_SYMBOL(host_dbg_flag);
-#else
 extern unsigned int host_dbg_flag;
-#endif
 
-/* HTC: TP statistic functions*/
+/* TP statistic functions */
 static void timer_handler(unsigned long data);
 static void start_timer(void);
 
@@ -155,8 +128,6 @@ MODULE_PARM_DESC(txbyte, "txbyte");
 module_param(rxbyte, uint, 0644);
 MODULE_PARM_DESC(rxbyte, "rxbyte");
 
-
-/* HTC: debug flag */
 #define rwlog(x...) do {\
 	if (host_dbg_flag & DBG_ACM0_RW) \
 		pr_info(x);\
@@ -192,16 +163,6 @@ static void acm_write_bulk(struct urb *urb);
 static const struct tty_port_operations acm_port_ops = {
 };
 
-// EternityProject 02/06/2012: START
-#undef CDCACM_DEBUG
-#undef VERBOSE_CDCACM_DEBUG
-// END
-
-//#ifdef VERBOSE_DEBUG
-//#define verbose	1
-//#else
-//#define verbose	0
-//#endif
 static int verbose = 0;
 static int errstatuscount=0;
 module_param(verbose, int, 0644);
@@ -209,7 +170,7 @@ MODULE_PARM_DESC(verbose, "usb class (cdc-acm) - verbose debug messages");
 extern void usb_register_dump(void);
 
 
-/* HTC: timer_handler - print out statistic for TP */
+/* timer_handler - print out statistic for TP */
 static void timer_handler(unsigned long data)
 {
 	int diff_tx=0, diff_rx=0;
@@ -240,7 +201,7 @@ static void timer_handler(unsigned long data)
 	start_timer();
 }
 
-/* HTC: start timer every timer_value_ms m_seconds */
+/* start timer every timer_value_ms m_seconds */
 static void start_timer(void)
 {
 	acm_timer.expires = jiffies + msecs_to_jiffies(timer_value_ms);
@@ -250,7 +211,6 @@ static void start_timer(void)
 /*
  * Functions for ACM control messages.
  */
-
 static int acm_ctrl_msg(struct acm *acm, int request, int value,
 							void *buf, int len)
 {
@@ -258,10 +218,8 @@ static int acm_ctrl_msg(struct acm *acm, int request, int value,
 		request, USB_RT_ACM, value,
 		acm->control->altsetting[0].desc.bInterfaceNumber,
 		buf, len, 5000);
-#ifdef VERBOSE_CDCACM_DEBUG
-	pr_info("acm_control_msg: rq: 0x%02x val: %#x len: %#x result: %d",
+	if (verbose) pr_info("acm_control_msg: rq: 0x%02x val: %#x len: %#x result: %d",
 						request, value, len, retval);
-#endif
 	return retval < 0 ? retval : 0;
 }
 
@@ -279,7 +237,6 @@ static int acm_ctrl_msg(struct acm *acm, int request, int value,
  * Write buffer management.
  * All of these assume proper locks taken by the caller.
  */
-
 static int acm_wb_alloc(struct acm *acm)
 {
 	int i, wbn;
@@ -311,9 +268,7 @@ static int acm_wb_is_avail(struct acm *acm)
 	for (i = 0; i < ACM_NW; i++)
 		n -= acm->wb[i].use;
 	spin_unlock_irqrestore(&acm->write_lock, flags);
-#ifdef VERBOSE_CDCACM_DEBUG
-	pr_info("%s: n %d\n", __func__, n);
-#endif
+	if (verbose) pr_info("%s: n %d\n", __func__, n);
 	return n;
 }
 
@@ -324,9 +279,8 @@ static void acm_write_done(struct acm *acm, struct acm_wb *wb)
 {
 	wb->use = 0;
 	acm->transmitting--;
-#ifdef VERBOSE_CDCACM_DEBUG
+	if (verbose) ("[ref] - %s(%d) %d\n", __func__, __LINE__, --autopm_refcnt);
 	reflog("[ref] - %s(%d) %d\n", __func__, __LINE__, --autopm_refcnt);
-#endif
 	usb_autopm_put_interface_async(acm->control);
 }
 
@@ -335,14 +289,11 @@ static void acm_write_done(struct acm *acm, struct acm_wb *wb)
  *
  * the caller is responsible for locking
  */
-
-static int acm_start_wb(struct acm *acm, struct acm_wb *wb, const char *func_name)
+static int acm_start_wb(struct acm *acm, struct acm_wb *wb, char *func_name)
 {
 	int rc;
 
-#ifdef VERBOSE_CDCACM_DEBUG
-	pr_info("%s: func_name %s\n", __func__, func_name);
-#endif
+	if (verbose) pr_info("%s: func_name %s\n", __func__, func_name);
 
 
 	acm->transmitting++;
@@ -352,12 +303,9 @@ static int acm_start_wb(struct acm *acm, struct acm_wb *wb, const char *func_nam
 	wb->urb->transfer_buffer_length = wb->len;
 	wb->urb->dev = acm->dev;
 
-#ifdef CDCACM_DEBUG
-	/* HTC */
 	if (unlikely(0 == strcmp("acm_resume", func_name)))
 		pr_info(MODULE_NAME "%s - acm_start_wb %s %p len=%d [%02x]\n",
 			__func__, func_name, wb->buf, wb->len, wb->buf[0]);
-#endif
 
 	/* flush tx buffer from cache */
 	if (wb->len)
@@ -365,9 +313,7 @@ static int acm_start_wb(struct acm *acm, struct acm_wb *wb, const char *func_nam
 
 	rc = usb_submit_urb(wb->urb, GFP_ATOMIC);
 	if (rc < 0) {
-#ifdef CDCACM_DEBUG
 		pr_info("usb_submit_urb(write bulk) rc: %d", rc); /* HTC: change log */
-#endif
 		acm_write_done(acm, wb);
 	}
 	return rc;
@@ -382,26 +328,20 @@ static int acm_write_start(struct acm *acm, int wbn)
     struct urb *res;
 #endif
 
-#ifdef VERBOSE_CDCACM_DEBUG
-	pr_info("%s: wbn %d\n", __func__, wbn);
-#endif
+	if (verbose) pr_info("%s: wbn %d\n", __func__, wbn);
 
 	spin_lock_irqsave(&acm->write_lock, flags);
 	if (!acm->dev) {
 		wb->use = 0;
 		spin_unlock_irqrestore(&acm->write_lock, flags);
-#ifdef CDCACM_DEBUG
 		pr_info(MODULE_NAME "%s fail - !acm->dev\n", __func__);
-#endif
 		return -ENODEV;
 	}
 
-#ifdef VERBOSE_CDCACM_DEBUG
-	pr_info("%s susp_count: %d", __func__, acm->susp_count);
-	pr_info("[ref] + %s(%d) %d\n", __func__, __LINE__, ++autopm_refcnt);
+	if (verbose) pr_info("%s susp_count: %d", __func__, acm->susp_count);
+	if (verbose) pr_info("[ref] + %s(%d) %d\n", __func__, __LINE__, ++autopm_refcnt);
 	dbg("%s susp_count: %d", __func__, acm->susp_count);
 	reflog("[ref] + %s(%d) %d\n", __func__, __LINE__, ++autopm_refcnt);
-#endif
 	usb_autopm_get_interface_async(acm->control);
 
 	if (acm->susp_count) {
@@ -413,22 +353,16 @@ static int acm_write_start(struct acm *acm, int wbn)
 		wb->urb->transfer_dma = wb->dmah;
 		wb->urb->transfer_buffer_length = wb->len;
 		wb->urb->dev = acm->dev;
-		//printk("len %d\n", wb->urb->transfer_buffer_length);
 		usb_anchor_urb(wb->urb, &acm->deferred);
 #else
 		if (!acm->delayed_wb) {
 			acm->delayed_wb = wb;
-#ifdef VERBOSE_CDCACM_DEBUG
-			/* HTC */
 			sp_pr_debug(MODULE_NAME "%s - delayed wb, ttyACM%d, susp_cnt=%d, "
 				"%p len=%d, [%02x]\n",
 				__func__, acm->minor, acm->susp_count, wb->buf, wb->len, wb->buf[0]);
-#endif
 		} else {
-#ifdef VERBOSE_CDCACM_DEBUG
-			pr_info("[ref] - %s(%d) %d\n", __func__, __LINE__, --autopm_refcnt);
+			if (verbose) pr_info("[ref] - %s(%d) %d\n", __func__, __LINE__, --autopm_refcnt);
 			reflog("[ref] - %s(%d) %d\n", __func__, __LINE__, --autopm_refcnt);
-#endif
 			usb_autopm_put_interface_async(acm->control);
 		}
 #endif
@@ -442,9 +376,7 @@ static int acm_write_start(struct acm *acm, int wbn)
 	while ((res = usb_get_from_anchor(&acm->deferred))) {
 		/* decrement ref count*/
 		usb_put_urb(res);
-#ifdef VERBOSE_CDCACM_DEBUG
-		pr_info("%s: usb_get_from_anchor %p\n", __func__, res);
-#endif
+		if (verbose) pr_info("%s: usb_get_from_anchor %p\n", __func__, res);
 		rc = usb_submit_urb(res, GFP_ATOMIC);
 		if (rc < 0) {
 			dbg("usb_submit_urb(pending request) failed: %d", rc);
@@ -457,7 +389,6 @@ static int acm_write_start(struct acm *acm, int wbn)
 	spin_unlock_irqrestore(&acm->write_lock, flags);
 
 	return rc;
-
 }
 
 /*
@@ -519,16 +450,12 @@ static void acm_ctrl_irq(struct urb *urb)
 	case -ENOENT:
 	case -ESHUTDOWN:
 		/* this urb is terminated, clean up */
-#ifdef VERBOSE_CDCACM_DEBUG
-		pr_info("%s - urb shutting down with status: %d", __func__, status);
+		if (verbose) pr_info("%s - urb shutting down with status: %d", __func__, status);
 		dbg("%s - urb shutting down with status: %d", __func__, status);
-#endif
 		return;
 	default:
-#ifdef VERBOSE_CDCACM_DEBUG
-		pr_info("%s - nonzero urb status received: %d", __func__, status);
+		if (verbose) pr_info("%s - nonzero urb status received: %d", __func__, status);
 		dbg("%s - nonzero urb status received: %d", __func__, status);
-#endif
 		goto exit;
 	}
 
@@ -589,30 +516,21 @@ static void acm_read_bulk(struct urb *urb)
 	struct acm *acm = rcv->instance;
 	int status = urb->status;
 
-#ifdef VERBOSE_CDCACM_DEBUG
-	pr_info("Entering acm_read_bulk with status %d", status);
-#endif
+	if (verbose) pr_info("Entering acm_read_bulk with status %d", status);
 
 	dbg("Entering acm_read_bulk with status %d", status);
 
 	if (!ACM_READY(acm)) {
-#ifdef VERBOSE_CDCACM_DEBUG
-		pr_info("%s: Aborting, acm not ready\n", __func__);
+		if (verbose) pr_info("%s: Aborting, acm not ready\n", __func__);
 		dev_dbg(&acm->data->dev, "Aborting, acm not ready");
-#endif
 		return;
 	}
 	usb_mark_last_busy(acm->dev);
 
-
 	if (status) {
-		//pr_info("%s: bulk rx status %d, acm->susp_count=%d\n", __func__, status, acm->susp_count);
 		dev_dbg(&acm->data->dev, "bulk rx status %d\n", status);
 		if (status == -EPROTO)	{
 			usb_register_dump();
-			//kobject_uevent(&acm->dev->dev.kobj,KOBJ_CHANGE);
-			//printk(KERN_INFO "-EPROTO HIT !!\n");
-
 		}
 	}
 
@@ -621,10 +539,8 @@ static void acm_read_bulk(struct urb *urb)
 
 	if (unlikely(status != 0) && urb->actual_length > 0) {
 		/* we force urb->status to success, dont drop the buffer */
-#ifdef CDCACM_DEBUG
 		pr_info("%s: VP urb was canceled but received a buffer %d\n",
 			__func__, urb->actual_length);
-#endif
 		status = 0;
 	}
 
@@ -635,9 +551,7 @@ static void acm_read_bulk(struct urb *urb)
 		list_add_tail(&buf->list, &acm->filled_read_bufs);
 		spin_unlock(&acm->read_lock);
 	} else {
-#ifdef VERBOSE_CDCACM_DEBUG
-		pr_info("%s: we drop the buffer due to an error %d\n", __func__, status);
-#endif
+		if (verbose) pr_info("%s: we drop the buffer due to an error %d\n", __func__, status);
 		/* we drop the buffer due to an error */
 		spin_lock(&acm->read_lock);
 		list_add_tail(&rcv->list, &acm->spare_read_urbs);
@@ -653,9 +567,7 @@ static void acm_read_bulk(struct urb *urb)
 			errstatuscount++;
 		}else if(status==0){
 			if(errstatuscount!=0){
-#ifdef CDCACM_DEBUG
 				pr_info("%s: errstatuscount=%d\n", __func__, errstatuscount);
-#endif
 				errstatuscount=0;
 			}	
 		}
@@ -673,14 +585,10 @@ static void acm_rx_tasklet(unsigned long _acm)
 	unsigned char throttled;
 	int copied;
 
-#ifdef VERBOSE_CDCACM_DEBUG
-	pr_info("%s: acm %p\n", __func__, acm);
-#endif
+	if (verbose) pr_info("%s: acm %p\n", __func__, acm);
 
 	if (!ACM_READY(acm)) {
-#ifdef CDCACM_DEBUG
 		pr_info(MODULE_NAME "acm_rx_tasklet: ACM not ready\n");
-#endif
 		return;
 	} else
 		rwlog(MODULE_NAME "Entering acm_rx_tasklet ttyACM%d\n", acm->minor);
@@ -692,11 +600,9 @@ static void acm_rx_tasklet(unsigned long _acm)
 		static unsigned int times = 0;
 		static unsigned int count = 0;
 		if (0 == times++ % 3000)
-#ifdef CDCACM_DEBUG
 			pr_info(MODULE_NAME "%s: ttyACM%d throttled - %d\n",
-				__func__, acm->minor, count++); /* HTC */
+				__func__, acm->minor, count++);
 		rwlog(MODULE_NAME "%s(%d) ttyACM%d - exit\n", __func__, __LINE__, acm->minor);
-#endif
 		return;
 	}
 
@@ -704,7 +610,7 @@ static void acm_rx_tasklet(unsigned long _acm)
 
 next_buffer:
 	spin_lock_irqsave(&acm->read_lock, flags);
-	/* HTC c: get the control packets, not data */
+	/* c: get the control packets, not data */
 	if (list_empty(&acm->filled_read_bufs)) {
 		rwlog(MODULE_NAME "%s ttyACM%d list_empty(&acm->filled_read_bufs)\n",
 			__func__, acm->minor);
@@ -727,27 +633,23 @@ next_buffer:
 		if (!throttled) {
 			copied = tty_insert_flip_string(tty, buf->base, buf->size);
 			tty_flip_buffer_push(tty);
-#ifdef CDCACM_DEBUG
 			if (copied != buf->size && printk_ratelimit())
 				pr_info(MODULE_NAME "%s: ttyACM%d - copied %d != buf->size %d\n",
 					__func__, acm->minor, copied, buf->size);
 			else
 				rwlog(MODULE_NAME "%s: ttyACM%d - copied %d == buf->size %d\n",
 					__func__, acm->minor, copied, buf->size);
-#endif
-			/* HTC: calculate the TP statistic */
+			/* calculate the TP statistic */
 			if (is_minor_valid(acm->minor))
 				acm_tp[acm->minor].rx_total += buf->size;
 			
-			/*HTC: rxbyt for acm0*/
+			/* rxbyt for acm0 */
 			if(acm->minor==0)
 				rxbyte=rxbyte+buf->size;
 
 		} else {
 			tty_kref_put(tty);
-#ifdef CDCACM_DEBUG
 			pr_info(MODULE_NAME "%s - ttyACM%d Throttling noticed\n", __func__, acm->minor);
-#endif
 			spin_lock_irqsave(&acm->read_lock, flags);
 			list_add(&buf->list, &acm->filled_read_bufs);
 			spin_unlock_irqrestore(&acm->read_lock, flags);
@@ -755,34 +657,13 @@ next_buffer:
 		}
 	}
 
-	/* HTC: log */
-	/* printk(MODULE_NAME":%s ttyACM%d len=%3d\n",
-		__func__, acm->minor, buf->size); */
 	if ((host_dbg_flag & DBG_ACM0_RW && acm->minor == 0) ||
 		(host_dbg_flag & DBG_ACM1_RW && acm->minor == 1)) {
 		int i = 0, size = buf->size, rc = 0;
 		char *data_buf = buf->base;
 		char pr_buf[512];
-#if 0
-		size = size > 16 ? 16 : size;
-		for (i=0; i < size; i++) {
-			unsigned char c = data_buf[i];
-			if (!isprint(c)) {
-				if (c == '\r')
-					rc += sprintf(pr_buf + rc, "\\r");
-				else if (c == '\n')
-					rc += sprintf(pr_buf + rc, "\\n");
-				else
-					rc += sprintf(pr_buf + rc, ".");
-			} else
-				rc += sprintf(pr_buf + rc, "%c", c);
-		}
-		pr_buf[rc] = '\0';
-		pr_info(MODULE_NAME ":[%03d] ttyACM%d RX << [%s]\n",
-			buf->size, acm->minor, pr_buf);
-#endif
+
 		/* print out binary */
-#ifdef CDCACM_DEBUG
 		size = size > 16 ? 16 : size;
 		rc = 0;
 		for (i = 0; i < size; i++)
@@ -790,17 +671,15 @@ next_buffer:
 		pr_buf[rc] = '\0';
 		pr_info(MODULE_NAME ":[%03d] ttyACM%d RX bin << [%s]\n",
 			buf->size, acm->minor, pr_buf);
-#endif
 	}
-
 	
-	/*Buffer latest Rx for debug*/
+	/* Buffer latest Rx for debug */
 	if(buf->size>0&&(acm->minor==0)){
 	int gsize = buf->size;
 	char *gdata_buf = buf->base;
 	int gi=0;
-	int grc = 0;
 	gsize = gsize > 16 ? 16 : gsize;
+	int grc = 0;
 	for (gi = 0; gi < gsize; gi++)
 		grc += sprintf(gpr_buf + grc, "%02x ", gdata_buf[gi]);
 	gpr_buf[grc] = '\0';
@@ -809,7 +688,7 @@ next_buffer:
 	
 	if (copied == buf->size || !tty) {
 
-		//fill free buffer with pattern.
+		// fill free buffer with pattern.
 		memset(buf->base,0xac,buf->size);
 		spin_lock_irqsave(&acm->read_lock, flags);
 		list_add(&buf->list, &acm->spare_read_bufs);
@@ -821,7 +700,7 @@ next_buffer:
 			memmove(buf->base,
 				buf->base + copied,
 				buf->size - copied);
-			//fill free buffer with pattern.
+			// fill free buffer with pattern.
 			memset(buf->base+buf->size-copied,0xad,copied);
 			buf->size -= copied;
 		}
@@ -836,7 +715,7 @@ next_buffer:
 urbs:
 	tty_kref_put(tty);
 
-	/* HTC c: spare is not empty -> deal with it */
+	/* c: spare is not empty -> deal with it */
 	while (!list_empty(&acm->spare_read_bufs)) {
 		spin_lock_irqsave(&acm->read_lock, flags);
 		if (list_empty(&acm->spare_read_urbs)) {
@@ -876,8 +755,6 @@ urbs:
 		memset(buf->base,0xaa,acm->readsize);
 		memset(buf->base,0xab,acm->readsize);
 		dmac_flush_range(buf->base,buf->base+acm->readsize-1);
-		//_range(current->,buf->base,buf->base+acm->readsize-1);
-		//memset(buf->base,0xaf,acm->readsize);
 
 		/* This shouldn't kill the driver as unsuccessful URBs are
 		   returned to the free-urbs-pool and resubmited ASAP */
@@ -893,9 +770,9 @@ urbs:
 			rwlog(MODULE_NAME "%s(%d) ttyACM%d - exit\n", __func__, __LINE__, acm->minor);
 			return;
 		} else {
-			/* HTC c: submit ok */
+			/* c: submit ok */
 			spin_unlock_irqrestore(&acm->read_lock, flags);
-			/* HTC: change the log level */
+			/* change the log level */
 			rwlog(MODULE_NAME "acm_rx_tasklet: ttyACM%d sending urb 0x%p, rcv 0x%p, buf 0x%p",
 				acm->minor, rcv->urb, rcv, buf);
 		}
@@ -912,16 +789,14 @@ static void acm_write_bulk(struct urb *urb)
 	struct acm *acm = wb->instance;
 	unsigned long flags;
 
-#ifdef VERBOSE_CDCACM_DEBUG
-	if (urb->status
+	if (verbose || urb->status
 			|| (urb->actual_length != urb->transfer_buffer_length))
 		dev_dbg(&acm->data->dev, "tx %d/%d bytes -- > %d\n",
 			urb->actual_length,
 			urb->transfer_buffer_length,
 			urb->status);
-#endif
 	
-	/*HTC: txbyt for acm0*/
+	/* txbyt for acm0 */
 	if(acm->minor==0 && urb->status==0 )
 		txbyte=txbyte+urb->transfer_buffer_length;
 	
@@ -950,7 +825,6 @@ static void acm_softint(struct work_struct *work)
 /*
  * TTY handlers
  */
-
 static int acm_tty_open(struct tty_struct *tty, struct file *filp)
 {
 	struct acm *acm;
@@ -976,9 +850,7 @@ static int acm_tty_open(struct tty_struct *tty, struct file *filp)
 	else
 		rv = 0;
 
-#ifdef CDCACM_DEBUG
 	printk(MODULE_NAME":%s ttyACM%d +\n",__FUNCTION__,acm->minor);
-#endif
 
 	/* Current acm implementation does not have acm->disconnected
 	   feature to know whether acm is probed. Adding a check to
@@ -1042,13 +914,11 @@ static int acm_tty_open(struct tty_struct *tty, struct file *filp)
 
 	mutex_unlock(&acm->mutex);
 
-	/* HTC: start timer */
+	/* start timer */
 	printk(MODULE_NAME":%s ttyACM%d -\n",__FUNCTION__,acm->minor);
 	if (!timer_on && acm->minor == 0 &&
 		(mach_ble_flashless || is_mach_edge || mach_ble_flash)) {
-#ifdef CDCACM_DEBUG
 		pr_info(MODULE_NAME ":%s mod acm_timer\n", __func__);
-#endif
 		timer_on = 1;
 		mod_timer(&acm_timer, jiffies + msecs_to_jiffies(timer_value_ms));
 	}
@@ -1091,11 +961,10 @@ static int acm_tty_chars_in_buffer(struct tty_struct *tty);
 
 static void acm_port_down(struct acm *acm)
 {
-	int i, nr = acm->rx_buflimit;
-#ifdef CDCACM_DEBUG
 	printk(MODULE_NAME":%s ttyACM%d +\n",__FUNCTION__,acm->minor);
-#endif
-	//mutex_lock(&open_mutex);
+
+	int i, nr = acm->rx_buflimit;
+	// mutex_lock(&open_mutex);
 	if (acm->dev) {
 		reflog("[ref] + %s(%d) %d\n", __func__, __LINE__, ++autopm_refcnt);
 		usb_autopm_get_interface(acm->control);
@@ -1111,10 +980,7 @@ static void acm_port_down(struct acm *acm)
 		reflog("[ref] - %s(%d) %d\n", __func__, __LINE__, --autopm_refcnt);
 		usb_autopm_put_interface(acm->control);
 	}
-	//mutex_unlock(&open_mutex);
-#ifdef CDCACM_DEBUG
 	printk(MODULE_NAME":%s ttyACM%d -\n",__FUNCTION__,acm->minor);
-#endif
 }
 
 static void acm_tty_hangup(struct tty_struct *tty)
@@ -1134,41 +1000,30 @@ static void acm_tty_hangup(struct tty_struct *tty)
 		goto out;
 	}
 
-
-#ifdef CDCACM_DEBUG
-			printk(MODULE_NAME":%s ttyACM%d +\n",__FUNCTION__,acm->minor);
-#endif
+	printk(MODULE_NAME":%s ttyACM%d +\n",__FUNCTION__,acm->minor);
 
 	tty_port_hangup(&acm->port);
 	acm_port_down(acm);
-#ifdef CDCACM_DEBUG
-		printk(MODULE_NAME":%s ttyACM%d -\n",__FUNCTION__,acm->minor);
-#endif
 
+	printk(MODULE_NAME":%s ttyACM%d -\n",__FUNCTION__,acm->minor);
 out:
 	mutex_unlock(&open_mutex);
-#ifdef CDCACM_DEBUG
 	pr_info("%s: ttyACM%d out: -\n", __func__, acm->minor);
-#endif
-
 
 }
-
-
 
 static void acm_tty_close(struct tty_struct *tty, struct file *filp)
 {
 	struct acm *acm = tty->driver_data;
 
-	/* Perform the closing process and see if we need to do the hardware
-	   shutdown */
+	/* Perform the closing process and see if we need to do the hardware shutdown */
 	if (!acm) {
 		pr_err("%s: !acm\n", __func__);
 		return;
 		}
-#ifdef CDCACM_DEBUG
+
 	printk(MODULE_NAME":%s ttyACM%d +\n",__FUNCTION__,acm->minor);
-#endif
+
 	mutex_lock(&open_mutex);
 	if (tty_port_close_start(&acm->port, tty, filp) == 0) {
 		if (!acm->dev) {
@@ -1177,43 +1032,34 @@ static void acm_tty_close(struct tty_struct *tty, struct file *filp)
 			tty->driver_data = NULL;
 		}
 		mutex_unlock(&open_mutex);
-#ifdef CDCACM_DEBUG
 		pr_info("%s: exit\n", __func__);
-#endif
 		return;
 	}
-
 	acm_port_down(acm);
 	tty_port_close_end(&acm->port, tty);
 	tty_port_tty_set(&acm->port, NULL);
 	mutex_unlock(&open_mutex);
-#ifdef CDCACM_DEBUG
+
 	printk(MODULE_NAME":%s ttyACM%d -\n",__FUNCTION__,acm->minor);
-#endif
 }
 
 static int acm_tty_write(struct tty_struct *tty,
-					 const unsigned char *buf, int count)
+					const unsigned char *buf, int count)
 {
 	struct acm *acm = tty->driver_data;
 	int stat;
 	unsigned long flags;
 	int wbn;
 	struct acm_wb *wb;
-	int i = 0, size = count, rc = 0;
-	const unsigned char *data_buf = buf;
-	char pr_buf[512];
 
-#ifdef VERBOSE_CDCACM_DEBUG
-	pr_info("%s: buf %p count %d\n", __func__, buf, count);
-#endif
+	if (verbose) pr_info("%s: buf %p count %d\n", __func__, buf, count);
 
 	if (!ACM_READY(acm)) {
-		pr_err("%s - !acm\n", __func__); /* HTC */
+		pr_err("%s - !acm\n", __func__);
 		return -EINVAL;
 	}
 	if (!count) {
-		pr_info("%s - !count\n", __func__); /* HTC */
+		pr_info("%s - !count\n", __func__);
 		return 0;
 	}
 
@@ -1221,9 +1067,7 @@ static int acm_tty_write(struct tty_struct *tty,
 	spin_lock_irqsave(&acm->write_lock, flags);
 	wbn = acm_wb_alloc(acm);
 	if (wbn < 0) {
-#ifdef VERBOSE_CDCACM_DEBUG
-		pr_err("%s: acm %p wbn %d < 0!\n", __func__, acm, wbn);
-#endif
+		if (verbose) pr_err("%s: acm %p wbn %d < 0!\n", __func__, acm, wbn);
 		spin_unlock_irqrestore(&acm->write_lock, flags);
 		return 0;
 	}
@@ -1231,30 +1075,27 @@ static int acm_tty_write(struct tty_struct *tty,
 
 	count = (count > acm->writesize) ? acm->writesize : count;
 
-#ifdef VERBOSE_CDCACM_DEBUG
-	/* HTC: log */
-	pr_info("Get %d bytes for ttyACM%d, alloc wbn=%d\n",
+	if (verbose) pr_info("Get %d bytes for ttyACM%d, alloc wbn=%d\n",
 		count, acm->minor, wbn);
-#endif
 	if ((host_dbg_flag & DBG_ACM0_RW && acm->minor == 0) ||
 		(host_dbg_flag & DBG_ACM1_RW && acm->minor == 1)) {
-		/*Print the latest Rx data*/
+		/* Print the latest Rx data */
 		if(pcount==1&&(acm->minor==0)){
-#ifdef CDCACM_DEBUG
 		pr_info(MODULE_NAME ":Debug Latest RX bin << [%s]\n", gpr_buf);
-#endif
 		pcount=0;
-		}		
+		}
 				
+		int i = 0, size = count, rc = 0;
+		char *data_buf = buf;
+		char pr_buf[512];
+
 		/* print out binary */
 		size = size > 16 ? 16 : size;
 		rc = 0;
 		for (i = 0; i < size; i++)
 			rc += sprintf(pr_buf + rc, "%02x ", data_buf[i]);
 		pr_buf[rc] = '\0';
-#ifdef CDCACM_DEBUG
 		pr_info(MODULE_NAME ":[%03d] TX bin >> [%s]\n", count, pr_buf);
-#endif
 	}
 
 	memcpy(wb->buf, buf, count);
@@ -1265,7 +1106,7 @@ static int acm_tty_write(struct tty_struct *tty,
 	if (stat < 0)
 		return stat;
 
-	/* HTC: get tx statistic */
+	/* get tx statistic */
 	if (is_minor_valid(acm->minor) && count > 0)
 		acm_tp[acm->minor].tx_total += count;
 	return count;
@@ -1275,9 +1116,7 @@ static int acm_tty_write_room(struct tty_struct *tty)
 {
 	struct acm *acm = tty->driver_data;
 	if (!ACM_READY(acm)) {
-#ifdef VERBOSE_CDCACM_DEBUG
 		if (verbose) pr_info("%s: !ACM_READY\n", __func__);
-#endif
 		return -EINVAL;
 	}
 	/*
@@ -1301,26 +1140,23 @@ static int acm_tty_chars_in_buffer(struct tty_struct *tty)
 static void acm_tty_throttle(struct tty_struct *tty)
 {
 	struct acm *acm = tty->driver_data;
-#ifdef CDCACM_DEBUG
+
 	printk(MODULE_NAME":%s ttyACM%d +\n",__FUNCTION__,acm->minor);
-#endif
+
 	if (!ACM_READY(acm))
 		return;
 	spin_lock_bh(&acm->throttle_lock);
 	acm->throttle = 1;
 	spin_unlock_bh(&acm->throttle_lock);
-#ifdef CDCACM_DEBUG
-	printk(MODULE_NAME":%s ttyACM%d -\n",__FUNCTION__,acm->minor);
-#endif
 
+	printk(MODULE_NAME":%s ttyACM%d -\n",__FUNCTION__,acm->minor);
 }
 
 static void acm_tty_unthrottle(struct tty_struct *tty)
 {
 	struct acm *acm = tty->driver_data;
-#ifdef CDCACM_DEBUG
+
 	printk(MODULE_NAME":%s ttyACM%d +\n",__FUNCTION__,acm->minor);
-#endif
 
 	if (!ACM_READY(acm))
 		return;
@@ -1328,10 +1164,8 @@ static void acm_tty_unthrottle(struct tty_struct *tty)
 	acm->throttle = 0;
 	spin_unlock_bh(&acm->throttle_lock);
 	tasklet_schedule(&acm->urb_task);
-#ifdef CDCACM_DEBUG
-		printk(MODULE_NAME":%s ttyACM%d -\n",__FUNCTION__,acm->minor);
-#endif
 
+	printk(MODULE_NAME":%s ttyACM%d -\n",__FUNCTION__,acm->minor);
 }
 
 static int acm_tty_break_ctl(struct tty_struct *tty, int state)
@@ -1366,8 +1200,6 @@ static int acm_tty_tiocmset(struct tty_struct *tty,
 {
 	struct acm *acm = tty->driver_data;
 	unsigned int newctrl;
-
-	/* pr_info(MODULE_NAME "%s\n", __func__); */
 
 	if (!ACM_READY(acm))
 		return -EINVAL;
@@ -1415,8 +1247,6 @@ static void acm_tty_set_termios(struct tty_struct *tty,
 	struct ktermios *termios = tty->termios;
 	struct usb_cdc_line_coding newline;
 	int newctrl = acm->ctrlout;
-
-	/* pr_info(MODULE_NAME "%s\n", __func__); */
 
 	if (!ACM_READY(acm))
 		return;
@@ -1479,13 +1309,6 @@ static int acm_write_buffers_alloc(struct acm *acm)
 	int i;
 	struct acm_wb *wb;
 
-	if (!acm->dev)
-		printk("*********ACM DEV IS NULL!*********\n");
-	if (!acm->dev->bus)
-		printk("*********ACM DEV: NO BUS!!********\n");
-	if (!acm->writesize)
-		printk("*********ACM NO WRITESIZE*********\n");
-
 	for (wb = &acm->wb[0], i = 0; i < ACM_NW; i++, wb++) {
 		wb->buf = usb_alloc_coherent(acm->dev, acm->writesize, GFP_DMA,
 		    &wb->dmah);
@@ -1496,7 +1319,6 @@ static int acm_write_buffers_alloc(struct acm *acm)
 				usb_free_coherent(acm->dev, acm->writesize,
 				    wb->buf, wb->dmah);
 			}
-		printk("[CDCACM]**************ENOMEM1***************\n");
 			return -ENOMEM;
 		}
 	}
@@ -1530,10 +1352,8 @@ static int acm_probe(struct usb_interface *intf,
 	int combined_interfaces = 0;
 
 
-#ifdef CDCACM_DEBUG
 	pr_info("%s: 0311 - cdc drop urb fix intf->cur_altsetting->desc.bInterfaceNumber %d max_intfs=%d\n",
 		__func__, intf->cur_altsetting->desc.bInterfaceNumber,max_intfs);
-#endif
 
 	/* normal quirks */
 	quirks = (unsigned long)id->driver_info;
@@ -1543,12 +1363,9 @@ static int acm_probe(struct usb_interface *intf,
 	if (quirks & NOT_REAL_ACM) {
 			if (is_minor_valid(intf->cur_altsetting->desc.bInterfaceNumber))
 				acm_ready_table[intf->cur_altsetting->desc.bInterfaceNumber] = false;
-#ifdef CDCACM_DEBUG
 			pr_info(" 0320 quirks & NOT_REAL_ACM acm_ready_table[intf->cur_altsetting->desc.bInterfaceNumber=%d]=false\n",intf->cur_altsetting->desc.bInterfaceNumber);
-#endif
 		return -ENODEV;
 		}
-
 
 	if (max_intfs == 1) {
 		/* XMM HACK - use ACM for interfaces 0/1 only */
@@ -1557,11 +1374,9 @@ static int acm_probe(struct usb_interface *intf,
 		case 0: case 1:
 				break;
 		default:
-#ifdef CDCACM_DEBUG
 			pr_info("XMM HACK -"
 				" interface #%d reserved for RAW-IP network driver\n",
 				intf->cur_altsetting->desc.bInterfaceNumber);
-#endif
 			return -EINVAL;
 		}
 	} else if (max_intfs == 2) {
@@ -1572,11 +1387,9 @@ static int acm_probe(struct usb_interface *intf,
 		case 6: case 7:
 				break;
 		default:
-#ifdef CDCACM_DEBUG
 			pr_info("XMM HACK -"
 				" interface #%d reserved for RAW-IP network driver\n",
 				intf->cur_altsetting->desc.bInterfaceNumber);
-#endif
 			return -EINVAL;
 		}
 	}
@@ -1738,14 +1551,12 @@ skip_normal_probe:
 		return -EBUSY;
 	}
 
-
 	if (data_interface->cur_altsetting->desc.bNumEndpoints < 2)
 		return -EINVAL;
 
 	epctrl = &control_interface->cur_altsetting->endpoint[0].desc;
 	epread = &data_interface->cur_altsetting->endpoint[0].desc;
 	epwrite = &data_interface->cur_altsetting->endpoint[1].desc;
-
 
 	/* workaround for switched endpoints */
 	if (!usb_endpoint_dir_in(epread)) {
@@ -1870,7 +1681,6 @@ made_compressed_probe:
 
 	usb_set_intfdata(intf, acm);
 
-	printk("[CDCACM]**************DEVICE_CREATE_FILE1***************\n");
 	i = device_create_file(&intf->dev, &dev_attr_bmCapabilities);
 	if (i < 0)
 		goto alloc_fail8;
@@ -1884,14 +1694,12 @@ made_compressed_probe:
 							cfd->bLength - 4);
 		acm->country_rel_date = cfd->iCountryCodeRelDate;
 
-		printk("[CDCACM]**************DEVICE_CREATE_FILE_COUNTRYCODES***************\n");
 		i = device_create_file(&intf->dev, &dev_attr_wCountryCodes);
 		if (i < 0) {
 			kfree(acm->country_codes);
 			goto skip_countries;
 		}
 
-		printk("[CDCACM]**************DEVICE_CREATE_FILE_COUNTRYCODERELDATE***************\n");
 		i = device_create_file(&intf->dev,
 						&dev_attr_iCountryCodeRelDate);
 		if (i < 0) {
@@ -1947,23 +1755,17 @@ alloc_fail4:
 alloc_fail2:
 	kfree(acm);
 alloc_fail:
-	printk("[CDCACM]**************ENOMEM2 alloc_fail***************\n");
 	return -ENOMEM;
 }
 
 static void stop_data_traffic(struct acm *acm)
 {
 	int i;
-	//dbg("Entering stop_data_traffic");
 
 	if (!acm) {
 		pr_err("%s: !acm\n", __func__);
 		return;
 	}
-
-#ifdef CDCACM_DEBUG
-	printk(MODULE_NAME "%s ttyACM%d +\n",__FUNCTION__,acm->minor);
-#endif
 
 	tasklet_disable(&acm->urb_task);
 
@@ -1976,11 +1778,6 @@ static void stop_data_traffic(struct acm *acm)
 	tasklet_enable(&acm->urb_task);
 
 	cancel_work_sync(&acm->work);
-
-
-#ifdef CDCACM_DEBUG
-	printk(MODULE_NAME "%s ttyACM%d -\n",__FUNCTION__,acm->minor);
-#endif
 }
 
 static void acm_disconnect(struct usb_interface *intf)
@@ -1991,18 +1788,18 @@ static void acm_disconnect(struct usb_interface *intf)
 	struct urb *res;
 
 	int i;
-#ifdef CDCACM_DEBUG
-	if (acm){
-		pr_info(MODULE_NAME "%s ttyACM%d + {\n", __func__, acm->minor);
-		}else{
-		pr_info(MODULE_NAME "%s ttyACM + acm!=1\n", __func__);
-		}
-#endif
+
+	if (acm) {
+	pr_info(MODULE_NAME "%s ttyACM%d + {\n", __func__, acm->minor);
+	}
+	else {
+	pr_info(MODULE_NAME "%s ttyACM + acm!=1\n", __func__);
+	}
 
 	for (i=0; i < MAX_ACM_NUM; i++){
 		acm_ready_table[i] = false;
 	printk("%s: acm_ready_table[%d]=false\n", __func__, i);
-}
+	}
 
 	/* sibling interface is already cleaning up */
 	if (!acm) {
@@ -2010,7 +1807,7 @@ static void acm_disconnect(struct usb_interface *intf)
 		return;
 	}
 
-	/* HTC: delete timer, support FLASHLESS first */
+	/* delete timer, support FLASHLESS first */
 	if (timer_on && acm->minor == 0 &&
 		(mach_ble_flashless || is_mach_edge || mach_ble_flash)) {
 		pr_info(MODULE_NAME ": %s delete acm_timer\n", __func__);
@@ -2066,19 +1863,15 @@ static int acm_suspend(struct usb_interface *intf, pm_message_t message)
 {
 	struct acm *acm = usb_get_intfdata(intf);
 	int cnt;
-#ifdef CDCACM_DEBUG
+
 	printk(MODULE_NAME": %s ttyACM%d +\n",__FUNCTION__,acm->minor);
-#endif
 
 	if (!acm) {
 		pr_err("%s: !acm\n", __func__);
 		return -EBUSY;
 	}
 
-	//pr_info("%s: cnt %d intf=%p &intf->dev=%p kobje=%s\n",
-		//	__func__, atomic_read(&intf->dev.power.usage_count),intf,&intf->dev,kobject_name(&intf->dev.kobj));
-
-	if (PMSG_IS_AUTO(message)) {
+	if (message.event & PM_EVENT_AUTO) {
 		int b;
 
 		spin_lock_irq(&acm->read_lock);
@@ -2088,11 +1881,9 @@ static int acm_suspend(struct usb_interface *intf, pm_message_t message)
 		spin_unlock_irq(&acm->read_lock);
 		if (b)
 		{
-#ifdef CDCACM_DEBUG
 			printk(MODULE_NAME": %s ttyACM%d BUSY -> retry later %d %d\n",
 				__func__, acm->minor, acm->processing, acm->transmitting);
 			pr_info("%s: ttyACM%d processing %d transmitting %d -EBUSY\n", __func__, acm->minor, acm->processing, acm->transmitting);
-#endif
 			return -EBUSY;
 		}
 	}
@@ -2104,16 +1895,12 @@ static int acm_suspend(struct usb_interface *intf, pm_message_t message)
 	spin_unlock_irq(&acm->read_lock);
 
 	if (cnt) {
-#ifdef CDCACM_DEBUG
 		printk(MODULE_NAME": %s ttyACM%d susp_count=%d (already suspend)\n",
 			__func__, acm->minor, acm->susp_count);
-#endif
 		return 0;
 	} else
-#ifdef CDCACM_DEBUG
 		printk(MODULE_NAME": %s ttyACM%d suspending.... port.count=%d\n",
 			__func__, acm->minor, acm->port.count);
-#endif
 
 	/*
 	we treat opened interfaces differently,
@@ -2126,9 +1913,7 @@ static int acm_suspend(struct usb_interface *intf, pm_message_t message)
 
 	mutex_unlock(&acm->mutex);
 
-#ifdef CDCACM_DEBUG
 	printk(MODULE_NAME": %s ttyACM%d -\n",__FUNCTION__,acm->minor);
-#endif
 
 	return 0;
 }
@@ -2142,18 +1927,12 @@ static int acm_resume(struct usb_interface *intf)
 	struct urb *res;
 #endif
 
-#ifdef CDCACM_DEBUG
 	pr_info(MODULE_NAME "%s, intf %p, acm %p\n", __func__, intf, acm);
-#endif
 
 	if (!acm) {
 		pr_err("%s: !acm\n", __func__);
 		return -EBUSY;
 	}
-
-	
-	//pr_info("%s: cnt %d intf=%p &intf->dev=%p kobje=%s\n",
-		//	__func__, atomic_read(&intf->dev.power.usage_count),intf,&intf->dev,kobject_name(&intf->dev.kobj));
 
 	spin_lock_irq(&acm->read_lock);
 	if(acm->susp_count > 0) {
@@ -2165,12 +1944,14 @@ static int acm_resume(struct usb_interface *intf)
 		return 0;
 	}
 	spin_unlock_irq(&acm->read_lock);
-	//add
-	//printk(KERN_INFO"jerry usb_mark_last_busy %s\n",__func__);
-	//usb_mark_last_busy(acm->dev);
 
-	if (cnt)
+	if (cnt) {
+		printk(MODULE_NAME": %s ttyACM%d susp_count=%d (already resumed)\n",
+			__func__, acm->minor, acm->susp_count);
 		return 0;
+	} else
+		printk(MODULE_NAME": %s ttyACM%d resuming.....\n",
+			__func__, acm->minor, acm->susp_count);
 
 	mutex_lock(&acm->mutex);
 
@@ -2179,7 +1960,7 @@ static int acm_resume(struct usb_interface *intf)
 		spin_lock_irq(&acm->write_lock);
 #ifdef CONFIG_PM
 		while ((res = usb_get_from_anchor(&acm->deferred))) {
-			/* decrement ref count*/
+			/* decrement ref count */
 			usb_put_urb(res);
 			pr_info(MODULE_NAME "%s - process buffered request "
 				"anchor urb=%p len=%d\n",
@@ -2203,7 +1984,6 @@ static int acm_resume(struct usb_interface *intf)
 			spin_unlock_irq(&acm->write_lock);
 		}
 #endif
-
 		/*
 		 * delayed error checking because we must
 		 * do the write path at all cost
@@ -2217,20 +1997,8 @@ static int acm_resume(struct usb_interface *intf)
 err_out:
 	mutex_unlock(&acm->mutex);
 
-#ifdef CDCACM_DEBUG
 	printk(MODULE_NAME": %s ttyACM%d -\n",__FUNCTION__,acm->minor);
-#endif
 
-#if 0
-	//test only
-	if(debugtestcoung==10){
-	kobject_uevent(&acm->dev->dev.kobj,KOBJ_CHANGE);
-	printk(KERN_INFO "debugtestcoung uevent test test test !!\n");
-	debugtestcoung =0;
-	}
-	debugtestcoung ++;
-	printk(KERN_INFO "debugtestcoung=%d uevent test test test !!\n",debugtestcoung);
-#endif
 	return rv;
 }
 
@@ -2245,19 +2013,6 @@ static int acm_reset_resume(struct usb_interface *intf)
 		pr_err("%s: !acm\n", __func__);
 		return -EBUSY;
 	}
-/*
-	mutex_lock(&acm->mutex);
-	if (acm->port.count) {
-		tty = tty_port_tty_get(&acm->port);
-		if (tty) {
-			pr_info(MODULE_NAME "%s - ttyacm hangup\n", __func__);
-			if (!acm->no_hangup_in_reset_resume)
-				tty_hangup(tty);
-			tty_kref_put(tty);
-		}
-	}
-	mutex_unlock(&acm->mutex);
-*/
 	return acm_resume(intf);
 }
 
@@ -2276,7 +2031,6 @@ static int acm_reset_resume(struct usb_interface *intf)
 /*
  * USB driver structure.
  */
-
 static const struct usb_device_id acm_ids[] = {
 	/* quirky and broken devices */
 	{ USB_DEVICE(0x0870, 0x0001), /* Metricom GS Modem */
@@ -2461,7 +2215,6 @@ static struct usb_driver acm_driver = {
 /*
  * TTY driver structures.
  */
-
 static const struct tty_operations acm_ops = {
 	.open =			acm_tty_open,
 	.close =		acm_tty_close,
@@ -2481,24 +2234,14 @@ static const struct tty_operations acm_ops = {
 /*
  * Init / exit.
  */
-
 static int __init acm_init(void)
 {
 	int retval;
 
 #ifdef RIL_DBG
-	host_dbg_flag |= DBG_ACM0_RW; /* HTC */
+	host_dbg_flag |= DBG_ACM0_RW;
 #endif
 
-#if defined(CONFIG_MACH_EDGE) || defined(CONFIG_MACH_ENDEARVORU)
-	is_mach_edge = 1;
-#endif
-#if defined(CONFIG_MACH_BLUE)
-	is_mach_ble = 1;
-#endif
-#if defined(CONFIG_IMC_FLASHLESS)
-	is_flashless = 1;
-#endif
 	mach_ble_flashless = (is_mach_ble && is_flashless);
 	mach_ble_flash = (is_mach_ble && !is_flashless);
 
@@ -2537,8 +2280,7 @@ static int __init acm_init(void)
 		return retval;
 	}
 
-
-	/* HTC: timer initial by bert */
+	/* timer initial */
 	{
 		int i;
 		for (i=0; i<MAX_ACM_NUM; i++) {
@@ -2554,9 +2296,7 @@ static int __init acm_init(void)
 	printk(KERN_INFO KBUILD_MODNAME ": " DRIVER_VERSION ":"
 	       DRIVER_DESC "\n");
 
-	/* HTC */
-	pr_info(MODULE_NAME ": %s - host_dbg_flag=0x%x\n",
-		__func__, host_dbg_flag);
+	pr_info(MODULE_NAME ": %s - host_dbg_flag=0x%x\n", __func__, host_dbg_flag);
 
 	return 0;
 }

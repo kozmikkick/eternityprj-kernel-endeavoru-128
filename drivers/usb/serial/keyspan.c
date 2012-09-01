@@ -112,7 +112,7 @@
 #include <linux/usb/serial.h>
 #include "keyspan.h"
 
-static bool debug;
+static int debug;
 
 /*
  * Version Information

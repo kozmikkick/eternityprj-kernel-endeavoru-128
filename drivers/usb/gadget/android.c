@@ -30,10 +30,12 @@
 #include <linux/usb/ch9.h>
 #include <linux/usb/composite.h>
 #include <linux/usb/gadget.h>
-#include <linux/usb/android_composite.h>//htc
+#include <linux/usb/android_composite.h>
 #include <linux/wakelock.h>
-#include "gadget_chips.h"
+
 #include <htc/log.h>
+
+#include "gadget_chips.h"
 
 /*
  * Kbuild is not very cooperative with respect to linking separately
@@ -308,7 +310,7 @@ static ssize_t func_en_show(struct device *dev, struct device_attribute *attr,
 	return sprintf(buf, "%d", ebl);
 }
 
-static ssize_t __devinit func_en_store(
+static ssize_t func_en_store(
 		struct device *dev, struct device_attribute *attr,
 		const char *buf, size_t size)
 {
@@ -792,7 +794,7 @@ static struct android_usb_function serial_function = {
 #endif	//CONFIG_USB_ANDROID_SERIAL
 
 /* ADB */
-static int __devinit adb_function_init(struct android_usb_function *f, struct usb_composite_dev *cdev)
+static int adb_function_init(struct android_usb_function *f, struct usb_composite_dev *cdev)
 {
 	return adb_setup();
 }
@@ -929,6 +931,13 @@ static int mtp_function_ctrlrequest(struct android_usb_function *f,
 	return mtp_ctrlrequest(cdev, c);
 }
 
+static int ptp_function_ctrlrequest(struct android_usb_function *f,
+						struct usb_composite_dev *cdev,
+						const struct usb_ctrlrequest *c)
+{
+	return mtp_ctrlrequest(cdev, c);
+}
+
 static struct android_usb_function mtp_function = {
 	.name		= "mtp",
 	.init		= mtp_function_init,
@@ -943,6 +952,7 @@ static struct android_usb_function ptp_function = {
 	.init		= ptp_function_init,
 	.cleanup	= ptp_function_cleanup,
 	.bind_config	= ptp_function_bind_config,
+	.ctrlrequest	= ptp_function_ctrlrequest,
 };
 #endif
 
@@ -1734,7 +1744,7 @@ static ssize_t enable_show(struct device *pdev, struct device_attribute *attr,
 	return snprintf(buf, PAGE_SIZE, "%d\n", dev->enabled);
 }
 
-static ssize_t __devinit enable_store(struct device *pdev, struct device_attribute *attr,
+static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 			    const char *buff, size_t size)
 {
 	struct android_dev *dev = dev_get_drvdata(pdev);
@@ -1768,6 +1778,8 @@ static ssize_t __devinit enable_store(struct device *pdev, struct device_attribu
 		dev->enabled = true;
 	} else if (!enabled && dev->enabled) {
 		usb_gadget_disconnect(cdev->gadget);
+		/* Cancel pending control requests */
+		usb_ep_dequeue(cdev->gadget->ep0, cdev->req);
 		usb_remove_config(cdev, &android_config_driver);
 		dev->enabled = false;
 	} else {
@@ -2128,7 +2140,7 @@ static struct platform_driver android_platform_driver = {
 	.driver = { .name = "android_usb"},
 };
 
-static void __devinit android_usb_init_work(struct work_struct *data)
+static void android_usb_init_work(struct work_struct *data)
 {
 	struct android_dev *dev = _android_dev;
 	struct android_usb_platform_data *pdata = dev->pdata;

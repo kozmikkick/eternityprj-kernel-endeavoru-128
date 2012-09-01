@@ -61,7 +61,7 @@ static struct usb_driver usb_serial_driver = {
    drivers depend on it.
 */
 
-static bool debug;
+static int debug;
 /* initially all NULL */
 static struct usb_serial *serial_table[SERIAL_TTY_MINORS];
 static DEFINE_MUTEX(table_lock);
@@ -1059,6 +1059,12 @@ int usb_serial_probe(struct usb_interface *interface,
 		serial->attached = 1;
 	}
 
+	/* Avoid race with tty_open and serial_install by setting the
+	 * disconnected flag and not clearing it until all ports have been
+	 * registered.
+	 */
+	serial->disconnected = 1;
+
 	if (get_free_serial(serial, num_ports, &minor) == NULL) {
 		dev_err(&interface->dev, "No more free serial devices\n");
 		goto probe_error;
@@ -1082,6 +1088,8 @@ int usb_serial_probe(struct usb_interface *interface,
 			port->dev_state = PORT_REGISTERED;
 		}
 	}
+
+	serial->disconnected = 0;
 
 	usb_serial_console_init(debug, minor);
 

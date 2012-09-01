@@ -89,7 +89,7 @@
 #define DRIVER_AUTHOR "Wolfgang Grandegger <wolfgang@ces.ch>"
 #define DRIVER_DESC "Magic Control Technology USB-RS232 converter driver"
 
-static bool debug;
+static int debug;
 
 /*
  * Function prototypes

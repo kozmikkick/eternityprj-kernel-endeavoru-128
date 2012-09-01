@@ -61,7 +61,7 @@
 #include "scsiglue.h"
 
 MODULE_DESCRIPTION("Driver for In-System Design, Inc. ISD200 ASIC");
-MODULE_AUTHOR("BjÃ¶rn Stenberg <bjorn@haxx.se>");
+MODULE_AUTHOR("Björn Stenberg <bjorn@haxx.se>");
 MODULE_LICENSE("GPL");
 
 static int isd200_Initialization(struct us_data *us);
@@ -499,7 +499,6 @@ static int isd200_action( struct us_data *us, int action,
 	memset(&ata, 0, sizeof(ata));
 	srb->cmnd = info->cmnd;
 	srb->device = &srb_dev;
-	++srb->serial_number;
 
 	ata.generic.SignatureByte0 = info->ConfigData.ATAMajorCommand;
 	ata.generic.SignatureByte1 = info->ConfigData.ATAMinorCommand;

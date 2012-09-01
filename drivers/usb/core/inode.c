@@ -264,19 +264,21 @@ static int remount(struct super_block *sb, int *flags, char *data)
 		return -EINVAL;
 	}
 
-	if (usbfs_mount)
+	if (usbfs_mount && usbfs_mount->mnt_sb)
 		update_sb(usbfs_mount->mnt_sb);
 
 	return 0;
 }
 
-static struct inode *usbfs_get_inode (struct super_block *sb, umode_t mode, dev_t dev)
+static struct inode *usbfs_get_inode (struct super_block *sb, int mode, dev_t dev)
 {
 	struct inode *inode = new_inode(sb);
 
 	if (inode) {
 		inode->i_ino = get_next_ino();
-		inode_init_owner(inode, NULL, mode);
+		inode->i_mode = mode;
+		inode->i_uid = current_fsuid();
+		inode->i_gid = current_fsgid();
 		inode->i_atime = inode->i_mtime = inode->i_ctime = CURRENT_TIME;
 		switch (mode & S_IFMT) {
 		default:
@@ -298,7 +300,7 @@ static struct inode *usbfs_get_inode (struct super_block *sb, umode_t mode, dev_
 }
 
 /* SMP-safe */
-static int usbfs_mknod (struct inode *dir, struct dentry *dentry, umode_t mode,
+static int usbfs_mknod (struct inode *dir, struct dentry *dentry, int mode,
 			dev_t dev)
 {
 	struct inode *inode = usbfs_get_inode(dir->i_sb, mode, dev);
@@ -315,7 +317,7 @@ static int usbfs_mknod (struct inode *dir, struct dentry *dentry, umode_t mode,
 	return error;
 }
 
-static int usbfs_mkdir (struct inode *dir, struct dentry *dentry, umode_t mode)
+static int usbfs_mkdir (struct inode *dir, struct dentry *dentry, int mode)
 {
 	int res;
 
@@ -326,7 +328,7 @@ static int usbfs_mkdir (struct inode *dir, struct dentry *dentry, umode_t mode)
 	return res;
 }
 
-static int usbfs_create (struct inode *dir, struct dentry *dentry, umode_t mode)
+static int usbfs_create (struct inode *dir, struct dentry *dentry, int mode)
 {
 	mode = (mode & S_IALLUGO) | S_IFREG;
 	return usbfs_mknod (dir, dentry, mode, 0);
@@ -454,6 +456,7 @@ static const struct super_operations usbfs_ops = {
 static int usbfs_fill_super(struct super_block *sb, void *data, int silent)
 {
 	struct inode *inode;
+	struct dentry *root;
 
 	sb->s_blocksize = PAGE_CACHE_SIZE;
 	sb->s_blocksize_bits = PAGE_CACHE_SHIFT;
@@ -461,11 +464,12 @@ static int usbfs_fill_super(struct super_block *sb, void *data, int silent)
 	sb->s_op = &usbfs_ops;
 	sb->s_time_gran = 1;
 	inode = usbfs_get_inode(sb, S_IFDIR | 0755, 0);
-	sb->s_root = d_make_root(inode);
-	if (!sb->s_root) {
+	root = d_make_root(inode);
+	if (!root) {
 		dbg("%s: could not get root dentry!",__func__);
 		return -ENOMEM;
 	}
+	sb->s_root = root;
 	return 0;
 }
 
@@ -478,7 +482,7 @@ static int usbfs_fill_super(struct super_block *sb, void *data, int silent)
  *
  * This function handles both regular files and directories.
  */
-static int fs_create_by_name (const char *name, umode_t mode,
+static int fs_create_by_name (const char *name, mode_t mode,
 			      struct dentry *parent, struct dentry **dentry)
 {
 	int error = 0;
@@ -489,8 +493,9 @@ static int fs_create_by_name (const char *name, umode_t mode,
 	 * have around.
 	 */
 	if (!parent ) {
-		if (usbfs_mount)
-			parent = usbfs_mount->mnt_root;
+		if (usbfs_mount && usbfs_mount->mnt_sb) {
+			parent = usbfs_mount->mnt_sb->s_root;
+		}
 	}
 
 	if (!parent) {
@@ -502,7 +507,7 @@ static int fs_create_by_name (const char *name, umode_t mode,
 	mutex_lock(&parent->d_inode->i_mutex);
 	*dentry = lookup_one_len(name, parent, strlen(name));
 	if (!IS_ERR(*dentry)) {
-		if (S_ISDIR(mode))
+		if ((mode & S_IFMT) == S_IFDIR)
 			error = usbfs_mkdir (parent->d_inode, *dentry, mode);
 		else 
 			error = usbfs_create (parent->d_inode, *dentry, mode);
@@ -513,7 +518,7 @@ static int fs_create_by_name (const char *name, umode_t mode,
 	return error;
 }
 
-static struct dentry *fs_create_file (const char *name, umode_t mode,
+static struct dentry *fs_create_file (const char *name, mode_t mode,
 				      struct dentry *parent, void *data,
 				      const struct file_operations *fops,
 				      uid_t uid, gid_t gid)
@@ -596,7 +601,7 @@ static int create_special_files (void)
 
 	ignore_mount = 0;
 
-	parent = usbfs_mount->mnt_root;
+	parent = usbfs_mount->mnt_sb->s_root;
 	devices_usbfs_dentry = fs_create_file ("devices",
 					       listmode | S_IFREG, parent,
 					       NULL, &usbfs_devices_fops,
@@ -650,7 +655,7 @@ static void usbfs_add_bus(struct usb_bus *bus)
 
 	sprintf (name, "%03d", bus->busnum);
 
-	parent = usbfs_mount->mnt_root;
+	parent = usbfs_mount->mnt_sb->s_root;
 	bus->usbfs_dentry = fs_create_file (name, busmode | S_IFDIR, parent,
 					    bus, NULL, busuid, busgid);
 	if (bus->usbfs_dentry == NULL) {

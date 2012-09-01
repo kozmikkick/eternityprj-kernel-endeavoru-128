@@ -34,6 +34,7 @@
 #include <linux/usb/otg.h>
 #include <mach/usb_phy.h>
 #include <mach/iomap.h>
+
 #include <htc/log.h>
 
 /* HTC definition */
@@ -110,20 +111,22 @@ void usb_register_dump(void)
 	struct usb_hcd  *hcd;
 	struct ehci_hcd *ehci;
 	int i = 0;
+	void __iomem *apb_misc = IO_ADDRESS(TEGRA_APB_MISC_BASE);
+	u32 val;
 
 	if(s_hsic_hcd) {
 		hcd = s_hsic_hcd;
 		ehci = hcd_to_ehci(hcd);
 		pr_info("\n***** USB Register Dump Start********* \n");
 		for( i = 0; i < 0x200; i = i+16) {
-		pr_info("ADDRESS:%p 0x%08x 0x%08x 0x%08x 0x%08x\n", (hcd->regs + i),
+		pr_info("ADDRESS:%x 0x%08x 0x%08x 0x%08x 0x%08x\n", (hcd->regs + i),
 			readl(hcd->regs + i), readl(hcd->regs + i + 4),
 			readl(hcd->regs + i + 8), readl(hcd->regs + i + 12));
 		}
 		pr_info("USB2_IF_USB_SUSP_CTRL_0: 0x%08x\n", readl(hcd->regs + 0x400));
 		pr_info("HSIC Registers\n");
 		for( i = 0xc00; i < 0xc40; i = i+16) {
-		pr_info("ADDRESS:%p 0x%08x 0x%08x 0x%08x 0x%08x\n", (hcd->regs + i),
+		pr_info("ADDRESS:%x 0x%08x 0x%08x 0x%08x 0x%08x\n", (hcd->regs + i),
 			readl(hcd->regs + i), readl(hcd->regs + i + 4),
 			readl(hcd->regs + i + 8), readl(hcd->regs + i + 12));
 		}
@@ -242,7 +245,6 @@ static int tegra_ehci_hub_control(
 	hsic = (tegra->phy->usb_phy_type == TEGRA_USB_PHY_TYPE_HSIC);
 
 	/* Seshendra patch: log for resume fail */
-#ifdef EHCI_TEGRA_DEBUG	/* EternityProject patch: Seshendra is a pig */
 	printk(KERN_INFO"%s: typereq: %x wValue: %x USBMODE: %x, USBCMD: %x, PORTSC: %x, USBSTS: %x HOSTPC: %x \n",
 		__func__, typeReq, wValue,
 		readl(&ehci->regs->command + (USBMODE)),
@@ -250,16 +252,14 @@ static int tegra_ehci_hub_control(
 		readl(&ehci->regs->port_status[0]),
 		readl(&ehci->regs->status),
 		readl(hcd->regs + HOSTPC_REG_OFFSET));
-#endif
 /* 84717-1 patch */
 	if(hsic)
 		s_hsic_hcd = hcd;
 /* 84717-1 patch */
 	status_reg = &ehci->regs->port_status[(wIndex & 0xff) - 1];
-#ifdef EHCI_TEGRA_DEBUG
 	pr_info("%s hsic=%s typeReq=%x wValue=%x wIndex=%x\n",
 		__func__,hsic ? "true" : "false", typeReq, wValue, wIndex);
-#endif
+
 	spin_lock_irqsave(&ehci->lock, flags);
 
 	/*
@@ -833,10 +833,9 @@ static int tegra_ehci_setup(struct usb_hcd *hcd)
 #ifdef CONFIG_PM
 static int tegra_ehci_bus_suspend(struct usb_hcd *hcd)
 {
+        printk(KERN_INFO"%s\n", __func__);
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 	int error_status = 0;
-	
-	printk(KERN_INFO"%s\n", __func__);
 
 	mutex_lock(&tegra->tegra_ehci_hcd_mutex);
 	tegra_ehci_disable_phy_interrupt(hcd);
@@ -862,10 +861,9 @@ static int tegra_ehci_bus_suspend(struct usb_hcd *hcd)
 
 static int tegra_ehci_bus_resume(struct usb_hcd *hcd)
 {
+	printk(KERN_INFO"%s\n", __func__);
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 	int ehci_bus_resumed;
-
-	printk(KERN_INFO"%s\n", __func__);
 
 	mutex_lock(&tegra->tegra_ehci_hcd_mutex);
 	if (tegra->bus_suspended && tegra->power_down_on_bus_suspend) {
@@ -1281,10 +1279,9 @@ fail_hcd:
 #ifdef CONFIG_PM
 static int tegra_ehci_resume(struct platform_device *pdev)
 {
+	printk(KERN_INFO"%s\n", __func__);
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
 	struct usb_hcd *hcd = ehci_to_hcd(tegra->ehci);
-
-	printk(KERN_INFO"%s\n", __func__);
 
 	if ((tegra->bus_suspended) && (tegra->power_down_on_bus_suspend)) {
 
@@ -1303,13 +1300,13 @@ static int tegra_ehci_resume(struct platform_device *pdev)
 
 static int tegra_ehci_suspend(struct platform_device *pdev, pm_message_t state)
 {
+	printk(KERN_INFO"%s\n", __func__);
+
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
 	struct usb_hcd *hcd = ehci_to_hcd(tegra->ehci);
 	int ret;
 	u32 val;
 
-	printk(KERN_INFO"%s\n", __func__);
-	
 	pr_info(MODULE_NAME "%s\n", __func__); /* HTC */
 
 	if (tegra->phy->hotplug) {

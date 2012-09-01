@@ -641,6 +641,7 @@ struct fsl_udc {
 	// start porting:
 	unsigned state;
 	unsigned flags;
+	struct work_struct boost_cpufreq_work; /* work for boosting cpu frequency */
         unsigned myflags; //william: create this for ENR_U#17344
 	enum usb_connect_type connect_type;
 	struct workqueue_struct *usb_wq;
