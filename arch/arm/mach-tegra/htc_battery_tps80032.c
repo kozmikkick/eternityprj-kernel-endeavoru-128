@@ -40,6 +40,8 @@
 #include <mach/restart.h>
 #include <linux/earlysuspend.h>
 
+#include <mach/eternityproject.h>
+
 /* used for debug if function called */
 #define FUNC_CALL_CHECK 	0
 #define WK_MBAT_IN 		0
@@ -330,7 +332,7 @@ static void usb_status_notifier_func(int online)
 	switch (online) {
 	case CONNECT_TYPE_USB:
 		BATT_LOG("cable USB");
-		if ( !!(get_kernel_flag() & ALL_AC_CHARGING) ) {
+		if ( (!!(get_kernel_flag() & ALL_AC_CHARGING)) || eprj_chargeboost == 1 ) {
 			BATT_LOG("Debug flag is set to force AC charging, fake as AC");
 
 			htc_batt_info.rep.charging_source = CHARGER_AC;

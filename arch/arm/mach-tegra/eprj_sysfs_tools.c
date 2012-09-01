@@ -48,9 +48,16 @@ static struct eprj_sysfs pwrmode = {
 	.value = 0, /* 0 = Don't lock in LP -- 1 = Lock in LP Mode */
 };
 
+static struct eprj_sysfs chgbst = {
+	.attr.name = "charger_boost",
+	.attr.mode = 0666,
+	.value = 0, /* 0 = Normal operation -- 1 = Boost USB charge */
+};
+
 struct attribute * eprjmanager[] = {
 	&android_release.attr,
 	&pwrmode.attr,
+	&chgbst.attr,
 	NULL
 };
 
@@ -58,7 +65,8 @@ typedef enum
 {
 	EPRJ_INVALID = 0,
 	HSMGR_APIREV,
-	POWER_LOCK
+	POWER_LOCK,
+	CHARGE_BOOST
 } eprj_attribute;
 
 static eprj_attribute calling_attribute(const char *attrname)
@@ -67,6 +75,8 @@ static eprj_attribute calling_attribute(const char *attrname)
 		return HSMGR_APIREV;
 	if (!strcmp(attrname, "power_lock"))
 		return POWER_LOCK;
+	if (!strcmp(attrname, "charger_boost"))
+		return CHARGE_BOOST;
 
 	return EPRJ_INVALID;
 }
@@ -78,10 +88,8 @@ static ssize_t eprjsysfs_show(struct kobject *kobj, struct attribute *attr,
 	return scnprintf(buf, PAGE_SIZE, "%d", entry->value);
 }
 
-/*
- * TODO (not urgent):	Use switch in eprjsysfs_store instead of
- *			a bunch of if statements. It's cleaner.
- */
+bool eprj_chargeboost;
+
 static ssize_t eprjsysfs_store(struct kobject *kobj, struct attribute *attr,
 				 const char *buf, size_t len)
 {
@@ -101,6 +109,10 @@ static ssize_t eprjsysfs_store(struct kobject *kobj, struct attribute *attr,
 			break;
 		case POWER_LOCK:
 			eprj_extreme_powersave(entry->value);
+			break;
+		case CHARGE_BOOST:
+			printk("EternityProject Charger Boost -- %s", entry->value ? "ACTIVATED." : "DEACTIVATED.");
+			eprj_chargeboost = (entry->value);
 			break;
 		default:
 			break;

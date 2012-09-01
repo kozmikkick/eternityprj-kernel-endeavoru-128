@@ -102,3 +102,5 @@ struct eprj_sysfs {
 	struct attribute attr;
 	int value;
 };
+
+extern bool eprj_chargeboost;
