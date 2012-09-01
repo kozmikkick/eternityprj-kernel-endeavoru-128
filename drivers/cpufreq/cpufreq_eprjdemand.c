@@ -191,7 +191,7 @@ static int hotplug_freq[EPRJ_NCORES][EPRJ_RQ] = {
 };
 #elif defined(CONFIG_MACH_ENDEAVORU)
 static int hotplug_rq[EPRJ_NCORES][EPRJ_RQ] = {
-	{0, 240}, {240, 340}, {340, 450}, {450, 0}
+	{0, 200}, {200, 300}, {340, 400}, {450, 0}
 };
 
 static int hotplug_freq[EPRJ_NCORES][EPRJ_RQ] = {
