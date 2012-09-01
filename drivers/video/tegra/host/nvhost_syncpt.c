@@ -26,6 +26,13 @@
 #include "nvhost_acm.h"
 #include "dev.h"
 
+#if CONFIG_VIDEO_RAWCHIP
+/*HTC_start*/
+#include <media/rawchip/Yushan_API.h>
+#include <media/rawchip/rawchip.h>
+/*HTC_end*/
+#endif
+
 #define MAX_SYNCPT_LENGTH 5
 /* Name of sysfs node for min and max value */
 static const char *min_name = "min";
@@ -222,6 +229,12 @@ int nvhost_syncpt_wait_timeout(struct nvhost_syncpt *sp, u32 id,
 				"%s: syncpoint id %d (%s) stuck waiting %d, timeout=%d\n",
 				 current->comm, id, syncpt_op().name(sp, id),
 				 thresh, timeout);
+		/* HTC_start */
+#if CONFIG_VIDEO_RAWCHIP
+				tegra_rawchip_block_iotcl(TRUE);
+				Yushan_dump_register();
+#endif
+		/* HTC_end */
 			syncpt_op().debug(sp);
 			if (check_count == MAX_STUCK_CHECK_COUNT) {
 				if (low_timeout) {
