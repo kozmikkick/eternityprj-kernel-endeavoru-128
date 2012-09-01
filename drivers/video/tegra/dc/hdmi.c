@@ -49,6 +49,7 @@
 #include "hdmi_reg.h"
 #include "hdmi.h"
 #include "edid.h"
+#include "external_common.h"
 #include "nvhdcp.h"
 
 /* datasheet claims this will always be 216MHz */
@@ -1424,7 +1425,7 @@ static bool tegra_dc_hdmi_detect(struct tegra_dc *dc)
 
 #ifdef CONFIG_TEGRA_HDMI_MHL
 	if (!IsD0Mode()) {
-		DISP_INFO_LN("Sii9244 is not in D0 mode!");
+		pr_err("Sii9244 is not in D0 mode!");
 		update_mhl_status(false, CONNECT_TYPE_UNKNOWN);
 		goto fail;
 	}
