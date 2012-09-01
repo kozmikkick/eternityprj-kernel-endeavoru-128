@@ -78,6 +78,7 @@ obj-$(CONFIG_TEGRA_SYSTEM_DMA)          += dma.o
 obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
 ifeq ($(CONFIG_TEGRA_AUTO_HOTPLUG),y)
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpu-tegra3.o
+obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpuplug.lib
 endif
 obj-$(CONFIG_TEGRA_PCI)                 += pcie.o
 obj-$(CONFIG_USB_SUPPORT)               += usb_phy.o
