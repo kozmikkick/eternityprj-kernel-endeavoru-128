@@ -34,6 +34,8 @@
 #include <linux/seq_file.h>
 #include <linux/device.h>
 
+#include <mach/board_htc.h>
+#include <mach/cable_detect.h>
 #include <mach/clk.h>
 #include <mach/dc.h>
 #include <mach/fb.h>
