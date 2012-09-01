@@ -55,7 +55,7 @@
 
 MODULE_LICENSE("GPL");
 
-#if defined(CONFIG_MACH_EDGE) || defined(CONFIG_MACH_ENDEAVORU) || defined(CONFIG_MACH_EDGE_TD) || defined(CONFIG_MACH_BLUE)
+#if defined(CONFIG_MACH_ENDEAVORU) || defined(CONFIG_MACH_EDGE_TD) || defined(CONFIG_MACH_ERAU) || defined(CONFIG_MACH_BLUE)
 #if 0//sim move to other driver
     #define SIM_DETECT_LOW_ACTIVE TEGRA_GPIO_PI5
 #endif//sim move to other driver
@@ -79,7 +79,7 @@ MODULE_LICENSE("GPL");
 #endif
 
 
-#if defined(CONFIG_MACH_EDGE) || defined(CONFIG_MACH_ENDEAVORU) || defined(CONFIG_MACH_EDGE_TD) || defined(CONFIG_MACH_BLUE)   
+#if defined(CONFIG_MACH_ENDEAVORU) || defined(CONFIG_MACH_EDGE_TD) || defined(CONFIG_MACH_ERAU) || defined(CONFIG_MACH_BLUE)
 	#define CORE_DUMP_DETECT TEGRA_GPIO_PN2
 	//radio fatal
 
@@ -344,7 +344,7 @@ static void sim_detect_work_handler(struct work_struct *work)
 #endif//sim move to other driver
 
 /*SIM detection IRQ*/
-#if defined(CONFIG_MACH_EDGE) || defined(CONFIG_MACH_ENDEAVORU) || defined(CONFIG_MACH_EDGE_TD) || defined(CONFIG_MACH_BLUE)
+#if defined(CONFIG_MACH_ENDEAVORU) || defined(CONFIG_MACH_EDGE_TD) || defined(CONFIG_MACH_ERAU) || defined(CONFIG_MACH_BLUE)
 #if 0//sim move to other driver
 static irqreturn_t sim_det_irq(int irq, void *dev_id)
 {
@@ -377,10 +377,7 @@ static irqreturn_t sim_det_irq(int irq, void *dev_id)
 #endif//sim move to other driver
 static void radio_detect_work_handler(struct work_struct *work)
 {
-		int radiopower = 0;
-		char message[20] = "RADIO=";
-		char *envp[] = { message, NULL };
-		int status = gpio_get_value(CORE_DUMP_DETECT);
+		int radiopower=0;
 
 		pr_info("Enter radio_detect_work_handler\n");
 
@@ -399,6 +396,10 @@ static void radio_detect_work_handler(struct work_struct *work)
 			return ;
     }
 
+	char message[20] = "RADIO=";
+	char *envp[] = { message, NULL };
+	int status = gpio_get_value(CORE_DUMP_DETECT);
+
 	pr_info("CORE_DUMP_DETECT = %d\n", status);
 		if (status) {
 			pr_info("CORE_DUMP_DETECT=High, Normal\n");
@@ -415,6 +416,10 @@ static void radio_detect_work_handler(struct work_struct *work)
 		else
 			strncat(message, "READY", 5);
 			*/
+
+	int value = gpio_get_value(TEGRA_GPIO_PV0);
+	pr_info("gpio_direction_input(TEGRA_GPIO_PV0), original=%d\n", value);
+	gpio_direction_input(TEGRA_GPIO_PV0);
 
     pr_info("[FLS] coredump uevent\n");
     //kobject_uevent(&baseband_power2_driver_data->modem.xmm6260.hsic_device->dev.kobj, KOBJ_ADD);
@@ -613,6 +618,30 @@ static void baseband_xmm_power2_flashless_pm_ver_ge_1130_step2
 
 #define FILE_EXIST 0
 #define FILE_NOT_EXIST -1
+static int file_open_check(const char *file)
+{
+	mm_segment_t oldfs;
+	struct file *filp;
+	int ret = FILE_EXIST;
+
+	oldfs = get_fs();
+	set_fs(KERNEL_DS);
+
+	filp = filp_open(file,
+		O_RDONLY, 0);
+	if (IS_ERR(filp) || (filp == NULL)) {
+		pr_info("open %s %ld\n", file, PTR_ERR(filp));
+		ret = FILE_NOT_EXIST;
+		goto open_fail;
+	}
+
+	/* open success */
+	filp_close(filp, NULL);
+
+open_fail:
+	set_fs(oldfs);
+	return ret;
+}
 
 static void baseband_xmm_power2_flashless_pm_ver_ge_1130_step3
 	(struct work_struct *work)
@@ -872,14 +901,12 @@ static void baseband_xmm_power2_work_func(struct work_struct *work)
 
 static int baseband_xmm_power2_driver_probe(struct platform_device *device)
 {
-	int err_radio;
-	int err = 0;
-	
 	struct baseband_power_platform_data *data
 		= (struct baseband_power_platform_data *)
 			device->dev.platform_data;
 
-	pr_debug("%s 0309 - CPU Freq with data protect.\n", __func__);
+	int err=0;
+	pr_debug("%s 0412 - CPU Freq with data protect and dummy kobj.\n", __func__);
 
 	if (data == NULL) {
 		pr_err("%s: no platform data\n", __func__);
@@ -895,7 +922,7 @@ static int baseband_xmm_power2_driver_probe(struct platform_device *device)
 
 	/* OEM specific initialization */
 #ifdef BB_XMM_OEM1
-#if defined(CONFIG_MACH_EDGE) || defined(CONFIG_MACH_ENDEAVORU) || defined(CONFIG_MACH_EDGE_TD) || defined(CONFIG_MACH_BLUE)
+#if defined(CONFIG_MACH_ENDEAVORU) || defined(CONFIG_MACH_EDGE_TD) || defined(CONFIG_MACH_ERAU) || defined(CONFIG_MACH_BLUE)
 #if 0//sim move to other driver
 		/* may be better to put this in init2()??*/
 		sim_detect_status = SIM_STATUS_UNKNOWN;
@@ -924,7 +951,7 @@ static int baseband_xmm_power2_driver_probe(struct platform_device *device)
 		pr_info("gpio 32 value is %d\n", err);
 
 
-#if defined(CONFIG_MACH_EDGE) || defined(CONFIG_MACH_ENDEAVORU) || defined(CONFIG_MACH_EDGE_TD) || defined(CONFIG_MACH_BLUE)
+#if defined(CONFIG_MACH_ENDEAVORU) || defined(CONFIG_MACH_EDGE_TD) || defined(CONFIG_MACH_ERAU) || defined(CONFIG_MACH_BLUE)
 	if(err) /*if GPIO_PI5 is high, set as high*/
 	{
 	    gpio_set_value(SIM_INIT, 1);
@@ -939,8 +966,9 @@ static int baseband_xmm_power2_driver_probe(struct platform_device *device)
 	}
 #endif
 #endif
-		kobj_hsic_device =
-			 kobject_get(&baseband_power2_driver_data->modem.xmm.hsic_device->dev.kobj);
+		/*kobj_hsic_device =
+			 kobject_get(&baseband_power2_driver_data->modem.xmm.hsic_device->dev.kobj);*/
+		kobj_hsic_device = kobject_create_and_add("modem-dump-kobj", NULL);
 		if (!kobj_hsic_device) {
 			pr_err("[FLS] can not get modem_kobject\n");
 			goto fail;
@@ -971,6 +999,7 @@ static int baseband_xmm_power2_driver_probe(struct platform_device *device)
 
 		/* radio detect*/
 		radio_detect_status = RADIO_STATUS_UNKNOWN;
+		int err_radio;
 		err_radio = request_irq(gpio_to_irq(CORE_DUMP_DETECT),
 			radio_det_irq,
 			/*IRQF_TRIGGER_RISING |*/ IRQF_TRIGGER_FALLING,
@@ -1030,7 +1059,7 @@ static int baseband_xmm_power2_driver_probe(struct platform_device *device)
 
 	/* OEM specific - init work queue */
 #ifdef BB_XMM_OEM1
-#if defined(CONFIG_MACH_EDGE) || defined(CONFIG_MACH_ENDEAVORU) || defined(CONFIG_MACH_EDGE_TD) || defined(CONFIG_MACH_BLUE)
+#if defined(CONFIG_MACH_ENDEAVORU) || defined(CONFIG_MACH_EDGE_TD) || defined(CONFIG_MACH_ERAU) || defined(CONFIG_MACH_BLUE)
 #if 0//sim move to other driver
 	INIT_WORK(&sim_detect_work_struct, sim_detect_work_handler);
 #endif//sim move to other driver
@@ -1062,7 +1091,7 @@ static int baseband_xmm_power2_driver_remove(struct platform_device *device)
 
 	/* OEM specific - free sim detect irq */
 #ifdef BB_XMM_OEM1
-#if defined(CONFIG_MACH_EDGE) || defined(CONFIG_MACH_ENDEAVORU) || defined(CONFIG_MACH_EDGE_TD) || defined(CONFIG_MACH_BLUE)
+#if defined(CONFIG_MACH_ENDEAVORU) || defined(CONFIG_MACH_EDGE_TD) || defined(CONFIG_MACH_ERAU) || defined(CONFIG_MACH_BLUE)
 #if 0//sim move to other driver
     free_irq(gpio_to_irq(SIM_DETECT), &modem_info);
 #endif//sim move to other driver
@@ -1092,7 +1121,7 @@ if (kobj_hsic_device) {
 
 	/* free work structure */
 	if (workqueue) {
-		cancel_work_sync((struct work_struct *) baseband_xmm_power2_work);
+		cancel_work_sync(baseband_xmm_power2_work);
 		destroy_workqueue(workqueue);
 	}
 	kfree(baseband_xmm_power2_work);
