@@ -112,6 +112,8 @@
 #define SL_ADDR1(addr) (addr & 0xff)
 #define SL_ADDR2(addr) ((addr >> 8) & 0xff)
 
+#define VALID_PTR (void *)0x1000
+
 /*
  * msg_end_type: The bus control which need to be send at end of transfer.
  * @MSG_END_STOP: Send stop pulse at end of transfer.
@@ -285,13 +287,25 @@ static int tegra_i2c_empty_rx_fifo(struct tegra_i2c_dev *i2c_dev)
 {
 	u32 val;
 	int rx_fifo_avail;
-	u8 *buf = i2c_dev->msg_buf;
-	size_t buf_remaining = i2c_dev->msg_buf_remaining;
+	u8 *buf;
+	size_t buf_remaining;
 	int words_to_transfer;
+	unsigned long flags;
 
 	val = i2c_readl(i2c_dev, I2C_FIFO_STATUS);
 	rx_fifo_avail = (val & I2C_FIFO_STATUS_RX_MASK) >>
 		I2C_FIFO_STATUS_RX_SHIFT;
+
+	spin_lock_irqsave(&i2c_dev->fifo_lock, flags);
+	buf = i2c_dev->msg_buf;
+	buf_remaining = i2c_dev->msg_buf_remaining;
+
+	if (!i2c_dev->msg_buf_remaining || !i2c_dev->msg_buf) {
+		dev_err(i2c_dev->dev,
+			"%s() Illegal message remianing and length\n", __func__);
+		spin_unlock_irqrestore(&i2c_dev->fifo_lock, flags);
+		return -EINVAL;
+	}		I2C_FIFO_STATUS_RX_SHIFT;
 
 	/* Rounds down to not include partial word at the end of buf */
 	words_to_transfer = buf_remaining / BYTES_PER_FIFO_WORD;
@@ -319,12 +333,15 @@ static int tegra_i2c_empty_rx_fifo(struct tegra_i2c_dev *i2c_dev)
 	BUG_ON(rx_fifo_avail > 0 && buf_remaining > 0);
 	i2c_dev->msg_buf_remaining = buf_remaining;
 	i2c_dev->msg_buf = buf;
+	spin_unlock_irqrestore(&i2c_dev->fifo_lock, flags);
 	return 0;
 }
 
 static int tegra_i2c_fill_tx_fifo(struct tegra_i2c_dev *i2c_dev)
 {
 	u32 val;
+	u8 *valp = (u8 *)&val;
+	u8 i;
 	int tx_fifo_avail;
 	u8 *buf;
 	size_t buf_remaining;
@@ -332,13 +349,23 @@ static int tegra_i2c_fill_tx_fifo(struct tegra_i2c_dev *i2c_dev)
 	unsigned long flags;
 
 	spin_lock_irqsave(&i2c_dev->fifo_lock, flags);
-	if (!i2c_dev->msg_buf_remaining) {
+	if (!i2c_dev->msg_buf_remaining || !i2c_dev->msg_buf) {
 		spin_unlock_irqrestore(&i2c_dev->fifo_lock, flags);
-		return 0;
+		return -EINVAL;
 	}
 
 	buf = i2c_dev->msg_buf;
 	buf_remaining = i2c_dev->msg_buf_remaining;
+	if (!buf) {
+		dev_err(i2c_dev->dev,
+			"I2C error 1,  buf = %p, buf_remaining = %d\n",
+			buf, buf_remaining);
+
+		spin_unlock_irqrestore(&i2c_dev->fifo_lock, flags);
+		/*BUG();*/
+		pr_err("********I2C********* F A T A L  E R R O R ! !\n");
+		return 0;
+	}
 
 	val = i2c_readl(i2c_dev, I2C_FIFO_STATUS);
 	tx_fifo_avail = (val & I2C_FIFO_STATUS_TX_MASK) >>
@@ -370,6 +397,16 @@ static int tegra_i2c_fill_tx_fifo(struct tegra_i2c_dev *i2c_dev)
 
 		buf += words_to_transfer * BYTES_PER_FIFO_WORD;
 	}
+	if (!buf) {
+		dev_err(i2c_dev->dev,
+			"I2C error 2,  buf = %p, buf_remaining = %d\n",
+			buf, buf_remaining);
+
+		spin_unlock_irqrestore(&i2c_dev->fifo_lock, flags);
+		/*BUG();*/
+		pr_err("********I2C********* F A T A L  E R R O R ! !\n");
+		return 0;
+	}
 
 	/*
 	 * If there is a partial word at the end of buf, handle it manually to
@@ -383,7 +420,11 @@ static int tegra_i2c_fill_tx_fifo(struct tegra_i2c_dev *i2c_dev)
 				buf_remaining);
 			BUG();
 		}
-		memcpy(&val, buf, buf_remaining);
+		BUG_ON(!i2c_dev->msg_buf);
+		BUG_ON(!buf);
+		val = 0;
+		for (i = 0; i < buf_remaining; i++)
+			valp[i] = buf[i];
 
 		/* Again update before writing to FIFO to make sure isr sees. */
 		i2c_dev->msg_buf_remaining = 0;
@@ -495,11 +536,6 @@ static irqreturn_t tegra_i2c_isr(int irq, void *dev_id)
 			 i2c_readl(i2c_dev, I2C_STATUS),
 			 i2c_readl(i2c_dev, I2C_CNFG));
 		i2c_dev->msg_err |= I2C_ERR_UNKNOWN_INTERRUPT;
-
-		if (!i2c_dev->irq_disabled) {
-			disable_irq_nosync(i2c_dev->irq);
-			i2c_dev->irq_disabled = 1;
-		}
 
 		complete(&i2c_dev->msg_complete);
 		goto err;
@@ -752,6 +788,8 @@ static int tegra_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	int i;
 	int ret = 0;
 
+	WARN(!num, "The number of message is zero\n");
+
 	rt_mutex_lock(&i2c_dev->dev_lock);
 
 	if (i2c_dev->is_suspended) {
@@ -786,6 +824,16 @@ static int tegra_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 				end_type = MSG_END_CONTINUE;
 			else
 				end_type = MSG_END_REPEAT_START;
+		}
+
+		if (msgs[i].buf < VALID_PTR || !msgs[i].len) {
+			dev_err(i2c_dev->dev,
+				"Illegal messages buffer and length\n");
+			WARN_ON(1);
+			rt_mutex_unlock(&i2c_dev->dev_lock);
+			i2c_dev->msgs = NULL;
+			i2c_dev->msgs_num = 0;
+			return -EINVAL;
 		}
 		ret = tegra_i2c_xfer_msg(i2c_bus, &msgs[i], end_type);
 		if (ret)
@@ -912,7 +960,7 @@ static int __devinit tegra_i2c_probe(struct platform_device *pdev)
 		goto err_free;
 	}
 
-	ret = request_irq(i2c_dev->irq, tegra_i2c_isr, 0, pdev->name, i2c_dev);
+	ret = request_irq(i2c_dev->irq, tegra_i2c_isr, IRQF_NO_SUSPEND, pdev->name, i2c_dev);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to request irq %i\n", i2c_dev->irq);
 		goto err_free;
