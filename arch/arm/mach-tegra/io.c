@@ -35,49 +35,49 @@
 
 static struct map_desc tegra_io_desc[] __initdata = {
 	{
-		.virtual = (unsigned long)IO_PPSB_VIRT,
+		.virtual = IO_PPSB_VIRT,
 		.pfn = __phys_to_pfn(IO_PPSB_PHYS),
 		.length = IO_PPSB_SIZE,
 		.type = MT_DEVICE,
 	},
 	{
-		.virtual = (unsigned long)IO_APB_VIRT,
+		.virtual = IO_APB_VIRT,
 		.pfn = __phys_to_pfn(IO_APB_PHYS),
 		.length = IO_APB_SIZE,
 		.type = MT_DEVICE,
 	},
 	{
-		.virtual = (unsigned long)IO_CPU_VIRT,
+		.virtual = IO_CPU_VIRT,
 		.pfn = __phys_to_pfn(IO_CPU_PHYS),
 		.length = IO_CPU_SIZE,
 		.type = MT_DEVICE,
 	},
 	{
-		.virtual = (unsigned long)IO_IRAM_VIRT,
+		.virtual = IO_IRAM_VIRT,
 		.pfn = __phys_to_pfn(IO_IRAM_PHYS),
 		.length = IO_IRAM_SIZE,
 		.type = MT_DEVICE,
 	},
 	{
-		.virtual = (unsigned long)IO_HOST1X_VIRT,
+		.virtual = IO_HOST1X_VIRT,
 		.pfn = __phys_to_pfn(IO_HOST1X_PHYS),
 		.length = IO_HOST1X_SIZE,
 		.type = MT_DEVICE,
 	},
 	{
-		.virtual = (unsigned long)IO_USB_VIRT,
+		.virtual = IO_USB_VIRT,
 		.pfn = __phys_to_pfn(IO_USB_PHYS),
 		.length = IO_USB_SIZE,
 		.type = MT_DEVICE,
 	},
 	{
-		.virtual = (unsigned long)IO_SDMMC_VIRT,
+		.virtual = IO_SDMMC_VIRT,
 		.pfn = __phys_to_pfn(IO_SDMMC_PHYS),
 		.length = IO_SDMMC_SIZE,
 		.type = MT_DEVICE,
 	},
 	{
-		.virtual = (unsigned long)IO_PPCS_VIRT,
+		.virtual = IO_PPCS_VIRT,
 		.pfn = __phys_to_pfn(IO_PPCS_PHYS),
 		.length = IO_PPCS_SIZE,
 		.type = MT_DEVICE,
