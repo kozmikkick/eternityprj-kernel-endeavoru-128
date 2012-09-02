@@ -347,8 +347,6 @@ asmlinkage void __cpuinit secondary_start_kernel(void)
 	 * before we continue.
 	 */
 	set_cpu_online(cpu, true);
-	while (!cpu_active(cpu))
-		cpu_relax();
 
 	/*
 	 * OK, it's off to the idle thread for us
